@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Logo from './Logo';
 import { UserNav } from './UserNav';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Search, Wand2 } from 'lucide-react'; // Added Wand2
 import { Input } from '@/components/ui/input';
 
 const Header = () => {
@@ -17,6 +17,12 @@ const Header = () => {
             className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground"
           >
             Courses
+          </Link>
+           <Link
+            href="/marketplace"
+            className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground flex items-center gap-1"
+          >
+             <Wand2 className="h-4 w-4" /> Marketplace
           </Link>
           {/* Add more nav links here if needed, e.g., Categories, For Business */}
         </nav>
