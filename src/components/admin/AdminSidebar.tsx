@@ -23,6 +23,8 @@ import { UserNav } from '@/components/layout/UserNav'; // Or a specific AdminUse
 import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, PlusCircle, Edit3, LogOut, Wand2, Store } from 'lucide-react'; // Added Wand2 and Store icons
 import { Button } from '../ui/button';
 import { useAuth } from '@/hooks/use-auth-mock';
+import { cn } from "@/lib/utils"; // Import cn utility function
+import { Separator } from '../ui/separator'; // Import Separator
 
 
 const AdminSidebar = () => {
@@ -206,4 +208,5 @@ export const MobileAdminSidebarContent = () => {
 
 
 export default AdminSidebar;
+
 
