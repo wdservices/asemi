@@ -19,6 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Trash2, X } from "lucide-react";
 import type { Course, CourseFormData } from "@/lib/types";
 import { getCourseById, updateCourse } from '@/lib/mockData'; // Use updateCourse mock function
+import { Checkbox } from '@/components/ui/checkbox'; // Import Checkbox
+
 
 // Schemas (can be imported from new/page.tsx or a shared file)
 const lessonSchema = z.object({
@@ -53,6 +55,8 @@ const courseFormSchema = z.object({
   instructorBio: z.string().optional(),
   instructorTitle: z.string().optional(),
   previewVideoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  paymentLink: z.string().url({ message: "Please enter a valid payment URL." }).optional().or(z.literal('')),
+  redirectLink: z.string().url({ message: "Please enter a valid redirect URL." }).optional().or(z.literal('')),
   modules: z.array(moduleSchema).min(1, "Course must have at least one module."),
 });
 
@@ -89,6 +93,8 @@ export default function EditCoursePage() {
           instructorBio: fetchedCourse.instructor.bio || "",
           instructorTitle: fetchedCourse.instructor.title || "",
           previewVideoUrl: fetchedCourse.previewVideoUrl || "",
+          paymentLink: fetchedCourse.paymentLink || "",
+          redirectLink: fetchedCourse.redirectLink || "",
           modules: fetchedCourse.modules.map(m => ({
             id: m.id, // Keep existing IDs
             title: m.title,
@@ -193,10 +199,12 @@ export default function EditCoursePage() {
               </CardContent>
             </Card>
              <Card>
-                <CardHeader><CardTitle>Media</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Media & Links</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                     <FormField control={form.control} name="thumbnailUrl" render={({ field }) => (<FormItem><FormLabel>Thumbnail URL</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="previewVideoUrl" render={({ field }) => (<FormItem><FormLabel>Preview Video URL (Optional)</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="paymentLink" render={({ field }) => (<FormItem><FormLabel>Payment Link (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://buy.stripe.com/..." {...field} /></FormControl><FormDescription>External link for purchase.</FormDescription><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="redirectLink" render={({ field }) => (<FormItem><FormLabel>Post-Payment Redirect Link (Optional)</FormLabel><FormControl><Input type="url" placeholder="/learn/your-course-slug" {...field} /></FormControl><FormDescription>Where users land after buying.</FormDescription><FormMessage /></FormItem>)} />
                 </CardContent>
             </Card>
           </div>
@@ -267,9 +275,27 @@ function EditLessonsFieldArray({ moduleIndex, control }: { moduleIndex: number; 
             <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.contentType`} render={({ field }) => (<FormItem><FormLabel className="text-xs">Content Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="video">Video</SelectItem><SelectItem value="pdf">PDF</SelectItem><SelectItem value="text">Text</SelectItem><SelectItem value="quiz">Quiz</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.content`} render={({ field }) => (<FormItem><FormLabel className="text-xs">Content / URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center"> {/* Use items-center for checkbox alignment */}
             <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.duration`} render={({ field }) => (<FormItem><FormLabel className="text-xs">Duration (Optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.isPreviewable`} render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm mt-5"><FormControl><Input type="checkbox" checked={field.value} onChange={field.onChange} className="h-4 w-4" /></FormControl><div className="space-y-1 leading-none"><FormLabel className="text-xs">Allow Preview?</FormLabel></div></FormItem>)} />
+             {/* Use Checkbox component and adjust FormItem structure */}
+            <FormField
+              control={control}
+              name={`modules.${moduleIndex}.lessons.${lessonIndex}.isPreviewable`}
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-2 space-y-0 rounded-md border p-3 shadow-sm mt-5 h-[58px]"> {/* Adjust height/padding */}
+                  <FormControl>
+                      {/* Pass checked state and onCheckedChange */}
+                      <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                      />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                      <FormLabel className="text-xs">Allow Preview?</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
           </div>
         </div>
       ))}

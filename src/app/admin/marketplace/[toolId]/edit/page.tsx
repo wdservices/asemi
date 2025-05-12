@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast';
+import { useToast } from "@/hooks/use-toast";
 import type { AITool, AIToolFormDataInput } from '@/lib/types';
 import { getAIToolById, updateAITool } from '@/lib/mockData'; // Using mock functions
 
@@ -24,6 +24,8 @@ const aiToolFormSchema = z.object({
   thumbnailUrl: z.string().url({ message: "Please enter a valid URL for the thumbnail." }),
   previewLink: z.string().url({ message: "Please enter a valid URL for the preview link." }),
   tags: z.string().optional(), // Comma-separated string from input
+  paymentLink: z.string().url({ message: "Please enter a valid payment URL." }).optional().or(z.literal('')),
+  redirectLink: z.string().url({ message: "Please enter a valid redirect URL." }).optional().or(z.literal('')),
 });
 
 export default function EditAIToolPage() {
@@ -53,6 +55,8 @@ export default function EditAIToolPage() {
                 thumbnailUrl: fetchedTool.thumbnailUrl,
                 previewLink: fetchedTool.previewLink,
                 tags: fetchedTool.tags?.join(', ') || '',
+                paymentLink: fetchedTool.paymentLink || '',
+                redirectLink: fetchedTool.redirectLink || '',
             });
           } else {
             toast({ title: "Error", description: "AI Tool not found.", variant: "destructive" });
@@ -119,6 +123,8 @@ export default function EditAIToolPage() {
                 <FormField control={form.control} name="thumbnailUrl" render={({ field }) => (<FormItem><FormLabel>Thumbnail URL</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="previewLink" render={({ field }) => (<FormItem><FormLabel>Preview Link</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormDescription>Link to a live demo or video.</FormDescription><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Tags</FormLabel><FormControl><Input {...field} /></FormControl><FormDescription>Comma-separated values.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="paymentLink" render={({ field }) => (<FormItem><FormLabel>Payment Link (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://buy.stripe.com/..." {...field} /></FormControl><FormDescription>External link for purchase.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="redirectLink" render={({ field }) => (<FormItem><FormLabel>Post-Payment Redirect Link (Optional)</FormLabel><FormControl><Input type="url" placeholder="/tools/your-tool-id/access" {...field} /></FormControl><FormDescription>Where users land after buying.</FormDescription><FormMessage /></FormItem>)} />
             </CardContent>
         </Card>
 

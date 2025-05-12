@@ -49,6 +49,8 @@ const courseFormSchema = z.object({
   instructorBio: z.string().optional(),
   instructorTitle: z.string().optional(),
   previewVideoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  paymentLink: z.string().url({ message: "Please enter a valid payment URL." }).optional().or(z.literal('')),
+  redirectLink: z.string().url({ message: "Please enter a valid redirect URL." }).optional().or(z.literal('')),
   modules: z.array(moduleSchema).min(1, "Course must have at least one module."),
 });
 
@@ -73,6 +75,8 @@ export default function NewCoursePage() {
       instructorBio: "",
       instructorTitle: "",
       previewVideoUrl: "",
+      paymentLink: "",
+      redirectLink: "",
       modules: [{ title: "", moduleOrder: 0, lessons: [{ title: "", contentType: "video", content: "", lessonOrder: 0, isPreviewable: false }] }],
     },
   });
@@ -141,10 +145,12 @@ export default function NewCoursePage() {
               </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Media</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Media & Links</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                     <FormField control={form.control} name="thumbnailUrl" render={({ field }) => (<FormItem><FormLabel>Thumbnail URL</FormLabel><FormControl><Input type="url" placeholder="https://example.com/image.jpg" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="previewVideoUrl" render={({ field }) => (<FormItem><FormLabel>Preview Video URL (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://youtube.com/embed/..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="paymentLink" render={({ field }) => (<FormItem><FormLabel>Payment Link (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://buy.stripe.com/..." {...field} /></FormControl><FormDescription>External link for purchase.</FormDescription><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="redirectLink" render={({ field }) => (<FormItem><FormLabel>Post-Payment Redirect Link (Optional)</FormLabel><FormControl><Input type="url" placeholder="/learn/your-course-slug" {...field} /></FormControl><FormDescription>Where users land after buying.</FormDescription><FormMessage /></FormItem>)} />
                 </CardContent>
             </Card>
           </div>
@@ -214,7 +220,7 @@ function LessonsFieldArray({ moduleIndex, control }: { moduleIndex: number; cont
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.duration`} render={({ field }) => (<FormItem><FormLabel className="text-xs">Duration (Optional)</FormLabel><FormControl><Input placeholder="e.g., 15m, 1h 30m" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.isPreviewable`} render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm mt-5"><FormControl><Input type="checkbox" checked={field.value} onChange={field.onChange} className="h-4 w-4" /></FormControl><div className="space-y-1 leading-none"><FormLabel className="text-xs">Allow Preview?</FormLabel></div></FormItem>)} />
+            <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.isPreviewable`} render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 shadow-sm mt-5"><FormControl><Input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} className="h-4 w-4" /></FormControl><div className="space-y-1 leading-none"><FormLabel className="text-xs">Allow Preview?</FormLabel></div></FormItem>)} />
           </div>
         </div>
       ))}

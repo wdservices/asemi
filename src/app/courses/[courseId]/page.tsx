@@ -9,13 +9,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { Course, CourseModule, Lesson as LessonType } from '@/lib/types';
-import { getCourseBySlug } from '@/lib/mockData'; // Using slug as ID for fetching
+import { getCourseBySlug, enrollUserInCourse } from '@/lib/mockData'; // Using slug as ID for fetching, added enrollUserInCourse
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Star, PlayCircle, Clock, BarChart, Users, FileText, Lock, CheckCircle } from 'lucide-react';
+import { Star, PlayCircle, Clock, BarChart, Users, FileText, Lock, CheckCircle, ShoppingCart } from 'lucide-react'; // Added ShoppingCart
 import { useAuth } from '@/hooks/use-auth-mock';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,13 +40,21 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { user, login } = useAuth(); // Assuming login can set the user for demo purposes
+  const { user, updateUser } = useAuth(); // Get user and updateUser function
   const courseSlug = typeof params.courseId === 'string' ? params.courseId : '';
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock enrollment check
-  const isEnrolled = user?.enrolledCourseIds?.includes(course?.id || '') || false;
+  // Check enrollment status based on the current user state
+  const [isEnrolled, setIsEnrolled] = useState(false);
+
+  useEffect(() => {
+    if (user && course) {
+      setIsEnrolled(user.enrolledCourseIds?.includes(course.id) || false);
+    } else {
+      setIsEnrolled(false);
+    }
+  }, [user, course]);
 
 
   useEffect(() => {
@@ -62,21 +70,24 @@ export default function CourseDetailPage() {
     }
   }, [courseSlug, router]);
 
-  const handleEnroll = () => {
+  const handleMockPurchase = () => {
     if (!user) {
-      toast({ title: "Login Required", description: "Please login to enroll in this course.", variant: "destructive" });
-      router.push(`/auth/login?redirect=/courses/${courseSlug}`);
-      return;
+        toast({ title: "Login Required", description: "Please login to purchase this course.", variant: "destructive" });
+        router.push(`/auth/login?redirect=/courses/${courseSlug}`);
+        return;
     }
-    // Mock enrollment logic
-    if (course) {
-       // In a real app, this would involve payment and backend update
-      const updatedUser = { ...user, enrolledCourseIds: [...(user.enrolledCourseIds || []), course.id] };
-      // This is a mock update; in a real app, useAuth would handle this via backend.
-      // For demo, we can call a modified login function if it supports updating the user state.
-      // Or, more simply, just show a success message and navigate.
-      toast({ title: "Successfully Enrolled!", description: `You can now access ${course.title}.`, variant: "default" });
-      router.push(`/learn/${course.slug}`);
+    if (course && user) {
+        // MOCK: Simulate successful purchase and enrollment
+        const success = enrollUserInCourse(user.id, course.id);
+        if (success) {
+            // Update the user state in the Auth context
+            updateUser({ enrolledCourseIds: [...(user.enrolledCourseIds || []), course.id] });
+            toast({ title: "Purchase Successful (Mock)", description: `You now have access to ${course.title}. Redirecting...`, variant: "default" });
+            // Optionally redirect immediately, or let the UI update based on the new 'isEnrolled' state
+            // router.push(`/learn/${course.slug}`);
+        } else {
+             toast({ title: "Already Enrolled", description: `You already have access to ${course.title}.`, variant: "default" });
+        }
     }
   };
 
@@ -127,7 +138,7 @@ export default function CourseDetailPage() {
             <div className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: course.longDescription.replace(/\n/g, '<br />') }} />
           </section>
         )}
-        
+
         <Separator />
 
         {/* Course Content / Modules */}
@@ -168,7 +179,7 @@ export default function CourseDetailPage() {
         </section>
 
         <Separator />
-        
+
         {/* Instructor Section */}
         <section>
             <h2 className="text-2xl font-semibold mb-4">About the Instructor</h2>
@@ -201,21 +212,38 @@ export default function CourseDetailPage() {
             )}
           </div>
           <div className="p-6 pt-0">
-            <h2 className="text-3xl font-bold text-primary mb-4">${course.price.toFixed(2)}</h2>
-            
+            {!isEnrolled && <h2 className="text-3xl font-bold text-primary mb-4">${course.price.toFixed(2)}</h2>}
+
             {isEnrolled ? (
               <Button size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white" asChild>
-                <Link href={`/learn/${course.slug}`}>Go to Course</Link>
+                <Link href={course.redirectLink || `/learn/${course.slug}`}>Go to Course</Link>
+              </Button>
+            ) : course.paymentLink ? (
+              // Use an <a> tag for external payment links
+              // In this mock, we call handleMockPurchase onClick instead of direct navigation
+              <Button
+                  size="lg"
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                  onClick={handleMockPurchase} // Simulate purchase on click for demo
+                  // In a real app, this might be: asChild
+              >
+                   {/* In a real app, this would be:
+                   <a href={course.paymentLink} target="_blank" rel="noopener noreferrer">
+                       <ShoppingCart className="mr-2 h-5 w-5" /> Purchase Now
+                   </a>
+                   */}
+                   {/* Mock Button Text: */}
+                   <ShoppingCart className="mr-2 h-5 w-5" /> Purchase Now (Mock)
               </Button>
             ) : (
-              <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={handleEnroll}>
-                Enroll Now
-              </Button>
+                 <Button size="lg" className="w-full" disabled>
+                    Enrollment Unavailable
+                 </Button>
             )}
-            
-            <Button variant="outline" size="lg" className="w-full mt-3">Add to Wishlist</Button> {/* Wishlist functionality is a placeholder */}
-            
-            <p className="text-xs text-muted-foreground text-center mt-4">30-Day Money-Back Guarantee</p>
+
+             {!isEnrolled && <Button variant="outline" size="lg" className="w-full mt-3">Add to Wishlist</Button>} {/* Wishlist functionality is a placeholder */}
+
+            <p className="text-xs text-muted-foreground text-center mt-4">Lifetime Access</p>
 
             <div className="mt-6 space-y-3 text-sm">
               <h4 className="font-semibold text-foreground">This course includes:</h4>

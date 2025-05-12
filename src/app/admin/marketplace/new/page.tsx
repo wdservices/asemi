@@ -22,6 +22,8 @@ const aiToolFormSchema = z.object({
   thumbnailUrl: z.string().url({ message: "Please enter a valid URL for the thumbnail." }),
   previewLink: z.string().url({ message: "Please enter a valid URL for the preview link." }),
   tags: z.string().optional(), // Comma-separated string from input
+  paymentLink: z.string().url({ message: "Please enter a valid payment URL." }).optional().or(z.literal('')),
+  redirectLink: z.string().url({ message: "Please enter a valid redirect URL." }).optional().or(z.literal('')),
 });
 
 export default function NewAIToolPage() {
@@ -37,6 +39,8 @@ export default function NewAIToolPage() {
       thumbnailUrl: "",
       previewLink: "",
       tags: "",
+      paymentLink: "",
+      redirectLink: "",
     },
   });
 
@@ -44,7 +48,7 @@ export default function NewAIToolPage() {
     console.log("New AI tool data (from form):", values);
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     addAITool(values); // Pass the form data directly to the mock function
 
     toast({
@@ -142,6 +146,30 @@ export default function NewAIToolPage() {
                         </FormItem>
                     )}
                 />
+                 <FormField
+                    control={form.control}
+                    name="paymentLink"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Payment Link (Optional)</FormLabel>
+                            <FormControl><Input type="url" placeholder="https://buy.stripe.com/..." {...field} /></FormControl>
+                            <FormDescription>External link for purchase.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="redirectLink"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Post-Payment Redirect Link (Optional)</FormLabel>
+                            <FormControl><Input type="url" placeholder="/tools/your-tool-id/access" {...field} /></FormControl>
+                            <FormDescription>Where users land after buying.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
             </CardContent>
         </Card>
 
@@ -155,4 +183,3 @@ export default function NewAIToolPage() {
     </Form>
   );
 }
-

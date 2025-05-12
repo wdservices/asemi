@@ -1,3 +1,4 @@
+
 import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson, AITool, AIToolFormDataInput, CourseFormData } from './types';
 
 export const mockInstructors: Instructor[] = [
@@ -24,6 +25,8 @@ export let mockCourses: Course[] = [
     duration: "20h 15m",
     level: 'Intermediate',
     tags: ['Next.js', 'React', 'JavaScript', 'Web Development'],
+    paymentLink: 'https://buy.stripe.com/mock_course1', // Mock payment link
+    redirectLink: '/learn/nextjs-masterclass', // Redirect to learn page after purchase
     modules: [
       {
         id: 'm1c1', title: 'Introduction to Next.js', moduleOrder: 1,
@@ -58,6 +61,8 @@ export let mockCourses: Course[] = [
     duration: "12h 45m",
     level: 'Beginner',
     tags: ['Tailwind CSS', 'CSS', 'Frontend', 'UI Design'],
+    paymentLink: 'https://buy.stripe.com/mock_course2', // Mock payment link
+    redirectLink: '/learn/tailwind-css-deep-dive', // Redirect to learn page
     modules: [
       {
         id: 'm1c2', title: 'Getting Started with Tailwind', moduleOrder: 1,
@@ -84,6 +89,8 @@ export let mockCourses: Course[] = [
     duration: "30h 00m",
     level: 'All Levels',
     tags: ['Python', 'Data Science', 'Machine Learning', 'NumPy', 'Pandas'],
+    paymentLink: 'https://buy.stripe.com/mock_course3', // Mock payment link
+    redirectLink: '/learn/python-data-science', // Redirect to learn page
     modules: [
       {
         id: 'm1c3', title: 'Python Fundamentals', moduleOrder: 1,
@@ -101,7 +108,8 @@ export let mockUsers: UserProfile[] = [
     email: 'user@example.com',
     displayName: 'John Doe',
     avatarUrl: 'https://picsum.photos/seed/user1/100/100',
-    enrolledCourseIds: ['course1'],
+    enrolledCourseIds: ['course1'], // Already owns course1
+    purchasedToolIds: [], // Does not own any tools yet
     isAdmin: false,
   },
   {
@@ -109,7 +117,8 @@ export let mockUsers: UserProfile[] = [
     email: 'admin@example.com',
     displayName: 'Admin User',
     avatarUrl: 'https://picsum.photos/seed/admin1/100/100',
-    enrolledCourseIds: ['course1', 'course2'],
+    enrolledCourseIds: ['course1', 'course2'], // Owns course1 and course2
+    purchasedToolIds: ['tool1'], // Owns tool1
     isAdmin: true,
   },
 ];
@@ -151,6 +160,8 @@ export let mockAITools: AITool[] = [
     thumbnailUrl: 'https://picsum.photos/seed/aitool1/600/400',
     previewLink: 'https://example.com/preview/content-generator',
     tags: ['Content Creation', 'Marketing', 'Writing'],
+    paymentLink: 'https://buy.stripe.com/mock_tool1', // Mock payment link
+    redirectLink: '/tools/tool1/access', // Mock access page link
   },
   {
     id: 'tool2',
@@ -160,6 +171,8 @@ export let mockAITools: AITool[] = [
     thumbnailUrl: 'https://picsum.photos/seed/aitool2/600/400',
     previewLink: 'https://example.com/preview/image-enhancer',
     tags: ['Image Processing', 'Design', 'Photography'],
+    paymentLink: 'https://buy.stripe.com/mock_tool2', // Mock payment link
+    redirectLink: '/tools/tool2/access', // Mock access page link
   },
   {
     id: 'tool3',
@@ -169,6 +182,8 @@ export let mockAITools: AITool[] = [
     thumbnailUrl: 'https://picsum.photos/seed/aitool3/600/400',
     previewLink: 'https://example.com/preview/code-assistant',
     tags: ['Development', 'Coding', 'Productivity'],
+    paymentLink: 'https://buy.stripe.com/mock_tool3', // Mock payment link
+    redirectLink: '/tools/tool3/access', // Mock access page link
   },
 ];
 
@@ -201,6 +216,8 @@ export const addCourse = (courseData: CourseFormData): Course => {
         previewVideoUrl: courseData.previewVideoUrl,
         level: courseData.level,
         tags: courseData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
+        paymentLink: courseData.paymentLink,
+        redirectLink: courseData.redirectLink,
         // rating, numberOfRatings, totalLessons, duration would be calculated or added later
     };
     mockCourses.push(newCourse);
@@ -225,6 +242,8 @@ export const updateCourse = (courseId: string, courseData: CourseFormData): Cour
         tags: courseData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
         instructor: mockInstructors.find(inst => inst.name === courseData.instructorName) || existingCourse.instructor,
         previewVideoUrl: courseData.previewVideoUrl,
+        paymentLink: courseData.paymentLink,
+        redirectLink: courseData.redirectLink,
         modules: courseData.modules.map((mod, modIndex) => ({
             id: mod.id || `m${modIndex + 1}c${courseId}-new`, // Assign new ID if missing
             title: mod.title,
@@ -253,7 +272,41 @@ export const deleteCourse = (courseId: string): boolean => {
 
 // Users
 export const getUserById = (id: string): UserProfile | undefined => mockUsers.find(user => user.id === id);
+// Function to add a course to a user's enrolled list (simulates purchase completion)
+export const enrollUserInCourse = (userId: string, courseId: string): boolean => {
+    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    if (userIndex === -1) return false;
+    if (!mockUsers[userIndex].enrolledCourseIds?.includes(courseId)) {
+        mockUsers[userIndex].enrolledCourseIds = [...(mockUsers[userIndex].enrolledCourseIds || []), courseId];
+        // Add a basic enrollment record too
+        mockEnrollments.push({
+            id: `enroll-${userId}-${courseId}-${Date.now()}`,
+            userId: userId,
+            courseId: courseId,
+            enrolledAt: new Date(),
+            progress: 0,
+            completedLessons: [],
+        });
+        console.log(`Mock: User ${userId} enrolled in course ${courseId}`);
+        return true;
+    }
+    return false; // Already enrolled
+}
+
+// Function to add a tool to a user's purchased list (simulates purchase completion)
+export const addPurchasedToolToUser = (userId: string, toolId: string): boolean => {
+    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    if (userIndex === -1) return false;
+    if (!mockUsers[userIndex].purchasedToolIds?.includes(toolId)) {
+        mockUsers[userIndex].purchasedToolIds = [...(mockUsers[userIndex].purchasedToolIds || []), toolId];
+        console.log(`Mock: User ${userId} purchased tool ${toolId}`);
+        return true;
+    }
+    return false; // Already purchased
+}
+
 // Add functions for updating user roles, deleting users etc. if needed for admin actions
+
 
 // Enrollments
 export const getEnrollmentsByUserId = (userId: string): Enrollment[] => mockEnrollments.filter(enrollment => enrollment.userId === userId);
@@ -270,6 +323,8 @@ export const addAITool = (toolData: AIToolFormDataInput): AITool => {
         thumbnailUrl: toolData.thumbnailUrl,
         previewLink: toolData.previewLink,
         tags: toolData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
+        paymentLink: toolData.paymentLink,
+        redirectLink: toolData.redirectLink,
     };
     mockAITools.push(newTool);
     console.log("Mock AI Tool Added:", newTool);
@@ -299,10 +354,11 @@ export const updateAITool = (toolId: string, toolData: AIToolFormDataInput): AIT
         thumbnailUrl: toolData.thumbnailUrl,
         previewLink: toolData.previewLink,
         tags: toolData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
+        paymentLink: toolData.paymentLink,
+        redirectLink: toolData.redirectLink,
     };
 
     mockAITools[toolIndex] = updatedTool;
     console.log("Mock AI Tool Updated:", updatedTool);
     return updatedTool;
 }
-

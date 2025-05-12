@@ -1,5 +1,4 @@
 
-
 export interface Course {
   id: string;
   title: string;
@@ -18,6 +17,8 @@ export interface Course {
   duration?: string; // e.g., "10h 30m"
   level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
   tags?: string[];
+  paymentLink?: string; // Link to external payment processor
+  redirectLink?: string; // Link where user is sent after successful payment (e.g., /learn/course-slug)
 }
 
 export interface Instructor {
@@ -59,6 +60,7 @@ export interface UserProfile {
   displayName: string | null;
   avatarUrl?: string | null;
   enrolledCourseIds?: string[];
+  purchasedToolIds?: string[]; // Added for tracking tool purchases
   isAdmin?: boolean;
   // Add other profile details as needed
   bio?: string;
@@ -87,6 +89,8 @@ export type CourseFormData = Omit<Course, 'id' | 'instructor' | 'modules' | 'rat
     id?: string; // For editing existing modules
     lessons: Array<Omit<Lesson, 'id'> & { id?: string }>; // For editing existing lessons
   }>;
+  paymentLink?: string;
+  redirectLink?: string;
 };
 
 // AI Tool Marketplace Type
@@ -98,6 +102,8 @@ export interface AITool {
   thumbnailUrl: string;
   previewLink: string; // URL to a live preview or demo video
   tags?: string[];
+  paymentLink?: string; // Link to external payment processor
+  redirectLink?: string; // Link where user is sent after successful payment (e.g., /tools/tool-id/access)
   // Add other relevant fields if needed, e.g., category, developer info
 }
 
@@ -110,9 +116,10 @@ export interface AIToolFormDataInput {
   thumbnailUrl: string;
   previewLink: string;
   tags?: string; // Comma-separated string for the form input
+  paymentLink?: string;
+  redirectLink?: string;
 }
 
 // AI Tool Form Data Type - Processed data for saving/display (might not be explicitly needed if Input type is sufficient)
 // Represents the data structure after potential processing (e.g., converting tags string to array).
 export type AIToolFormData = Omit<AITool, 'id'>;
-

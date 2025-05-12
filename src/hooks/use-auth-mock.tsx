@@ -15,6 +15,8 @@ interface AuthContextType {
   // Expose setUser and setLoading for direct manipulation in mock scenarios (like registration)
   setUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  // Expose function to update the current user state after a mock purchase
+  updateUser: (updatedUserData: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (userId: string) => {
     setLoading(true);
+    // IMPORTANT: Find user from the potentially modified mockUsers array
     const foundUser = mockUsers.find(u => u.id === userId);
     if (foundUser) {
       setUser(foundUser);
@@ -65,10 +68,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('mockUserId');
   };
 
+  // Function to update the user state in the context directly
+  // Needed for mock purchase/enrollment updates
+  const updateUser = (updatedUserData: Partial<UserProfile>) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      // Update the corresponding user in mockUsers array as well
+      const userIndex = mockUsers.findIndex(u => u.id === prevUser.id);
+      if (userIndex !== -1) {
+        mockUsers[userIndex] = { ...mockUsers[userIndex], ...updatedUserData };
+      }
+      // Return the updated state for the context
+      return { ...prevUser, ...updatedUserData };
+    });
+  };
+
+
   const isAdmin = !!user?.isAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, setUser, setLoading }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, setUser, setLoading, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
