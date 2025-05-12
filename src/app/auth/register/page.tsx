@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import Logo from '@/components/layout/Logo';
 import { useAuth } from '@/hooks/use-auth-mock';
 import { useToast } from '@/hooks/use-toast';
+import type { UserProfile } from '@/lib/types';
 
 const registerSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -25,7 +26,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login: mockLogin, user } = useAuth(); // Using login to simulate post-registration login
+  // We need the raw setUser function from the context for this mock registration
+  const { user, login: _, setUser, setLoading } = useAuth(); // Renamed login to _ as we'll call setUser directly
   const { toast } = useToast();
 
   const form = useForm<RegisterFormValues>({
@@ -42,14 +44,36 @@ export default function RegisterPage() {
   }
 
   async function onSubmit(values: RegisterFormValues) {
+    setLoading(true); // Simulate loading
     // Simulate registration. In a real app, this would be an API call.
-    // For mock, we'll create a new user (not added to mockData.ts, just for flow)
-    // and then log them in using one of the existing mock users for demo.
+    // For mock, we'll create a new user object based on the form values
+    // and set it directly in the auth context. This user won't persist
+    // across refreshes unless added to mockData.ts and login is used.
     console.log("Registering user:", values);
-    
-    // Simulate successful registration and login with 'user1' for demo purposes
-    mockLogin('user1'); // Log in as 'user1' after registration
-    toast({ title: "Registration Successful", description: "Welcome to Skill Stream!" });
+
+    const newUser: UserProfile = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      email: values.email,
+      displayName: values.displayName,
+      avatarUrl: null, // Default avatar will be used
+      enrolledCourseIds: [],
+      isAdmin: false,
+    };
+
+    // Directly set the new user in the auth context
+    if (setUser) {
+      setUser(newUser);
+      // Optionally, store in localStorage to mimic session persistence for demo
+      localStorage.setItem('mockUserId', newUser.id);
+      // Add the temp user to mockUsers in memory ONLY for this session, so redirection works
+      // Note: This is a hack for the mock setup. A real backend handles this.
+      // We might need to modify useAuth to allow temporary setting without full login logic
+      // Or, accept that refresh will log out this temp user.
+      // Let's proceed without modifying mockUsers for now. The dashboard will show the name.
+    }
+
+    setLoading(false); // End loading simulation
+    toast({ title: "Registration Successful", description: `Welcome to Skill Stream, ${values.displayName}!` });
     router.push('/dashboard'); // Redirect to dashboard after registration
   }
 

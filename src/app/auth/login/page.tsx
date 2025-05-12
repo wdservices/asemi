@@ -42,8 +42,9 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginFormValues) {
     // Simulate login. In a real app, this would be an API call.
-    // For mock, we'll use email to find a user. User 'user1' and 'admin1' are in mockData.
-    // Let's assume user@example.com is user1 and admin@example.com is admin1 for simplicity.
+    // Mock Login Details:
+    // - Regular User: user@example.com (Password: any 6+ chars) -> Logs in as 'user1' from mockData
+    // - Admin User: admin@example.com (Password: any 6+ chars) -> Logs in as 'admin1' from mockData (who is an admin)
     let userIdToLogin = '';
     if (values.email === 'user@example.com') userIdToLogin = 'user1';
     else if (values.email === 'admin@example.com') userIdToLogin = 'admin1';
@@ -51,7 +52,13 @@ export default function LoginPage() {
     if (userIdToLogin) {
       mockLogin(userIdToLogin);
       toast({ title: "Login Successful", description: "Welcome back!" });
-      router.push(searchParams.get('redirect') || '/dashboard');
+      const redirectPath = searchParams.get('redirect');
+      // Redirect admins trying to access user dashboard to admin dashboard
+      if (userIdToLogin === 'admin1' && redirectPath === '/dashboard') {
+         router.push('/admin/dashboard');
+      } else {
+         router.push(redirectPath || (userIdToLogin === 'admin1' ? '/admin/dashboard' : '/dashboard'));
+      }
     } else {
       toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
       form.setError("email", { type: "manual", message: "Invalid credentials" });

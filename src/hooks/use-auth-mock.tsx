@@ -12,6 +12,9 @@ interface AuthContextType {
     => void;
   logout: () => void;
   isAdmin: boolean;
+  // Expose setUser and setLoading for direct manipulation in mock scenarios (like registration)
+  setUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,9 +27,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Simulate checking for persisted login state
     const storedUserId = localStorage.getItem('mockUserId');
     if (storedUserId) {
-      const foundUser = mockUsers.find(u => u.id === storedUserId);
-      if (foundUser) {
-        setUser(foundUser);
+      // Check if it's a temporary user ID from a previous registration mock
+      if (storedUserId.startsWith('temp-')) {
+         // Attempt to reconstruct the temporary user if needed, or just clear it
+         // For simplicity, we'll clear temporary users on refresh
+         localStorage.removeItem('mockUserId');
+      } else {
+          const foundUser = mockUsers.find(u => u.id === storedUserId);
+          if (foundUser) {
+            setUser(foundUser);
+          } else {
+            // Clear invalid stored ID
+            localStorage.removeItem('mockUserId');
+          }
       }
     }
     setLoading(false);
@@ -41,6 +54,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       // Handle case where user ID is not found, e.g., show an error
       console.error("Mock user not found for ID:", userId);
+       localStorage.removeItem('mockUserId'); // Clear potentially invalid ID
+       setUser(null); // Ensure user is logged out if not found
     }
     setLoading(false);
   };
@@ -53,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isAdmin = !!user?.isAdmin;
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, setUser, setLoading }}>
       {children}
     </AuthContext.Provider>
   );

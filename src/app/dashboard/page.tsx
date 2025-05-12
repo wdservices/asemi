@@ -44,7 +44,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <section className="bg-card p-6 rounded-lg shadow">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">My Dashboard</h1>
-        <p className="mt-2 text-muted-foreground">Welcome back, {user.displayName}! Continue your learning journey.</p>
+        {/* This correctly uses the display name from the logged-in user */}
+        <p className="mt-2 text-muted-foreground">Welcome back, {user.displayName || 'User'}! Continue your learning journey.</p>
       </section>
 
       <section>
