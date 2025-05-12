@@ -1,4 +1,5 @@
 
+
 export interface Course {
   id: string;
   title: string;
@@ -100,5 +101,17 @@ export interface AITool {
   // Add other relevant fields if needed, e.g., category, developer info
 }
 
-// AI Tool Form Data Type
+// AI Tool Form Data Type - Input for the form might handle tags as a single string
+export interface AIToolFormDataInput {
+  name: string;
+  description: string;
+  price: number;
+  thumbnailUrl: string;
+  previewLink: string;
+  tags?: string; // Comma-separated string for the form input
+}
+
+// AI Tool Form Data Type - Processed data for saving/display
 export type AIToolFormData = Omit<AITool, 'id'>;
+
+

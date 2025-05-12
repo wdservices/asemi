@@ -1,4 +1,4 @@
-import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson, AITool } from './types';
+import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson, AITool, AIToolFormDataInput, CourseFormData } from './types';
 
 export const mockInstructors: Instructor[] = [
   { id: 'inst1', name: 'Alice Wonderland', bio: 'Expert in Web Development with 10 years of experience.', avatarUrl: 'https://picsum.photos/seed/alice/100/100', title: 'Senior Web Developer' },
@@ -200,7 +200,7 @@ export const addCourse = (courseData: CourseFormData): Course => {
         })),
         previewVideoUrl: courseData.previewVideoUrl,
         level: courseData.level,
-        tags: courseData.tags?.split(',').map(tag => tag.trim()),
+        tags: courseData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
         // rating, numberOfRatings, totalLessons, duration would be calculated or added later
     };
     mockCourses.push(newCourse);
@@ -222,7 +222,7 @@ export const updateCourse = (courseId: string, courseData: CourseFormData): Cour
         price: courseData.price,
         category: courseData.category,
         level: courseData.level,
-        tags: courseData.tags?.split(',').map(tag => tag.trim()),
+        tags: courseData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
         instructor: mockInstructors.find(inst => inst.name === courseData.instructorName) || existingCourse.instructor,
         previewVideoUrl: courseData.previewVideoUrl,
         modules: courseData.modules.map((mod, modIndex) => ({
@@ -261,14 +261,28 @@ export const getEnrollmentsByUserId = (userId: string): Enrollment[] => mockEnro
 
 // AI Tools
 export const getAllAITools = (): AITool[] => mockAITools;
-export const addAITool = (toolData: Omit<AITool, 'id'>): AITool => {
+export const addAITool = (toolData: AIToolFormDataInput): AITool => {
     const newTool: AITool = {
         id: `tool${mockAITools.length + 1}`, // Simple ID generation
-        ...toolData,
-        tags: toolData.tags // Ensure tags are passed correctly
+        name: toolData.name,
+        description: toolData.description,
+        price: toolData.price,
+        thumbnailUrl: toolData.thumbnailUrl,
+        previewLink: toolData.previewLink,
+        tags: toolData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
     };
     mockAITools.push(newTool);
     console.log("Mock AI Tool Added:", newTool);
     return newTool;
 }
-// Add functions for updating/deleting AI tools if needed
+// Add functions for updating/deleting AI tools if needed for admin (e.g., deleteAITool)
+export const deleteAITool = (toolId: string): boolean => {
+    const initialLength = mockAITools.length;
+    mockAITools = mockAITools.filter(t => t.id !== toolId);
+    const success = mockAITools.length < initialLength;
+    if (success) console.log("Mock AI Tool Deleted:", toolId);
+    return success;
+};
+// Add updateAITool if edit functionality is implemented
+export const getAIToolById = (id: string): AITool | undefined => mockAITools.find(tool => tool.id === id);
+

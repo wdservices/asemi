@@ -100,6 +100,7 @@ const AdminSidebar = () => {
                             <Link href="/admin/marketplace/new">Add New Tool</Link>
                         </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
+                    {/* Add Edit Tool link if needed, perhaps implicitly */}
                 </SidebarMenuSub>
             </SidebarMenuItem>
           </SidebarGroup>
@@ -151,3 +152,4 @@ const AdminSidebar = () => {
 };
 
 export default AdminSidebar;
+

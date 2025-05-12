@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import type { AIToolFormData } from "@/lib/types";
+import type { AIToolFormDataInput } from "@/lib/types"; // Use the input type for the form
 import { addAITool } from '@/lib/mockData'; // Using mock function to add tool
 
 const aiToolFormSchema = z.object({
@@ -21,14 +21,14 @@ const aiToolFormSchema = z.object({
   price: z.coerce.number().min(0, { message: "Price cannot be negative." }),
   thumbnailUrl: z.string().url({ message: "Please enter a valid URL for the thumbnail." }),
   previewLink: z.string().url({ message: "Please enter a valid URL for the preview link." }),
-  tags: z.string().optional(), // Comma-separated
+  tags: z.string().optional(), // Comma-separated string from input
 });
 
 export default function NewAIToolPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const form = useForm<AIToolFormData>({
+  const form = useForm<AIToolFormDataInput>({ // Use AIToolFormDataInput
     resolver: zodResolver(aiToolFormSchema),
     defaultValues: {
       name: "",
@@ -40,19 +40,15 @@ export default function NewAIToolPage() {
     },
   });
 
-  async function onSubmit(values: AIToolFormData) {
-    const toolData: AIToolFormData = {
-        ...values,
-        tags: values.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
-    };
-    console.log("New AI tool data:", toolData);
-    addAITool(toolData); // Use mock function to add the tool
+  async function onSubmit(values: AIToolFormDataInput) { // values are AIToolFormDataInput
+    console.log("New AI tool data (from form):", values);
+    addAITool(values); // Pass the form data directly to the mock function
 
     toast({
       title: "AI Tool Added (Mock)",
       description: `The tool "${values.name}" has been successfully added to the marketplace.`,
     });
-    router.push("/admin/marketplace"); // Redirect to the tools list page (or create one)
+    router.push("/admin/marketplace"); // Redirect to the tools list page
   }
 
   return (
@@ -156,3 +152,4 @@ export default function NewAIToolPage() {
     </Form>
   );
 }
+

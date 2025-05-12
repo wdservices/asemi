@@ -2,7 +2,9 @@
 "use client";
 import Link from 'next/link';
 import Image from 'next/image';
-import { getAllAITools } from '@/lib/mockData'; // Fetch tools using mock function
+import { useState, useEffect } from 'react';
+import { getAllAITools, deleteAITool } from '@/lib/mockData'; // Fetch tools using mock function
+import type { AITool } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,18 +14,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminAIToolsPage() {
-  const tools = getAllAITools(); // Fetch all tools from mock data
+  const [tools, setTools] = useState<AITool[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+   useEffect(() => {
+    // Fetch tools on mount
+    setTools(getAllAITools());
+    setIsLoading(false);
+  }, []);
+
   const handleDeleteTool = (toolId: string, toolName: string) => {
-    // Placeholder for delete functionality
     if(confirm(`Are you sure you want to delete the tool "${toolName}"? This action cannot be undone.`)) {
         console.log("Deleting AI tool:", toolId);
-        // In a real app, call an API to delete. Here we'd update mock data or refetch.
-        toast({ title: "AI Tool Deleted (Mock)", description: `Tool "${toolName}" has been deleted.`, variant: "default" });
-        // TODO: Add state update or refetch logic if using state management
+        const success = deleteAITool(toolId); // Use mock delete function
+        if (success) {
+            toast({ title: "AI Tool Deleted", description: `Tool "${toolName}" has been deleted.`, variant: "default" });
+             // Update the local state to reflect the deletion
+            setTools(prevTools => prevTools.filter(tool => tool.id !== toolId));
+        } else {
+            toast({ title: "Deletion Failed", description: `Could not delete tool "${toolName}".`, variant: "destructive" });
+        }
     }
   };
+
+   if (isLoading) {
+      return <div className="text-center p-6">Loading AI tools...</div>
+  }
 
   return (
     <div className="space-y-6">
@@ -110,3 +127,4 @@ export default function AdminAIToolsPage() {
     </div>
   );
 }
+

@@ -58,3 +58,4 @@ export function AIToolCard({ tool }: AIToolCardProps) {
     </Card>
   );
 }
+
