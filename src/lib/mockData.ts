@@ -147,7 +147,7 @@ export let mockAITools: AITool[] = [
     id: 'tool1',
     name: 'AI Content Generator',
     description: 'Generate high-quality blog posts, articles, and marketing copy in seconds. Basic customization (logo, brand color) included.',
-    price: 199,
+    price: 199.00,
     thumbnailUrl: 'https://picsum.photos/seed/aitool1/600/400',
     previewLink: 'https://example.com/preview/content-generator',
     tags: ['Content Creation', 'Marketing', 'Writing'],
@@ -156,7 +156,7 @@ export let mockAITools: AITool[] = [
     id: 'tool2',
     name: 'Smart Image Enhancer',
     description: 'Automatically upscale and enhance your images using AI. Improve resolution and clarity effortlessly. Color palette adjustments available.',
-    price: 99,
+    price: 99.00,
     thumbnailUrl: 'https://picsum.photos/seed/aitool2/600/400',
     previewLink: 'https://example.com/preview/image-enhancer',
     tags: ['Image Processing', 'Design', 'Photography'],
@@ -165,7 +165,7 @@ export let mockAITools: AITool[] = [
     id: 'tool3',
     name: 'AI Code Assistant',
     description: 'Get intelligent code suggestions, bug fixes, and explanations. Integrates with VS Code. Theme customization possible.',
-    price: 249,
+    price: 249.00,
     thumbnailUrl: 'https://picsum.photos/seed/aitool3/600/400',
     previewLink: 'https://example.com/preview/code-assistant',
     tags: ['Development', 'Coding', 'Productivity'],
@@ -275,7 +275,7 @@ export const addAITool = (toolData: AIToolFormDataInput): AITool => {
     console.log("Mock AI Tool Added:", newTool);
     return newTool;
 }
-// Add functions for updating/deleting AI tools if needed for admin (e.g., deleteAITool)
+
 export const deleteAITool = (toolId: string): boolean => {
     const initialLength = mockAITools.length;
     mockAITools = mockAITools.filter(t => t.id !== toolId);
@@ -283,6 +283,26 @@ export const deleteAITool = (toolId: string): boolean => {
     if (success) console.log("Mock AI Tool Deleted:", toolId);
     return success;
 };
-// Add updateAITool if edit functionality is implemented
+
 export const getAIToolById = (id: string): AITool | undefined => mockAITools.find(tool => tool.id === id);
+
+export const updateAITool = (toolId: string, toolData: AIToolFormDataInput): AITool | undefined => {
+    const toolIndex = mockAITools.findIndex(t => t.id === toolId);
+    if (toolIndex === -1) return undefined;
+
+    const existingTool = mockAITools[toolIndex];
+    const updatedTool: AITool = {
+        ...existingTool,
+        name: toolData.name,
+        description: toolData.description,
+        price: toolData.price,
+        thumbnailUrl: toolData.thumbnailUrl,
+        previewLink: toolData.previewLink,
+        tags: toolData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
+    };
+
+    mockAITools[toolIndex] = updatedTool;
+    console.log("Mock AI Tool Updated:", updatedTool);
+    return updatedTool;
+}
 

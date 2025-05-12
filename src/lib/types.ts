@@ -94,7 +94,7 @@ export interface AITool {
   id: string;
   name: string;
   description: string;
-  price: number;
+  price: number; // Ensure price is always number
   thumbnailUrl: string;
   previewLink: string; // URL to a live preview or demo video
   tags?: string[];
@@ -102,16 +102,17 @@ export interface AITool {
 }
 
 // AI Tool Form Data Type - Input for the form might handle tags as a single string
+// Used in the 'new' and 'edit' form components.
 export interface AIToolFormDataInput {
   name: string;
   description: string;
-  price: number;
+  price: number; // Input field type="number" will coerce, Zod handles validation
   thumbnailUrl: string;
   previewLink: string;
   tags?: string; // Comma-separated string for the form input
 }
 
-// AI Tool Form Data Type - Processed data for saving/display
+// AI Tool Form Data Type - Processed data for saving/display (might not be explicitly needed if Input type is sufficient)
+// Represents the data structure after potential processing (e.g., converting tags string to array).
 export type AIToolFormData = Omit<AITool, 'id'>;
-
 

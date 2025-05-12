@@ -33,7 +33,7 @@ const AdminSidebar = () => {
   const isSubActive = (path: string) => pathname === path;
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar" side="left" className="h-full">
+    <Sidebar collapsible="icon" variant="sidebar" side="left" className="h-full hidden sm:flex"> {/* Add hidden sm:flex */}
       <SidebarHeader className="border-b">
         <div className="p-2">
          <Logo size="md" />
@@ -150,6 +150,60 @@ const AdminSidebar = () => {
     </Sidebar>
   );
 };
+
+// Mobile Sidebar Component (extracted for clarity in AdminHeader)
+export const MobileAdminSidebarContent = () => {
+    const pathname = usePathname();
+    const { logout } = useAuth();
+    const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+
+    return (
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b">
+                <Logo size="md" />
+            </div>
+            <nav className="flex-grow px-4 py-2 space-y-1">
+                <Link href="/admin/dashboard" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/dashboard') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Link>
+                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Content</p>
+                <Link href="/admin/courses" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/courses') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <BookOpen className="h-4 w-4" /> Courses
+                </Link>
+                <Link href="/admin/courses/new" className={cn("flex items-center gap-2 rounded-md pl-8 pr-3 py-2 text-sm font-medium", isActive('/admin/courses/new') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <PlusCircle className="h-4 w-4" /> Add New Course
+                </Link>
+
+                <Separator className="my-2" />
+                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Marketplace</p>
+                 <Link href="/admin/marketplace" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/marketplace') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <Store className="h-4 w-4" /> AI Tools
+                </Link>
+                <Link href="/admin/marketplace/new" className={cn("flex items-center gap-2 rounded-md pl-8 pr-3 py-2 text-sm font-medium", isActive('/admin/marketplace/new') ? 'bg-primary/10 text-primary' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <PlusCircle className="h-4 w-4" /> Add New Tool
+                </Link>
+
+                <Separator className="my-2" />
+                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Management</p>
+                <Link href="/admin/users" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/users') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <Users className="h-4 w-4" /> Users
+                </Link>
+                 <Link href="/admin/analytics" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/analytics') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <BarChart2 className="h-4 w-4" /> Analytics
+                </Link>
+                 <Link href="/admin/settings" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/settings') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
+                    <Settings className="h-4 w-4" /> Settings
+                </Link>
+            </nav>
+            <div className="mt-auto p-4 border-t">
+                 <Button variant="ghost" className="w-full justify-start gap-2" onClick={logout}>
+                    <LogOut className="h-4 w-4" /> <span>Logout</span>
+                </Button>
+            </div>
+        </div>
+    );
+};
+
 
 export default AdminSidebar;
 

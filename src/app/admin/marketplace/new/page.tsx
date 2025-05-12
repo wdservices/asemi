@@ -42,6 +42,9 @@ export default function NewAIToolPage() {
 
   async function onSubmit(values: AIToolFormDataInput) { // values are AIToolFormDataInput
     console.log("New AI tool data (from form):", values);
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     addAITool(values); // Pass the form data directly to the mock function
 
     toast({
@@ -87,7 +90,7 @@ export default function NewAIToolPage() {
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Description</FormLabel>
-                            <FormControl><Textarea placeholder="Describe the tool and its features..." {...field} /></FormControl>
+                            <FormControl><Textarea rows={4} placeholder="Describe the tool and its features..." {...field} /></FormControl>
                             <FormDescription>Mention included customization options (e.g., color, brand name).</FormDescription>
                             <FormMessage />
                         </FormItem>

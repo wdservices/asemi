@@ -20,8 +20,11 @@ export default function AdminAIToolsPage() {
 
    useEffect(() => {
     // Fetch tools on mount
-    setTools(getAllAITools());
-    setIsLoading(false);
+    // Simulate API call delay
+    setTimeout(() => {
+        setTools(getAllAITools());
+        setIsLoading(false);
+    }, 500); // 500ms delay
   }, []);
 
   const handleDeleteTool = (toolId: string, toolName: string) => {
@@ -76,7 +79,7 @@ export default function AdminAIToolsPage() {
                         alt={tool.name}
                         className="aspect-video rounded-md object-cover" // Use aspect-video for better proportions
                         height="45" // Adjust height/width for aspect ratio
-                        src={tool.thumbnailUrl}
+                        src={tool.thumbnailUrl || 'https://picsum.photos/seed/placeholder/80/45'} // Placeholder if no image
                         width="80"
                         data-ai-hint="tool thumbnail"
                     />
@@ -87,6 +90,7 @@ export default function AdminAIToolsPage() {
                     <TableCell className="hidden md:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {tool.tags?.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                        {(!tool.tags || tool.tags.length === 0) && <span className="text-xs text-muted-foreground italic">No tags</span>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -100,7 +104,6 @@ export default function AdminAIToolsPage() {
                         <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem asChild>
-                            {/* TODO: Implement edit page link */}
                             <Link href={`/admin/marketplace/${tool.id}/edit`}><Edit className="mr-2 h-4 w-4" />Edit</Link>
                         </DropdownMenuItem>
                          <DropdownMenuItem asChild>
@@ -121,7 +124,7 @@ export default function AdminAIToolsPage() {
             </Table>
         </CardContent>
       </Card>
-       {tools.length === 0 && (
+       {tools.length === 0 && !isLoading && (
         <p className="text-center text-muted-foreground py-4">No AI tools found in the marketplace.</p>
       )}
     </div>
