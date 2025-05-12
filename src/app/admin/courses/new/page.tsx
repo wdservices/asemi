@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Trash2, X } from "lucide-react";
 import type { CourseFormData } from "@/lib/types";
+import { addCourse } from '@/lib/mockData'; // Import mock addCourse function
 
 const lessonSchema = z.object({
   title: z.string().min(1, "Lesson title is required."),
@@ -83,7 +84,8 @@ export default function NewCoursePage() {
 
   async function onSubmit(values: CourseFormData) {
     console.log("New course data:", values);
-    // In a real app, send this data to your backend API to create the course
+    // Use mock function to add the course
+    addCourse(values);
     toast({
       title: "Course Created (Mock)",
       description: `The course "${values.title}" has been successfully created.`,
@@ -176,7 +178,7 @@ export default function NewCoursePage() {
             </Button>
           </CardContent>
         </Card>
-        
+
         <div className="flex justify-end gap-2 mt-8">
             <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>

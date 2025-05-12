@@ -1,4 +1,4 @@
-import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson } from './types';
+import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson, AITool } from './types';
 
 export const mockInstructors: Instructor[] = [
   { id: 'inst1', name: 'Alice Wonderland', bio: 'Expert in Web Development with 10 years of experience.', avatarUrl: 'https://picsum.photos/seed/alice/100/100', title: 'Senior Web Developer' },
@@ -6,7 +6,7 @@ export const mockInstructors: Instructor[] = [
   { id: 'inst3', name: 'Charlie Brown', bio: 'Data Science enthusiast and practitioner.', avatarUrl: 'https://picsum.photos/seed/charlie/100/100', title: 'Data Scientist' },
 ];
 
-export const mockCourses: Course[] = [
+export let mockCourses: Course[] = [
   {
     id: 'course1',
     slug: 'nextjs-masterclass',
@@ -25,14 +25,14 @@ export const mockCourses: Course[] = [
     level: 'Intermediate',
     tags: ['Next.js', 'React', 'JavaScript', 'Web Development'],
     modules: [
-      { 
+      {
         id: 'm1c1', title: 'Introduction to Next.js', moduleOrder: 1,
         lessons: [
           { id: 'l1m1c1', title: 'What is Next.js?', contentType: 'video', content: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '10m', isPreviewable: true, lessonOrder: 1 },
           { id: 'l2m1c1', title: 'Setting up your environment', contentType: 'video', content: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '12m', lessonOrder: 2 },
         ]
       },
-      { 
+      {
         id: 'm2c1', title: 'Routing and Pages', moduleOrder: 2,
         lessons: [
           { id: 'l1m2c1', title: 'File-based Routing', contentType: 'video', content: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '15m', lessonOrder: 1 },
@@ -59,7 +59,7 @@ export const mockCourses: Course[] = [
     level: 'Beginner',
     tags: ['Tailwind CSS', 'CSS', 'Frontend', 'UI Design'],
     modules: [
-      { 
+      {
         id: 'm1c2', title: 'Getting Started with Tailwind', moduleOrder: 1,
         lessons: [
           { id: 'l1m1c2', title: 'Utility-First Concepts', contentType: 'video', content: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '8m', isPreviewable: true, lessonOrder: 1 },
@@ -85,7 +85,7 @@ export const mockCourses: Course[] = [
     level: 'All Levels',
     tags: ['Python', 'Data Science', 'Machine Learning', 'NumPy', 'Pandas'],
     modules: [
-      { 
+      {
         id: 'm1c3', title: 'Python Fundamentals', moduleOrder: 1,
         lessons: [
           { id: 'l1m1c3', title: 'Variables and Data Types', contentType: 'video', content: 'https://www.youtube.com/embed/dQw4w9WgXcQ', duration: '10m', isPreviewable: true, lessonOrder: 1 },
@@ -95,7 +95,7 @@ export const mockCourses: Course[] = [
   },
 ];
 
-export const mockUsers: UserProfile[] = [
+export let mockUsers: UserProfile[] = [
   {
     id: 'user1',
     email: 'user@example.com',
@@ -114,7 +114,7 @@ export const mockUsers: UserProfile[] = [
   },
 ];
 
-export const mockEnrollments: Enrollment[] = [
+export let mockEnrollments: Enrollment[] = [
   {
     id: 'enroll1',
     userId: 'user1',
@@ -141,7 +141,134 @@ export const mockEnrollments: Enrollment[] = [
   },
 ];
 
+// AI Tool Marketplace Mock Data
+export let mockAITools: AITool[] = [
+  {
+    id: 'tool1',
+    name: 'AI Content Generator',
+    description: 'Generate high-quality blog posts, articles, and marketing copy in seconds. Basic customization (logo, brand color) included.',
+    price: 199,
+    thumbnailUrl: 'https://picsum.photos/seed/aitool1/600/400',
+    previewLink: 'https://example.com/preview/content-generator',
+    tags: ['Content Creation', 'Marketing', 'Writing'],
+  },
+  {
+    id: 'tool2',
+    name: 'Smart Image Enhancer',
+    description: 'Automatically upscale and enhance your images using AI. Improve resolution and clarity effortlessly. Color palette adjustments available.',
+    price: 99,
+    thumbnailUrl: 'https://picsum.photos/seed/aitool2/600/400',
+    previewLink: 'https://example.com/preview/image-enhancer',
+    tags: ['Image Processing', 'Design', 'Photography'],
+  },
+  {
+    id: 'tool3',
+    name: 'AI Code Assistant',
+    description: 'Get intelligent code suggestions, bug fixes, and explanations. Integrates with VS Code. Theme customization possible.',
+    price: 249,
+    thumbnailUrl: 'https://picsum.photos/seed/aitool3/600/400',
+    previewLink: 'https://example.com/preview/code-assistant',
+    tags: ['Development', 'Coding', 'Productivity'],
+  },
+];
+
+// --- Mock Data Functions ---
+
+// Courses
 export const getCourseBySlug = (slug: string): Course | undefined => mockCourses.find(course => course.slug === slug);
 export const getCourseById = (id: string): Course | undefined => mockCourses.find(course => course.id === id);
+export const addCourse = (courseData: CourseFormData): Course => {
+    // Simulate adding a course
+    const newCourse: Course = {
+        id: `course${mockCourses.length + 1}`, // Simple ID generation
+        slug: courseData.slug,
+        title: courseData.title,
+        description: courseData.description,
+        longDescription: courseData.longDescription,
+        thumbnailUrl: courseData.thumbnailUrl,
+        price: courseData.price,
+        category: courseData.category,
+        instructor: mockInstructors.find(inst => inst.name === courseData.instructorName) || mockInstructors[0], // Simplified instructor linking
+        modules: courseData.modules.map((mod, modIndex) => ({
+            id: `m${modIndex + 1}c${mockCourses.length + 1}`,
+            title: mod.title,
+            moduleOrder: mod.moduleOrder,
+            lessons: mod.lessons.map((lesson, lessonIndex) => ({
+                id: `l${lessonIndex + 1}m${modIndex + 1}c${mockCourses.length + 1}`,
+                ...lesson,
+            })),
+        })),
+        previewVideoUrl: courseData.previewVideoUrl,
+        level: courseData.level,
+        tags: courseData.tags?.split(',').map(tag => tag.trim()),
+        // rating, numberOfRatings, totalLessons, duration would be calculated or added later
+    };
+    mockCourses.push(newCourse);
+    console.log("Mock Course Added:", newCourse);
+    return newCourse;
+}
+export const updateCourse = (courseId: string, courseData: CourseFormData): Course | undefined => {
+    const courseIndex = mockCourses.findIndex(c => c.id === courseId);
+    if (courseIndex === -1) return undefined;
+
+    const existingCourse = mockCourses[courseIndex];
+    const updatedCourse: Course = {
+        ...existingCourse,
+        title: courseData.title,
+        slug: courseData.slug,
+        description: courseData.description,
+        longDescription: courseData.longDescription,
+        thumbnailUrl: courseData.thumbnailUrl,
+        price: courseData.price,
+        category: courseData.category,
+        level: courseData.level,
+        tags: courseData.tags?.split(',').map(tag => tag.trim()),
+        instructor: mockInstructors.find(inst => inst.name === courseData.instructorName) || existingCourse.instructor,
+        previewVideoUrl: courseData.previewVideoUrl,
+        modules: courseData.modules.map((mod, modIndex) => ({
+            id: mod.id || `m${modIndex + 1}c${courseId}-new`, // Assign new ID if missing
+            title: mod.title,
+            moduleOrder: mod.moduleOrder,
+            lessons: mod.lessons.map((lesson, lessonIndex) => ({
+                id: lesson.id || `l${lessonIndex + 1}m${mod.id || modIndex + 1}c${courseId}-new`, // Assign new ID if missing
+                ...lesson,
+            })),
+        })),
+        // Recalculate derived fields if necessary
+    };
+
+    mockCourses[courseIndex] = updatedCourse;
+    console.log("Mock Course Updated:", updatedCourse);
+    return updatedCourse;
+}
+
+export const deleteCourse = (courseId: string): boolean => {
+     const initialLength = mockCourses.length;
+     mockCourses = mockCourses.filter(c => c.id !== courseId);
+     const success = mockCourses.length < initialLength;
+     if (success) console.log("Mock Course Deleted:", courseId);
+     return success;
+}
+
+
+// Users
 export const getUserById = (id: string): UserProfile | undefined => mockUsers.find(user => user.id === id);
+// Add functions for updating user roles, deleting users etc. if needed for admin actions
+
+// Enrollments
 export const getEnrollmentsByUserId = (userId: string): Enrollment[] => mockEnrollments.filter(enrollment => enrollment.userId === userId);
+// Add functions for creating/updating enrollments
+
+// AI Tools
+export const getAllAITools = (): AITool[] => mockAITools;
+export const addAITool = (toolData: Omit<AITool, 'id'>): AITool => {
+    const newTool: AITool = {
+        id: `tool${mockAITools.length + 1}`, // Simple ID generation
+        ...toolData,
+        tags: toolData.tags // Ensure tags are passed correctly
+    };
+    mockAITools.push(newTool);
+    console.log("Mock AI Tool Added:", newTool);
+    return newTool;
+}
+// Add functions for updating/deleting AI tools if needed

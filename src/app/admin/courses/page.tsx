@@ -2,7 +2,9 @@
 "use client";
 import Link from 'next/link';
 import Image from 'next/image';
-import { mockCourses } from '@/lib/mockData';
+import { useState, useEffect } from 'react'; // Import useState and useEffect
+import type { Course } from '@/lib/types'; // Import Course type
+import { mockCourses, deleteCourse } from '@/lib/mockData'; // Import deleteCourse mock function
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,17 +14,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminCoursesPage() {
-  const courses = mockCourses; // In a real app, fetch courses from backend
+  // Use state to manage courses for dynamic updates (like deletion)
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // Load courses on component mount
+  useEffect(() => {
+    // In a real app, fetch from backend. Here, we use mock data.
+    setCourses(mockCourses); // Initialize state with mock data
+    setIsLoading(false);
+  }, []);
+
   const handleDeleteCourse = (courseId: string, courseTitle: string) => {
-    // Placeholder for delete functionality
     if(confirm(`Are you sure you want to delete the course "${courseTitle}"? This action cannot be undone.`)) {
-        console.log("Deleting course:", courseId);
-        toast({ title: "Course Deleted (Mock)", description: `Course "${courseTitle}" has been deleted.`, variant: "default" });
-        // Here you would typically refetch courses or update local state
+        console.log("Attempting to delete course:", courseId);
+        const success = deleteCourse(courseId); // Use mock delete function
+        if (success) {
+            toast({ title: "Course Deleted", description: `Course "${courseTitle}" has been deleted.`, variant: "default" });
+            // Update the local state to reflect the deletion
+            setCourses(prevCourses => prevCourses.filter(course => course.id !== courseId));
+        } else {
+            toast({ title: "Deletion Failed", description: `Could not delete course "${courseTitle}".`, variant: "destructive" });
+        }
     }
   };
+
+  if (isLoading) {
+      return <div className="text-center p-6">Loading courses...</div>
+  }
 
   return (
     <div className="space-y-6">
@@ -89,7 +109,7 @@ export default function AdminCoursesPage() {
                          <DropdownMenuItem asChild>
                             <Link href={`/courses/${course.slug}`} target="_blank"><Eye className="mr-2 h-4 w-4" />View Public Page</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
                             onClick={() => handleDeleteCourse(course.id, course.title)}
                         >

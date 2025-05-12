@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/sidebar'; // Assuming this path is correct for your ui/sidebar
 import Logo from '@/components/layout/Logo';
 import { UserNav } from '@/components/layout/UserNav'; // Or a specific AdminUserNav
-import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, PlusCircle, Edit3, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, PlusCircle, Edit3, LogOut, Wand2, Store } from 'lucide-react'; // Added Wand2 and Store icons
 import { Button } from '../ui/button';
 import { useAuth } from '@/hooks/use-auth-mock';
 
@@ -42,8 +42,8 @@ const AdminSidebar = () => {
       <SidebarContent className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton 
-              asChild 
+            <SidebarMenuButton
+              asChild
               isActive={isActive('/admin/dashboard')}
               tooltip={{ children: "Dashboard", side: "right", align: "center" }}
             >
@@ -54,8 +54,8 @@ const AdminSidebar = () => {
           <SidebarGroup>
             <SidebarGroupLabel>Content</SidebarGroupLabel>
             <SidebarMenuItem>
-                <SidebarMenuButton 
-                    asChild 
+                <SidebarMenuButton
+                    asChild
                     isActive={isActive('/admin/courses')}
                     tooltip={{ children: "Courses", side: "right", align: "center" }}
                 >
@@ -76,14 +76,41 @@ const AdminSidebar = () => {
             </SidebarMenuItem>
             {/* Add other content management links like Categories, Instructors */}
           </SidebarGroup>
-          
+
+          <SidebarSeparator />
+
+           <SidebarGroup>
+            <SidebarGroupLabel>Marketplace</SidebarGroupLabel>
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                    asChild
+                    isActive={isActive('/admin/marketplace')}
+                    tooltip={{ children: "AI Tools", side: "right", align: "center" }}
+                >
+                    <Link href="/admin/marketplace"><Store /> <span>AI Tools</span></Link>
+                </SidebarMenuButton>
+                 <SidebarMenuSub className={isActive('/admin/marketplace') ? 'block' : 'hidden'}>
+                    <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={isSubActive('/admin/marketplace')}>
+                            <Link href="/admin/marketplace">All Tools</Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={isSubActive('/admin/marketplace/new')}>
+                            <Link href="/admin/marketplace/new">Add New Tool</Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                </SidebarMenuSub>
+            </SidebarMenuItem>
+          </SidebarGroup>
+
           <SidebarSeparator />
 
           <SidebarGroup>
             <SidebarGroupLabel>Management</SidebarGroupLabel>
              <SidebarMenuItem>
-                <SidebarMenuButton 
-                    asChild 
+                <SidebarMenuButton
+                    asChild
                     isActive={isActive('/admin/users')}
                     tooltip={{ children: "Users", side: "right", align: "center" }}
                 >
@@ -91,8 +118,8 @@ const AdminSidebar = () => {
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton 
-                    asChild 
+                <SidebarMenuButton
+                    asChild
                     isActive={isActive('/admin/analytics')}
                     tooltip={{ children: "Analytics", side: "right", align: "center" }}
                 >
@@ -100,8 +127,8 @@ const AdminSidebar = () => {
                 </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-                <SidebarMenuButton 
-                    asChild 
+                <SidebarMenuButton
+                    asChild
                     isActive={isActive('/admin/settings')}
                     tooltip={{ children: "Settings", side: "right", align: "center" }}
                 >

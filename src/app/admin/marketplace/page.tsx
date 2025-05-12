@@ -1,0 +1,112 @@
+
+"use client";
+import Link from 'next/link';
+import Image from 'next/image';
+import { getAllAITools } from '@/lib/mockData'; // Fetch tools using mock function
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, PlusCircle, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+
+export default function AdminAIToolsPage() {
+  const tools = getAllAITools(); // Fetch all tools from mock data
+  const { toast } = useToast();
+
+  const handleDeleteTool = (toolId: string, toolName: string) => {
+    // Placeholder for delete functionality
+    if(confirm(`Are you sure you want to delete the tool "${toolName}"? This action cannot be undone.`)) {
+        console.log("Deleting AI tool:", toolId);
+        // In a real app, call an API to delete. Here we'd update mock data or refetch.
+        toast({ title: "AI Tool Deleted (Mock)", description: `Tool "${toolName}" has been deleted.`, variant: "default" });
+        // TODO: Add state update or refetch logic if using state management
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Manage AI Tools Marketplace</h1>
+        <Button asChild>
+          <Link href="/admin/marketplace/new"><PlusCircle className="mr-2 h-4 w-4" /> Add New Tool</Link>
+        </Button>
+      </div>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+            <CardTitle>All AI Tools</CardTitle>
+            <CardDescription>View, edit, or delete AI tools available in the marketplace.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="hidden md:table-cell">Price</TableHead>
+                <TableHead className="hidden md:table-cell">Tags</TableHead>
+                <TableHead><span className="sr-only">Actions</span></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {tools.map((tool) => (
+                <TableRow key={tool.id}>
+                    <TableCell className="hidden sm:table-cell">
+                    <Image
+                        alt={tool.name}
+                        className="aspect-video rounded-md object-cover" // Use aspect-video for better proportions
+                        height="45" // Adjust height/width for aspect ratio
+                        src={tool.thumbnailUrl}
+                        width="80"
+                        data-ai-hint="tool thumbnail"
+                    />
+                    </TableCell>
+                    <TableCell className="font-medium">{tool.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{tool.description}</TableCell>
+                    <TableCell className="hidden md:table-cell">${tool.price.toFixed(2)}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {tool.tags?.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                            {/* TODO: Implement edit page link */}
+                            <Link href={`/admin/marketplace/${tool.id}/edit`}><Edit className="mr-2 h-4 w-4" />Edit</Link>
+                        </DropdownMenuItem>
+                         <DropdownMenuItem asChild>
+                            <Link href={tool.previewLink} target="_blank"><ExternalLink className="mr-2 h-4 w-4" />View Preview</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            onClick={() => handleDeleteTool(tool.id, tool.name)}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />Delete
+                        </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+                ))}
+            </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
+       {tools.length === 0 && (
+        <p className="text-center text-muted-foreground py-4">No AI tools found in the marketplace.</p>
+      )}
+    </div>
+  );
+}

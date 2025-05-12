@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Trash2, X } from "lucide-react";
 import type { Course, CourseFormData } from "@/lib/types";
-import { getCourseById } from '@/lib/mockData'; // Using ID for fetching
+import { getCourseById, updateCourse } from '@/lib/mockData'; // Use updateCourse mock function
 
 // Schemas (can be imported from new/page.tsx or a shared file)
 const lessonSchema = z.object({
@@ -29,6 +29,7 @@ const lessonSchema = z.object({
   duration: z.string().optional(),
   isPreviewable: z.boolean().default(false),
   lessonOrder: z.number().min(0),
+  // downloadableResources: z.array(...) // Add if needed
 });
 
 const moduleSchema = z.object({
@@ -68,7 +69,7 @@ export default function EditCoursePage() {
     resolver: zodResolver(courseFormSchema),
     // Default values will be set by useEffect once course data is fetched
   });
-  
+
   useEffect(() => {
     if (courseId) {
       const fetchedCourse = getCourseById(courseId); // Use getCourseById
@@ -89,11 +90,11 @@ export default function EditCoursePage() {
           instructorTitle: fetchedCourse.instructor.title || "",
           previewVideoUrl: fetchedCourse.previewVideoUrl || "",
           modules: fetchedCourse.modules.map(m => ({
-            id: m.id,
+            id: m.id, // Keep existing IDs
             title: m.title,
             moduleOrder: m.moduleOrder,
             lessons: m.lessons.map(l => ({
-              id: l.id,
+              id: l.id, // Keep existing IDs
               title: l.title,
               contentType: l.contentType,
               content: l.content,
@@ -119,12 +120,21 @@ export default function EditCoursePage() {
 
   async function onSubmit(values: CourseFormData) {
     console.log("Updated course data:", values);
-    // In a real app, send this data to your backend API to update the course
-    toast({
-      title: "Course Updated (Mock)",
-      description: `The course "${values.title}" has been successfully updated.`,
-    });
-    router.push("/admin/courses");
+    // Use mock function to update the course
+    const updated = updateCourse(courseId, values);
+    if (updated) {
+        toast({
+          title: "Course Updated (Mock)",
+          description: `The course "${values.title}" has been successfully updated.`,
+        });
+        router.push("/admin/courses");
+    } else {
+         toast({
+          title: "Update Failed",
+          description: `Could not update the course "${values.title}".`,
+          variant: "destructive",
+        });
+    }
   }
 
   if (isLoading) {
@@ -179,7 +189,7 @@ export default function EditCoursePage() {
                 <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price ($)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="level" render={({ field }) => (<FormItem><FormLabel>Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Beginner">Beginner</SelectItem><SelectItem value="Intermediate">Intermediate</SelectItem><SelectItem value="Advanced">Advanced</SelectItem><SelectItem value="All Levels">All Levels</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Tags</FormLabel><FormControl><Input {...field} /></FormControl><FormDescription>Comma-separated values.</FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Tags</FormLabel><FormControl><Input {...field} /></FormControl><FormDescription>Comma-separated values.</FormDescription><FormMessage /></FormItem>)} />
               </CardContent>
             </Card>
              <Card>
@@ -193,7 +203,7 @@ export default function EditCoursePage() {
         </div>
 
 
-        {/* Modules and Lessons Section - Reusing the structure from NewCoursePage */}
+        {/* Modules and Lessons Section */}
         <Card>
           <CardHeader>
             <CardTitle>Course Structure (Modules & Lessons)</CardTitle>
@@ -208,6 +218,8 @@ export default function EditCoursePage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+                {/* Hidden field for existing module ID if it exists */}
+                <FormField control={form.control} name={`modules.${moduleIndex}.id`} render={({ field }) => (<FormItem className="hidden"><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>)} />
                 <FormField control={form.control} name={`modules.${moduleIndex}.title`} render={({ field }) => (<FormItem><FormLabel>Module Title</FormLabel><FormControl><Input placeholder={`Module ${moduleIndex + 1} Title`} {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name={`modules.${moduleIndex}.moduleOrder`} render={({ field }) => (<FormItem className="hidden"><FormControl><Input type="hidden" {...field} value={moduleIndex} /></FormControl></FormItem>)} />
                 <Separator className="my-4" />
@@ -220,7 +232,7 @@ export default function EditCoursePage() {
             </Button>
           </CardContent>
         </Card>
-        
+
         <div className="flex justify-end gap-2 mt-8">
             <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
@@ -232,7 +244,7 @@ export default function EditCoursePage() {
   );
 }
 
-// Helper component for lessons field array (similar to NewCoursePage's, adapted for edit context if needed)
+// Helper component for lessons field array
 function EditLessonsFieldArray({ moduleIndex, control }: { moduleIndex: number; control: any }) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -247,6 +259,8 @@ function EditLessonsFieldArray({ moduleIndex, control }: { moduleIndex: number; 
             <X className="h-4 w-4" />
           </Button>
           <p className="text-sm font-medium">Lesson {lessonIndex + 1}</p>
+          {/* Hidden field for existing lesson ID */}
+          <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.id`} render={({ field }) => (<FormItem className="hidden"><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>)} />
           <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.title`} render={({ field }) => (<FormItem><FormLabel className="text-xs">Lesson Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={control} name={`modules.${moduleIndex}.lessons.${lessonIndex}.lessonOrder`} render={({ field }) => (<FormItem className="hidden"><FormControl><Input type="hidden" {...field} value={lessonIndex} /></FormControl></FormItem>)} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

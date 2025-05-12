@@ -83,6 +83,22 @@ export type CourseFormData = Omit<Course, 'id' | 'instructor' | 'modules' | 'rat
   instructorBio?: string;
   instructorTitle?: string;
   modules: Array<Omit<CourseModule, 'id' | 'lessons'> & {
-    lessons: Array<Omit<Lesson, 'id'>>;
+    id?: string; // For editing existing modules
+    lessons: Array<Omit<Lesson, 'id'> & { id?: string }>; // For editing existing lessons
   }>;
 };
+
+// AI Tool Marketplace Type
+export interface AITool {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  thumbnailUrl: string;
+  previewLink: string; // URL to a live preview or demo video
+  tags?: string[];
+  // Add other relevant fields if needed, e.g., category, developer info
+}
+
+// AI Tool Form Data Type
+export type AIToolFormData = Omit<AITool, 'id'>;
