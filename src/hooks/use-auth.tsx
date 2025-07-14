@@ -10,11 +10,13 @@ import {
   signOut,
   updateProfile as updateFirebaseProfile,
   sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
   type User,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
-import { getUserProfile, updateUserProfile as updateMockUserProfile, enrollUserInCourse as enrollMock, addPurchasedToolToUser as purchaseMock } from '@/lib/mockData';
+import { getUserProfile, updateUserProfile as updateMockUserProfile } from '@/lib/mockData';
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +25,7 @@ interface AuthContextType {
   isAdmin: boolean;
   register: (email: string, pass: string, displayName: string) => Promise<any>;
   login: (email: string, pass: string) => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => void;
@@ -40,9 +43,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
-        // In a real app, you would fetch the user's profile from Firestore here.
-        // For this demo, we'll fetch from our mock data.
-        const profile = getUserProfile(user.uid);
+        let profile = getUserProfile(user.uid);
+
+        // If a profile doesn't exist (e.g., first-time Google login), create one
+        if (!profile) {
+            const newUserProfile: UserProfile = {
+                id: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                avatarUrl: user.photoURL,
+                isAdmin: false,
+                enrolledCourseIds: [],
+                purchasedToolIds: []
+            };
+            profile = updateMockUserProfile(user.uid, newUserProfile);
+        }
+
         setUserProfile(profile || null);
         setIsAdmin(profile?.isAdmin || false);
       } else {
@@ -60,26 +76,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     await updateFirebaseProfile(userCredential.user, { displayName });
     
-    // In a real app, you would create a new user document in Firestore here.
-    // For this demo, we'll just refresh the auth state. The mock 'getUserProfile'
-    // will need to be updated or it will return undefined for new users.
-    // Let's manually create a mock profile for now.
     const newUserProfile: UserProfile = {
         id: userCredential.user.uid,
         email: userCredential.user.email,
         displayName: userCredential.user.displayName,
+        avatarUrl: userCredential.user.photoURL,
         isAdmin: false,
         enrolledCourseIds: [],
         purchasedToolIds: []
     };
-    updateMockUserProfile(userCredential.user.uid, newUserProfile); // Add to mock DB
-    setUserProfile(newUserProfile); // Set in context
+    updateMockUserProfile(userCredential.user.uid, newUserProfile);
+    setUserProfile(newUserProfile);
 
     return userCredential;
   };
 
   const login = (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    return signInWithPopup(auth, provider);
   };
 
   const logout = () => {
@@ -94,14 +112,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (userProfile) {
         const updatedProfile = { ...userProfile, ...data };
         setUserProfile(updatedProfile);
-        // Also update the mock database
         updateMockUserProfile(userProfile.id, data);
     }
   };
 
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, register, login, logout, sendPasswordReset, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, register, login, signInWithGoogle, logout, sendPasswordReset, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

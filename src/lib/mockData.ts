@@ -255,16 +255,22 @@ export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserP
     const userIndex = mockUserProfiles.findIndex(u => u.id === id);
     if (userIndex !== -1) {
         mockUserProfiles[userIndex] = { ...mockUserProfiles[userIndex], ...data };
+        console.log(`Mock User Updated: ${id}`, mockUserProfiles[userIndex]);
         return mockUserProfiles[userIndex];
     } else {
-        // If user doesn't exist, create them (for new registrations)
+        // If user doesn't exist, create them (for new registrations / Google Sign-In)
         const newUser: UserProfile = {
             id: id,
             email: data.email || null,
             displayName: data.displayName || null,
+            avatarUrl: data.avatarUrl || null,
+            enrolledCourseIds: [],
+            purchasedToolIds: [],
+            isAdmin: false,
             ...data
         };
         mockUserProfiles.push(newUser);
+        console.log(`Mock User Created: ${id}`, newUser);
         return newUser;
     }
 };
