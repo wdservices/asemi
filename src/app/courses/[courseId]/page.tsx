@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Star, PlayCircle, Clock, BarChart, Users, FileText, Lock, CheckCircle, ShoppingCart } from 'lucide-react'; // Added ShoppingCart
 import { useAuth } from '@/hooks/use-auth-mock';
