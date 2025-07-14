@@ -2,13 +2,6 @@
 "use client";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { Mail, Send } from "lucide-react";
 
 const faqItems = [
   {
@@ -33,23 +26,11 @@ const faqItems = [
   },
   {
     question: "How can I contact support?",
-    answer: "If your question isn't answered here, you can reach out to us directly through the contact form on this page or by emailing us at hello.wdservices@gmail.com. We're happy to help!"
+    answer: "If your question isn't answered here, please visit our Contact Us page or email us directly at hello.wdservices@gmail.com. We're happy to help!"
   }
 ];
 
 export default function FAQPage() {
-    const { toast } = useToast();
-
-    const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        // Mock form submission
-        toast({
-            title: "Message Sent!",
-            description: "Thanks for reaching out. We'll get back to you shortly.",
-        });
-        (event.target as HTMLFormElement).reset();
-    };
-
   return (
     <div className="space-y-12">
       <section className="text-center">
@@ -73,44 +54,6 @@ export default function FAQPage() {
             </AccordionItem>
           ))}
         </Accordion>
-      </section>
-
-      {/* Contact Section */}
-      <section className="max-w-3xl mx-auto">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl flex items-center gap-2"><Mail className="h-6 w-6 text-primary"/> Still have questions?</CardTitle>
-            <CardDescription>
-              Use the form below to get in touch with our team. We aim to respond within 24 hours.
-              You can also email us directly at <a href="mailto:hello.wdservices@gmail.com" className="text-primary hover:underline">hello.wdservices@gmail.com</a>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-6" onSubmit={handleFormSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="John Doe" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" required />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input id="subject" placeholder="e.g., Question about a course" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="message">Your Message</Label>
-                <Textarea id="message" placeholder="Please describe your question in detail..." rows={6} required />
-              </div>
-              <Button type="submit" className="w-full md:w-auto">
-                <Send className="mr-2 h-4 w-4" /> Send Message
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
       </section>
     </div>
   );
