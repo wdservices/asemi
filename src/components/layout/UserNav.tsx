@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from '@/hooks/use-auth';
-import { LayoutDashboard, LogOut, User, Settings, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, Settings, ShieldCheck, Wand2 } from 'lucide-react';
 
 export function UserNav() {
   const { user, logout, isAdmin } = useAuth();
@@ -25,7 +25,7 @@ export function UserNav() {
         <Button variant="outline" asChild>
           <Link href="/auth/login">Login</Link>
         </Button>
-        <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+        <Button asChild>
           <Link href="/auth/register">Sign Up</Link>
         </Button>
       </div>
@@ -43,7 +43,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.displayName || "User Avatar"} />
+            <AvatarImage src={user.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.displayName || "User Avatar"} data-ai-hint="user avatar" />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>

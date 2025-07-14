@@ -79,7 +79,7 @@ export default function AdminAIToolsPage() {
                         alt={tool.name}
                         className="aspect-video rounded-md object-cover" // Use aspect-video for better proportions
                         height="45" // Adjust height/width for aspect ratio
-                        src={tool.thumbnailUrl || 'https://picsum.photos/seed/placeholder/80/45'} // Placeholder if no image
+                        src={tool.thumbnailUrl || 'https://placehold.co/80x45.png'} // Placeholder if no image
                         width="80"
                         data-ai-hint="tool thumbnail"
                     />
@@ -130,4 +130,5 @@ export default function AdminAIToolsPage() {
     </div>
   );
 }
+
 

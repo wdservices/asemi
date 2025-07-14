@@ -36,7 +36,7 @@ export default function HomePage() {
             </div>
             <div className="mt-16">
               <Image
-                src="https://picsum.photos/seed/learnhero/1200/600"
+                src="https://placehold.co/1200x600.png"
                 alt="Online learning platform with AI tools"
                 width={1200}
                 height={600}
