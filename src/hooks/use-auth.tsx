@@ -43,20 +43,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
+        
+        // Check if the user's email is the admin email.
+        const isAdminUser = user.email === 'admin@example.com';
+        
+        // Attempt to get the profile from mock data.
         let profile = getUserProfile(user.uid);
 
-        // If a profile doesn't exist (e.g., first-time Google login), create one
+        // If a profile doesn't exist (e.g., first-time login), create one.
         if (!profile) {
-            const newUserProfile: UserProfile = {
+            const newUserProfileData: UserProfile = {
                 id: user.uid,
                 email: user.email,
                 displayName: user.displayName,
                 avatarUrl: user.photoURL,
-                isAdmin: false,
+                isAdmin: isAdminUser, // Set admin status based on email
                 enrolledCourseIds: [],
                 purchasedToolIds: []
             };
-            profile = updateMockUserProfile(user.uid, newUserProfile);
+            // This function also creates the profile if it doesn't exist
+            profile = updateMockUserProfile(user.uid, newUserProfileData);
+        } else if (profile.isAdmin !== isAdminUser) {
+            // If the profile exists, ensure the admin status is correct.
+            profile = updateMockUserProfile(user.uid, { isAdmin: isAdminUser });
         }
 
         setUserProfile(profile || null);
@@ -76,17 +85,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     await updateFirebaseProfile(userCredential.user, { displayName });
     
+    // Create a new user profile in our mock data store.
+    // The isAdmin flag will be set based on the email.
     const newUserProfile: UserProfile = {
         id: userCredential.user.uid,
         email: userCredential.user.email,
         displayName: userCredential.user.displayName,
         avatarUrl: userCredential.user.photoURL,
-        isAdmin: false,
+        isAdmin: userCredential.user.email === 'admin@example.com',
         enrolledCourseIds: [],
         purchasedToolIds: []
     };
     updateMockUserProfile(userCredential.user.uid, newUserProfile);
-    setUserProfile(newUserProfile);
+    setUserProfile(newUserProfile); // Set the profile for the current session
 
     return userCredential;
   };
