@@ -59,9 +59,10 @@ export default function DashboardPage() {
                     <Image
                       src={course.thumbnailUrl}
                       alt={course.title}
-                      layout="fill"
-                      objectFit="cover"
-                       data-ai-hint="course image"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      data-ai-hint="course image"
                     />
                   </div>
                 </Link>

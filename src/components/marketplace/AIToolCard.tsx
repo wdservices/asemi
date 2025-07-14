@@ -62,8 +62,9 @@ export function AIToolCard({ tool }: AIToolCardProps) {
         <Image
           src={tool.thumbnailUrl}
           alt={tool.name}
-          layout="fill"
-          objectFit="cover"
+          fill
+          className="object-cover"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           data-ai-hint="tool thumbnail"
         />
          {isPurchased && (
