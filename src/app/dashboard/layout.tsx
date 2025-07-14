@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function DashboardLayout({
   children,

@@ -12,9 +12,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Logo from '@/components/layout/Logo';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import type { UserProfile } from '@/lib/types';
+import { useEffect } from 'react';
 
 const registerSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -26,8 +26,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  // We need the raw setUser function from the context for this mock registration
-  const { user, login: _, setUser, setLoading } = useAuth(); // Renamed login to _ as we'll call setUser directly
+  const { user, register } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<RegisterFormValues>({
@@ -39,42 +38,29 @@ export default function RegisterPage() {
     },
   });
 
-  if (user) { // If user is already logged in, redirect
-    router.push('/dashboard');
-  }
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   async function onSubmit(values: RegisterFormValues) {
-    setLoading(true); // Simulate loading
-    // Simulate registration. In a real app, this would be an API call.
-    // For mock, we'll create a new user object based on the form values
-    // and set it directly in the auth context. This user won't persist
-    // across refreshes unless added to mockData.ts and login is used.
-    console.log("Registering user:", values);
-
-    const newUser: UserProfile = {
-      id: `temp-${Date.now()}`, // Temporary ID
-      email: values.email,
-      displayName: values.displayName,
-      avatarUrl: null, // Default avatar will be used
-      enrolledCourseIds: [],
-      isAdmin: false,
-    };
-
-    // Directly set the new user in the auth context
-    if (setUser) {
-      setUser(newUser);
-      // Optionally, store in localStorage to mimic session persistence for demo
-      localStorage.setItem('mockUserId', newUser.id);
-      // Add the temp user to mockUsers in memory ONLY for this session, so redirection works
-      // Note: This is a hack for the mock setup. A real backend handles this.
-      // We might need to modify useAuth to allow temporary setting without full login logic
-      // Or, accept that refresh will log out this temp user.
-      // Let's proceed without modifying mockUsers for now. The dashboard will show the name.
+    try {
+      await register(values.email, values.password, values.displayName);
+      toast({ title: "Registration Successful", description: `Welcome to Asemi, ${values.displayName}!` });
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      let errorMessage = "Could not create your account. Please try again.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "An account with this email already exists.";
+      }
+      toast({
+        title: "Registration Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
-
-    setLoading(false); // End loading simulation
-    toast({ title: "Registration Successful", description: `Welcome to Skill Stream, ${values.displayName}!` });
-    router.push('/dashboard'); // Redirect to dashboard after registration
   }
 
   return (
@@ -85,7 +71,7 @@ export default function RegisterPage() {
         </div>
         <CardTitle className="text-2xl">Create an Account</CardTitle>
         <CardDescription>
-          Enter your details below to get started with Skill Stream.
+          Enter your details below to get started with Asemi.
         </CardDescription>
       </CardHeader>
       <CardContent>

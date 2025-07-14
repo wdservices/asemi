@@ -3,9 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import type { Course, Enrollment } from '@/lib/types';
-import { getCourseById, getEnrollmentsByUserId, mockUsers } from '@/lib/mockData'; // Assuming mockUsers has current user
-import { useAuth } from '@/hooks/use-auth-mock';
-import { CourseCard } from '@/components/courses/CourseCard'; // Re-use CourseCard or make a specific EnrolledCourseCard
+import { getCourseById, getEnrollmentsByUserId } from '@/lib/mockData';
+import { useAuth } from '@/hooks/use-auth';
+import { CourseCard } from '@/components/courses/CourseCard';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Progress } from '@/components/ui/progress';
@@ -16,13 +16,13 @@ interface EnrolledCourseDisplay extends Course {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourseDisplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const enrollments = getEnrollmentsByUserId(user.id);
+    if (userProfile) {
+      const enrollments = getEnrollmentsByUserId(userProfile.id);
       const coursesData = enrollments.map(enrollment => {
         const course = getCourseById(enrollment.courseId);
         return course ? { ...course, enrollmentProgress: enrollment.progress } : null;
@@ -30,7 +30,7 @@ export default function DashboardPage() {
       setEnrolledCourses(coursesData);
     }
     setIsLoading(false);
-  }, [user]);
+  }, [userProfile]);
 
   if (isLoading) {
     return <div className="text-center">Loading your courses...</div>;
@@ -44,7 +44,6 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <section className="bg-card p-6 rounded-lg shadow">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">My Dashboard</h1>
-        {/* This correctly uses the display name from the logged-in user */}
         <p className="mt-2 text-muted-foreground">Welcome back, {user.displayName || 'User'}! Continue your learning journey.</p>
       </section>
 

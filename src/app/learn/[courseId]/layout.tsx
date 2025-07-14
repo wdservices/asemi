@@ -3,7 +3,7 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { getCourseBySlug } from '@/lib/mockData';
 import type { Course, CourseModule, Lesson } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";

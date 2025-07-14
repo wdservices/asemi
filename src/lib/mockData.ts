@@ -102,53 +102,31 @@ export let mockCourses: Course[] = [
   },
 ];
 
-export let mockUsers: UserProfile[] = [
+export let mockUserProfiles: UserProfile[] = [
+  // This user's UID must match a user in Firebase Auth for the demo to work
   {
-    id: 'user1',
-    email: 'user@example.com',
-    displayName: 'John Doe',
-    avatarUrl: 'https://picsum.photos/seed/user1/100/100',
-    enrolledCourseIds: ['course1'], // Already owns course1
-    purchasedToolIds: [], // Does not own any tools yet
-    isAdmin: false,
-  },
-  {
-    id: 'admin1',
+    id: 'GhqyPnaT79csl59mY2j2aDk1M792', // Replace with a real UID from your Firebase project for admin@example.com
     email: 'admin@example.com',
     displayName: 'Admin User',
     avatarUrl: 'https://picsum.photos/seed/admin1/100/100',
-    enrolledCourseIds: ['course1', 'course2'], // Owns course1 and course2
-    purchasedToolIds: ['tool1'], // Owns tool1
+    enrolledCourseIds: ['course1', 'course2'],
+    purchasedToolIds: ['tool1'],
     isAdmin: true,
   },
+   // Add other mock profiles if needed, matching their Firebase UIDs
 ];
 
 export let mockEnrollments: Enrollment[] = [
   {
     id: 'enroll1',
-    userId: 'user1',
+    userId: 'some-user-uid', // Replace with a real user UID
     courseId: 'course1',
     enrolledAt: new Date('2023-01-15'),
     progress: 60,
     completedLessons: ['l1m1c1', 'l2m1c1', 'l1m2c1']
   },
-  {
-    id: 'enroll2',
-    userId: 'admin1',
-    courseId: 'course1',
-    enrolledAt: new Date('2023-02-01'),
-    progress: 10,
-    completedLessons: ['l1m1c1']
-  },
-  {
-    id: 'enroll3',
-    userId: 'admin1',
-    courseId: 'course2',
-    enrolledAt: new Date('2023-02-05'),
-    progress: 0,
-    completedLessons: []
-  },
 ];
+
 
 // AI Tool Marketplace Mock Data
 export let mockAITools: AITool[] = [
@@ -271,13 +249,32 @@ export const deleteCourse = (courseId: string): boolean => {
 
 
 // Users
-export const getUserById = (id: string): UserProfile | undefined => mockUsers.find(user => user.id === id);
+export const getUserProfile = (id: string): UserProfile | undefined => mockUserProfiles.find(user => user.id === id);
+
+export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserProfile | undefined => {
+    const userIndex = mockUserProfiles.findIndex(u => u.id === id);
+    if (userIndex !== -1) {
+        mockUserProfiles[userIndex] = { ...mockUserProfiles[userIndex], ...data };
+        return mockUserProfiles[userIndex];
+    } else {
+        // If user doesn't exist, create them (for new registrations)
+        const newUser: UserProfile = {
+            id: id,
+            email: data.email || null,
+            displayName: data.displayName || null,
+            ...data
+        };
+        mockUserProfiles.push(newUser);
+        return newUser;
+    }
+};
+
 // Function to add a course to a user's enrolled list (simulates purchase completion)
 export const enrollUserInCourse = (userId: string, courseId: string): boolean => {
-    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    const userIndex = mockUserProfiles.findIndex(u => u.id === userId);
     if (userIndex === -1) return false;
-    if (!mockUsers[userIndex].enrolledCourseIds?.includes(courseId)) {
-        mockUsers[userIndex].enrolledCourseIds = [...(mockUsers[userIndex].enrolledCourseIds || []), courseId];
+    if (!mockUserProfiles[userIndex].enrolledCourseIds?.includes(courseId)) {
+        mockUserProfiles[userIndex].enrolledCourseIds = [...(mockUserProfiles[userIndex].enrolledCourseIds || []), courseId];
         // Add a basic enrollment record too
         mockEnrollments.push({
             id: `enroll-${userId}-${courseId}-${Date.now()}`,
@@ -295,22 +292,19 @@ export const enrollUserInCourse = (userId: string, courseId: string): boolean =>
 
 // Function to add a tool to a user's purchased list (simulates purchase completion)
 export const addPurchasedToolToUser = (userId: string, toolId: string): boolean => {
-    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    const userIndex = mockUserProfiles.findIndex(u => u.id === userId);
     if (userIndex === -1) return false;
-    if (!mockUsers[userIndex].purchasedToolIds?.includes(toolId)) {
-        mockUsers[userIndex].purchasedToolIds = [...(mockUsers[userIndex].purchasedToolIds || []), toolId];
+    if (!mockUserProfiles[userIndex].purchasedToolIds?.includes(toolId)) {
+        mockUserProfiles[userIndex].purchasedToolIds = [...(mockUserProfiles[userIndex].purchasedToolIds || []), toolId];
         console.log(`Mock: User ${userId} purchased tool ${toolId}`);
         return true;
     }
     return false; // Already purchased
 }
 
-// Add functions for updating user roles, deleting users etc. if needed for admin actions
-
 
 // Enrollments
 export const getEnrollmentsByUserId = (userId: string): Enrollment[] => mockEnrollments.filter(enrollment => enrollment.userId === userId);
-// Add functions for creating/updating enrollments
 
 // AI Tools
 export const getAllAITools = (): AITool[] => mockAITools;

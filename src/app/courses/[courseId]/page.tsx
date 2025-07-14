@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Star, PlayCircle, Clock, BarChart, Users, FileText, Lock, CheckCircle, ShoppingCart } from 'lucide-react'; // Added ShoppingCart
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
 // Placeholder for Video Player
@@ -41,7 +41,7 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { user, updateUser } = useAuth(); // Get user and updateUser function
+  const { user, userProfile, updateUserProfile } = useAuth(); // Get user and updateUserProfile function
   const courseSlug = typeof params.courseId === 'string' ? params.courseId : '';
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,12 +50,12 @@ export default function CourseDetailPage() {
   const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
-    if (user && course) {
-      setIsEnrolled(user.enrolledCourseIds?.includes(course.id) || false);
+    if (userProfile && course) {
+      setIsEnrolled(userProfile.enrolledCourseIds?.includes(course.id) || false);
     } else {
       setIsEnrolled(false);
     }
-  }, [user, course]);
+  }, [userProfile, course]);
 
 
   useEffect(() => {
@@ -79,13 +79,12 @@ export default function CourseDetailPage() {
     }
     if (course && user) {
         // MOCK: Simulate successful purchase and enrollment
-        const success = enrollUserInCourse(user.id, course.id);
+        const success = enrollUserInCourse(user.uid, course.id);
         if (success) {
             // Update the user state in the Auth context
-            updateUser({ enrolledCourseIds: [...(user.enrolledCourseIds || []), course.id] });
+            updateUserProfile({ enrolledCourseIds: [...(userProfile?.enrolledCourseIds || []), course.id] });
             toast({ title: "Purchase Successful (Mock)", description: `You now have access to ${course.title}. Redirecting...`, variant: "default" });
-            // Optionally redirect immediately, or let the UI update based on the new 'isEnrolled' state
-            // router.push(`/learn/${course.slug}`);
+            // The UI will update based on the new 'isEnrolled' state.
         } else {
              toast({ title: "Already Enrolled", description: `You already have access to ${course.title}.`, variant: "default" });
         }
@@ -208,7 +207,7 @@ export default function CourseDetailPage() {
               <VideoPlayer src={course.previewVideoUrl} title={`Preview: ${course.title}`} />
             ) : (
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                <Image src={course.thumbnailUrl} alt={course.title} width={300} height={200} className="object-cover rounded-lg" data-ai-hint="course thumbnail" />
+                <Image src={course.thumbnailUrl} alt={course.title} width={300} height={169} className="object-cover rounded-lg" data-ai-hint="course thumbnail" />
               </div>
             )}
           </div>

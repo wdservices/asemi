@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/hooks/use-auth-mock';
+import { AuthProvider } from '@/hooks/use-auth';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Skill Stream - Online Courses Platform',
-  description: 'Learn new skills with expert-led video courses on Skill Stream.',
+  title: 'Asemi - Online Courses & AI Tools',
+  description: 'Learn new skills with expert-led video courses on Asemi.',
 };
 
 export default function RootLayout({

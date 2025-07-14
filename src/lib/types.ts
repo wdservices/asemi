@@ -1,4 +1,6 @@
 
+import type { User } from 'firebase/auth';
+
 export interface Course {
   id: string;
   title: string;
@@ -55,7 +57,7 @@ export interface ResourceFile {
 }
 
 export interface UserProfile {
-  id: string;
+  id: string; // Firebase UID
   email: string | null;
   displayName: string | null;
   avatarUrl?: string | null;

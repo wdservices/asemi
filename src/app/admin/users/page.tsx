@@ -1,6 +1,6 @@
 
 "use client";
-import { mockUsers } from '@/lib/mockData';
+import { mockUserProfiles } from '@/lib/mockData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminUsersPage() {
-  const users = mockUsers; // In a real app, fetch users from backend
+  const users = mockUserProfiles; // In a real app, fetch users from backend
   const { toast } = useToast();
 
   const handleRoleChange = (userId: string, currentRole: boolean | undefined) => {
@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
     // Placeholder for delete functionality
     if(confirm(`Are you sure you want to delete user "${userName || 'Unknown User'}"? This action cannot be undone.`)) {
         console.log("Deleting user:", userId);
-        toast({ title: "User Deleted (Mock)", description: `User "${userName}" has been deleted.`, variant = "default" });
+        toast({ title: "User Deleted (Mock)", description: `User "${userName}" has been deleted.`, variant: "default" });
     }
   };
 

@@ -21,7 +21,7 @@ export default function HomePage() {
         <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
           <div className="container mx-auto max-w-screen-xl px-4 text-center">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
-              Unlock Your Potential with <span className="text-primary">Skill Stream</span>
+              Unlock Your Potential with <span className="text-primary">Asemi</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Explore thousands of expert-led courses and powerful AI tools to boost your skills and workflow.
@@ -50,7 +50,7 @@ export default function HomePage() {
         {/* Features Section */}
         <section className="py-16 md:py-24 bg-background">
           <div className="container mx-auto max-w-screen-xl px-4">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-4">Why Choose Skill Stream?</h2>
+            <h2 className="text-3xl font-bold text-center text-foreground mb-4">Why Choose Asemi?</h2>
             <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
               We provide the resources and AI-powered tools you need to succeed.
             </p>

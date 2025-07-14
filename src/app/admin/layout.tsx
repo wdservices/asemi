@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider } from '@/components/ui/sidebar'; // Import SidebarProvider
 
 

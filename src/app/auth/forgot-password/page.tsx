@@ -2,7 +2,6 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -13,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Logo from '@/components/layout/Logo';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
@@ -21,8 +21,8 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const { toast } = useToast();
+  const { sendPasswordReset } = useAuth();
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -32,20 +32,21 @@ export default function ForgotPasswordPage() {
   });
 
   async function onSubmit(values: ForgotPasswordFormValues) {
-    console.log("Password reset requested for:", values.email);
-    // In a real app, this would trigger a backend service to send a reset email.
-    // For this mock, we'll just show a success message.
-    
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-
-    toast({
-      title: "Check your email",
-      description: `If an account exists for ${values.email}, a password reset link has been sent.`,
-    });
-    
-    form.reset();
-    // Optionally, redirect the user back to the login page
-    // router.push('/auth/login');
+    try {
+      await sendPasswordReset(values.email);
+      toast({
+        title: "Check your email",
+        description: `If an account exists for ${values.email}, a password reset link has been sent.`,
+      });
+      form.reset();
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send password reset email. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (

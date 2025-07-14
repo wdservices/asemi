@@ -12,12 +12,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Logo from '@/components/layout/Logo';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  password: z.string().min(1, { message: "Password is required." }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -25,7 +26,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login: mockLogin, user } = useAuth();
+  const { user, login, isAdmin } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<LoginFormValues>({
@@ -36,33 +37,28 @@ export default function LoginPage() {
     },
   });
 
-  if (user) { // If user is already logged in, redirect
-    router.push(searchParams.get('redirect') || '/dashboard');
-  }
+  const redirectPath = searchParams.get('redirect') || (isAdmin ? '/admin/dashboard' : '/dashboard');
+
+  useEffect(() => {
+    if (user) {
+      router.push(redirectPath);
+    }
+  }, [user, router, redirectPath]);
 
   async function onSubmit(values: LoginFormValues) {
-    // Simulate login. In a real app, this would be an API call.
-    // Mock Login Details:
-    // - Regular User: user@example.com (Password: any 6+ chars) -> Logs in as 'user1' from mockData
-    // - Admin User: admin@example.com (Password: any 6+ chars) -> Logs in as 'admin1' from mockData (who is an admin)
-    let userIdToLogin = '';
-    if (values.email === 'user@example.com') userIdToLogin = 'user1';
-    else if (values.email === 'admin@example.com') userIdToLogin = 'admin1';
-    
-    if (userIdToLogin) {
-      mockLogin(userIdToLogin);
+    try {
+      await login(values.email, values.password);
       toast({ title: "Login Successful", description: "Welcome back!" });
-      const redirectPath = searchParams.get('redirect');
-      // Redirect admins trying to access user dashboard to admin dashboard
-      if (userIdToLogin === 'admin1' && redirectPath === '/dashboard') {
-         router.push('/admin/dashboard');
-      } else {
-         router.push(redirectPath || (userIdToLogin === 'admin1' ? '/admin/dashboard' : '/dashboard'));
+      router.push(redirectPath);
+    } catch (error: any) {
+      console.error("Login error:", error);
+      let errorMessage = "Invalid email or password.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid credentials. Please check your email and password.";
       }
-    } else {
-      toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
-      form.setError("email", { type: "manual", message: "Invalid credentials" });
-      form.setError("password", { type: "manual", message: "Invalid credentials" });
+      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
+      form.setError("email", { type: "manual", message: " " });
+      form.setError("password", { type: "manual", message: " " });
     }
   }
 

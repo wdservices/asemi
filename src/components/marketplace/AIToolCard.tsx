@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '../ui/button';
 import { ExternalLink, Eye, CheckCircle, ShoppingCart } from 'lucide-react'; // Added CheckCircle, ShoppingCart
-import { useAuth } from '@/hooks/use-auth-mock'; // Import useAuth
+import { useAuth } from '@/hooks/use-auth'; // Import useAuth
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { addPurchasedToolToUser } from '@/lib/mockData'; // Import mock purchase function
 import { useState, useEffect } from 'react'; // Import hooks
@@ -19,22 +19,21 @@ interface AIToolCardProps {
 }
 
 export function AIToolCard({ tool }: AIToolCardProps) {
-  const { user, updateUser } = useAuth(); // Get user and updateUser
+  const { user, userProfile, updateUserProfile } = useAuth(); // Get user and updateUser
   const { toast } = useToast();
   const [isPurchased, setIsPurchased] = useState(false);
 
   useEffect(() => {
-      if (user && tool) {
-          setIsPurchased(user.purchasedToolIds?.includes(tool.id) || false);
+      if (userProfile && tool) {
+          setIsPurchased(userProfile.purchasedToolIds?.includes(tool.id) || false);
       } else {
           setIsPurchased(false);
       }
-  }, [user, tool]);
+  }, [userProfile, tool]);
 
 
   const handleMockPurchase = (e: React.MouseEvent<HTMLButtonElement>) => {
-      // Prevent default link behavior if it was an <a> tag
-      // e.preventDefault();
+      e.preventDefault();
 
       if (!user) {
           toast({ title: "Login Required", description: "Please login to purchase this tool.", variant: "destructive" });
@@ -43,12 +42,11 @@ export function AIToolCard({ tool }: AIToolCardProps) {
       }
       if (tool && user) {
           // MOCK: Simulate successful purchase
-          const success = addPurchasedToolToUser(user.id, tool.id);
+          const success = addPurchasedToolToUser(user.uid, tool.id);
           if (success) {
               // Update the user state in the Auth context
-              updateUser({ purchasedToolIds: [...(user.purchasedToolIds || []), tool.id] });
+              updateUserProfile({ purchasedToolIds: [...(userProfile?.purchasedToolIds || []), tool.id] });
               toast({ title: "Tool Purchased (Mock)", description: `You now have access to ${tool.name}.`, variant: "default" });
-              // Optionally redirect or let UI update
           } else {
               toast({ title: "Already Purchased", description: `You already own ${tool.name}.`, variant: "default" });
           }
@@ -111,14 +109,7 @@ export function AIToolCard({ tool }: AIToolCardProps) {
             <Button
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
                 onClick={handleMockPurchase} // Simulate purchase on click for demo
-                // In a real app, might be: asChild
             >
-                 {/* In a real app:
-                 <a href={tool.paymentLink} target="_blank" rel="noopener noreferrer">
-                     <ShoppingCart className="mr-2 h-4 w-4" /> Purchase Tool
-                 </a>
-                 */}
-                 {/* Mock Button Text: */}
                  <ShoppingCart className="mr-2 h-4 w-4" /> Purchase Tool (Mock)
              </Button>
         ) : (

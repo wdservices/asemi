@@ -22,9 +22,9 @@ import Logo from '@/components/layout/Logo';
 import { UserNav } from '@/components/layout/UserNav'; // Or a specific AdminUserNav
 import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, PlusCircle, Edit3, LogOut, Wand2, Store } from 'lucide-react'; // Added Wand2 and Store icons
 import { Button } from '../ui/button';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { cn } from "@/lib/utils"; // Import cn utility function
-import { Separator } from '../ui/separator'; // Import Separator
+import { Separator as UiSeparator } from '../ui/separator'; // Import Separator
 
 
 const AdminSidebar = () => {
@@ -176,7 +176,7 @@ export const MobileAdminSidebarContent = () => {
                     <PlusCircle className="h-4 w-4" /> Add New Course
                 </Link>
 
-                <Separator className="my-2" />
+                <UiSeparator className="my-2" />
                 <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Marketplace</p>
                  <Link href="/admin/marketplace" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/marketplace') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
                     <Store className="h-4 w-4" /> AI Tools
@@ -185,7 +185,7 @@ export const MobileAdminSidebarContent = () => {
                     <PlusCircle className="h-4 w-4" /> Add New Tool
                 </Link>
 
-                <Separator className="my-2" />
+                <UiSeparator className="my-2" />
                 <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">Management</p>
                 <Link href="/admin/users" className={cn("flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium", isActive('/admin/users') ? 'bg-primary text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground')}>
                     <Users className="h-4 w-4" /> Users
@@ -208,5 +208,3 @@ export const MobileAdminSidebarContent = () => {
 
 
 export default AdminSidebar;
-
-

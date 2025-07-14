@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getAIToolById } from '@/lib/mockData';
 import type { AITool } from '@/lib/types';
-import { useAuth } from '@/hooks/use-auth-mock';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { Lock, ArrowLeft } from 'lucide-react';
 export default function AIToolAccessPage() {
     const params = useParams();
     const router = useRouter();
-    const { user, loading } = useAuth();
+    const { user, userProfile, loading } = useAuth();
     const toolId = typeof params.toolId === 'string' ? params.toolId : '';
     const [tool, setTool] = useState<AITool | null>(null);
     const [isLoadingTool, setIsLoadingTool] = useState(true);
@@ -32,15 +32,14 @@ export default function AIToolAccessPage() {
         if (!loading) {
             if (!user) {
                 router.push(`/auth/login?redirect=/tools/${toolId}/access`);
-            } else if (tool && user?.purchasedToolIds?.includes(tool.id)) {
+            } else if (tool && userProfile?.purchasedToolIds?.includes(tool.id)) {
                 setIsAuthorized(true);
-            } else if (tool && !user?.purchasedToolIds?.includes(tool.id)) {
-                // If user is logged in but hasn't purchased, redirect or show error
+            } else if (tool && !userProfile?.purchasedToolIds?.includes(tool.id)) {
+                // If user is logged in but hasn't purchased, show error
                 setIsAuthorized(false);
-                 // Optionally redirect to marketplace: router.push('/marketplace');
             }
         }
-    }, [user, loading, tool, toolId, router]);
+    }, [user, userProfile, loading, tool, toolId, router]);
 
     if (loading || isLoadingTool) {
         return <div className="flex items-center justify-center h-screen"><p>Loading tool access...</p></div>;
