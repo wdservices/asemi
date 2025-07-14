@@ -1,5 +1,6 @@
 
 import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson, AITool, AIToolFormDataInput, CourseFormData } from './types';
+import { auth } from '@/lib/firebase';
 
 export const mockInstructors: Instructor[] = [
   { id: 'inst1', name: 'Alice Wonderland', bio: 'Expert in Web Development with 10 years of experience.', avatarUrl: 'https://picsum.photos/seed/alice/100/100', title: 'Senior Web Developer' },
@@ -104,11 +105,11 @@ export let mockCourses: Course[] = [
 
 export let mockUserProfiles: UserProfile[] = [
   // IMPORTANT: To login as an admin, you must first create this user in the application
-  // via the registration page. Use the email 'admin@example.com' and any password.
+  // via the registration page. Use the email 'admin@asemi.com' and any password.
   // The system will then grant this user admin privileges based on the email.
   {
     id: 'GhqyPnaT79csl59mY2j2aDk1M792', // This is a placeholder UID and will be replaced by the actual Firebase UID on registration.
-    email: 'admin@example.com',
+    email: 'admin@asemi.com',
     displayName: 'Admin User',
     avatarUrl: 'https://picsum.photos/seed/admin1/100/100',
     enrolledCourseIds: ['course1', 'course2'],
@@ -254,11 +255,11 @@ export const getUserProfile = (id: string): UserProfile | undefined => {
     const user = mockUserProfiles.find(user => user.id === id);
     if(user) return user;
     // Check if the registered user's email matches the admin email
-    const adminConfig = mockUserProfiles.find(p => p.email === 'admin@example.com');
+    const adminConfig = mockUserProfiles.find(p => p.email === 'admin@asemi.com');
     if (adminConfig) {
         // If an admin logs in whose UID is not the placeholder one, check by email.
         const authUser = auth.currentUser;
-        if (authUser && authUser.email === 'admin@example.com') {
+        if (authUser && authUser.email === 'admin@asemi.com') {
              // Return the admin profile template, which will be saved with the correct UID later
             return { ...adminConfig, id: authUser.uid };
         }
@@ -281,7 +282,7 @@ export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserP
             avatarUrl: data.avatarUrl || null,
             enrolledCourseIds: [],
             purchasedToolIds: [],
-            isAdmin: data.email === 'admin@example.com', // Grant admin if email matches
+            isAdmin: data.email === 'admin@asemi.com', // Grant admin if email matches
             ...data
         };
         mockUserProfiles.push(newUser);
