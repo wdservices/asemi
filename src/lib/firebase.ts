@@ -7,12 +7,12 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration using Environment Variables
 const firebaseConfig = {
-    apiKey: "AIzaSyCWk88OprZ1pe5QYJbkTgQY0Ao6n-uP1xw",
-    authDomain: "asemi-authentication.firebaseapp.com",
-    projectId: "asemi-authentication",
-    storageBucket: "asemi-authentication.appspot.com",
-    messagingSenderId: "1089232834079",
-    appId: "1:1089232834079:web:ce2db2312c614f1b419e35"
+    apiKey: "AIzaSyBwRPeVNKY1ldbQe7TjJ-0Ynl7H5HDZ5zU",
+    authDomain: "asemi-c7777.firebaseapp.com",
+    projectId: "asemi-c7777",
+    storageBucket: "asemi-c7777.firebasestorage.app",
+    messagingSenderId: "207342481965",
+    appId: "1:207342481965:web:9ae885989fa948ad90fea4"
 };
 
 
