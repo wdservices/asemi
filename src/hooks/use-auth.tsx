@@ -10,8 +10,6 @@ import {
   signOut,
   updateProfile as updateFirebaseProfile,
   sendPasswordResetEmail,
-  GoogleAuthProvider,
-  signInWithPopup,
   type User,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -25,7 +23,6 @@ interface AuthContextType {
   isAdmin: boolean;
   register: (email: string, pass: string, displayName: string) => Promise<any>;
   login: (email: string, pass: string) => Promise<any>;
-  signInWithGoogle: () => Promise<any>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => void;
@@ -106,11 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
-  };
-
   const logout = () => {
     return signOut(auth);
   };
@@ -129,7 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, register, login, signInWithGoogle, logout, sendPasswordReset, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, register, login, logout, sendPasswordReset, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );
