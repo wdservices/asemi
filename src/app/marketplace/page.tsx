@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Filter, Search, Wand2 } from 'lucide-react';
 
 export default function MarketplacePage() {
-  // In a real app, you'd fetch tools, possibly with filters/search query
-  const tools = getAllAITools();
+  // Defensive: always array
+  const toolsRaw = getAllAITools();
+  const tools = Array.isArray(toolsRaw) ? toolsRaw : [];
 
   return (
     <div className="space-y-8">

@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Filter, Search } from 'lucide-react';
 
 export default function CoursesPage() {
-  // In a real app, you'd fetch courses, possibly with filters/search query
-  const courses = mockCourses;
+  // Defensive: always array
+  const courses = Array.isArray(mockCourses) ? mockCourses : [];
 
   return (
     <div className="space-y-8">
@@ -67,7 +67,11 @@ export default function CoursesPage() {
         </div>
       </section>
 
-      <CourseList courses={courses} />
+      {courses.length > 0 ? (
+        <CourseList courses={courses} />
+      ) : (
+        <div className="text-center text-muted-foreground py-10">No courses found.</div>
+      )}
     </div>
   );
 }

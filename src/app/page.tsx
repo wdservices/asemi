@@ -10,8 +10,10 @@ import { mockCourses, getAllAITools } from '@/lib/mockData'; // Import getAllAIT
 import { ArrowRight, CheckCircle, Users, Video, Wand2 } from 'lucide-react'; // Added Wand2
 
 export default function HomePage() {
-  const featuredCourses = mockCourses.slice(0, 3);
-  const featuredTools = getAllAITools().slice(0, 3); // Get featured AI tools
+  // Defensive: always arrays
+  const featuredCourses = Array.isArray(mockCourses) ? mockCourses.slice(0, 3) : [];
+  const allTools = getAllAITools();
+  const featuredTools = Array.isArray(allTools) ? allTools.slice(0, 3) : [];
 
   return (
     <>
@@ -92,9 +94,13 @@ export default function HomePage() {
           <div className="container mx-auto max-w-screen-xl px-4">
             <h2 className="text-3xl font-bold text-center text-foreground mb-12">Featured Courses</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredCourses.map((course) => (
-                <CourseCard key={course.id} course={course} />
-              ))}
+              {featuredCourses.length > 0 ? (
+                featuredCourses.map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))
+              ) : (
+                <div className="col-span-full text-center text-muted-foreground">No featured courses available.</div>
+              )}
             </div>
             <div className="mt-12 text-center">
               <Button variant="outline" size="lg" asChild>
@@ -109,9 +115,13 @@ export default function HomePage() {
           <div className="container mx-auto max-w-screen-xl px-4">
             <h2 className="text-3xl font-bold text-center text-foreground mb-12">Featured AI Tools</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredTools.map((tool) => (
-                <AIToolCard key={tool.id} tool={tool} />
-              ))}
+              {featuredTools.length > 0 ? (
+                featuredTools.map((tool) => (
+                  <AIToolCard key={tool.id} tool={tool} />
+                ))
+              ) : (
+                <div className="col-span-full text-center text-muted-foreground">No featured AI tools available.</div>
+              )}
             </div>
             <div className="mt-12 text-center">
               <Button variant="outline" size="lg" asChild>
