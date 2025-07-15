@@ -111,15 +111,15 @@ export default function CourseDetailPage() {
           <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <div className="flex items-center">
               <Avatar className="h-8 w-8 mr-2">
-                <AvatarImage src={course.instructor.avatarUrl} alt={course.instructor.name} data-ai-hint="instructor avatar" />
-                <AvatarFallback>{course.instructor.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={course.instructor?.avatarUrl} alt={course.instructor?.name || 'Instructor'} data-ai-hint="instructor avatar" />
+                <AvatarFallback>{course.instructor?.name?.charAt(0) || '?'}</AvatarFallback>
               </Avatar>
-              <span>Created by <Link href={`/instructors/${course.instructor.id}`} className="font-medium text-primary hover:underline">{course.instructor.name}</Link></span>
+              <span>Created by <Link href={`/instructors/${course.instructor?.id || 'unknown'}`} className="font-medium text-primary hover:underline">{course.instructor?.name || 'Unknown Instructor'}</Link></span>
             </div>
             {course.rating && (
               <div className="flex items-center">
                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 mr-1" />
-                <span>{course.rating.toFixed(1)} ({course.numberOfRatings} ratings)</span>
+                <span>{(course.rating || 0).toFixed(1)} ({course.numberOfRatings || 0} ratings)</span>
               </div>
             )}
             <div className="flex items-center">
@@ -145,7 +145,7 @@ export default function CourseDetailPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-4">Course Content</h2>
           <Accordion type="single" collapsible className="w-full bg-card p-4 rounded-lg shadow">
-            {course.modules.map((module, moduleIndex) => (
+            {(course.modules || []).map((module, moduleIndex) => (
               <AccordionItem value={`module-${module.id}`} key={module.id}>
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex justify-between w-full items-center pr-2">
@@ -155,7 +155,7 @@ export default function CourseDetailPage() {
                 </AccordionTrigger>
                 <AccordionContent>
                   <ul className="space-y-2 pt-2">
-                    {module.lessons.map((lesson, lessonIndex) => (
+                    {(module.lessons || []).map((lesson, lessonIndex) => (
                       <li key={lesson.id} className="flex items-center justify-between p-2 rounded-md hover:bg-secondary/50">
                         <div className="flex items-center">
                           {lesson.contentType === 'video' ? <PlayCircle className="h-5 w-5 mr-3 text-primary" /> : <FileText className="h-5 w-5 mr-3 text-primary" />}
@@ -185,13 +185,13 @@ export default function CourseDetailPage() {
             <h2 className="text-2xl font-semibold mb-4">About the Instructor</h2>
             <div className="flex items-start gap-4 bg-card p-6 rounded-lg shadow">
                 <Avatar className="h-20 w-20">
-                    <AvatarImage src={course.instructor.avatarUrl} alt={course.instructor.name} data-ai-hint="instructor photo" />
-                    <AvatarFallback>{course.instructor.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
+                    <AvatarImage src={course.instructor?.avatarUrl} alt={course.instructor?.name || 'Instructor'} data-ai-hint="instructor photo" />
+                    <AvatarFallback>{course.instructor?.name?.split(' ').map(n=>n[0]).join('') || '?'}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <h3 className="text-xl font-semibold text-primary">{course.instructor.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-1">{course.instructor.title}</p>
-                    {course.instructor.bio && <p className="text-sm text-foreground mt-2">{course.instructor.bio}</p>}
+                    <h3 className="text-xl font-semibold text-primary">{course.instructor?.name || 'Unknown Instructor'}</h3>
+                    <p className="text-sm text-muted-foreground mb-1">{course.instructor?.title || 'Instructor'}</p>
+                    {course.instructor?.bio && <p className="text-sm text-foreground mt-2">{course.instructor.bio}</p>}
                     {/* Add more instructor details like ratings, total students, courses by instructor link */}
                 </div>
             </div>

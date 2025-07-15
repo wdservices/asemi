@@ -83,10 +83,11 @@ export interface Enrollment {
 }
 
 // For forms
-export type CourseFormData = Omit<Course, 'id' | 'instructor' | 'modules' | 'rating' | 'numberOfRatings' | 'totalLessons' | 'duration'> & {
+export type CourseFormData = Omit<Course, 'id' | 'instructor' | 'modules' | 'rating' | 'numberOfRatings' | 'totalLessons' | 'duration' | 'tags'> & {
   instructorName: string;
   instructorBio?: string;
   instructorTitle?: string;
+  tags?: string; // Comma-separated string for form input
   modules: Array<Omit<CourseModule, 'id' | 'lessons'> & {
     id?: string; // For editing existing modules
     lessons: Array<Omit<Lesson, 'id'> & { id?: string }>; // For editing existing lessons

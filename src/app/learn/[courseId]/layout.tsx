@@ -9,7 +9,7 @@ import type { Course, CourseModule, Lesson } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, CheckCircle, PlayCircle, FileText, RadioButtonChecked } from 'lucide-react';
+import { ChevronLeft, CheckCircle, PlayCircle, FileText, CircleDot } from 'lucide-react';
 import Logo from '@/components/layout/Logo';
 
 export default function CourseLearnLayout({
@@ -103,7 +103,7 @@ export default function CourseLearnLayout({
                       const isActive = lesson.id === currentLessonId; // Mock active state
                       let Icon = PlayCircle;
                       if(lesson.contentType === 'pdf') Icon = FileText;
-                      if(lesson.contentType === 'quiz') Icon = RadioButtonChecked; // Assuming Quiz icon
+                      if(lesson.contentType === 'quiz') Icon = CircleDot; // Quiz icon
 
                       return (
                         <li key={lesson.id}>

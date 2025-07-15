@@ -8,7 +8,51 @@ export const mockInstructors: Instructor[] = [
   { id: 'inst3', name: 'Charlie Brown', bio: 'Data Science enthusiast and practitioner.', avatarUrl: 'https://picsum.photos/seed/charlie/100/100', title: 'Data Scientist' },
 ];
 
-export let mockCourses: Course[] = [];
+export let mockCourses: Course[] = [
+  {
+    id: 'course1',
+    slug: 'nextjs-bootcamp',
+    title: 'Next.js Bootcamp: From Zero to Hero',
+    description: 'Master Next.js 15 with hands-on projects and real-world applications.',
+    longDescription: 'Learn Next.js 15 from the ground up with this comprehensive bootcamp. You\'ll build real-world applications, understand server-side rendering, and deploy your projects.',
+    thumbnailUrl: 'https://picsum.photos/seed/nextjs/400/250',
+    price: 49.99,
+    category: 'Web Development',
+    instructor: mockInstructors[0],
+    modules: [
+      {
+        id: 'm1c1',
+        title: 'Getting Started with Next.js',
+        moduleOrder: 0,
+        lessons: [
+          {
+            id: 'l1m1c1',
+            title: 'Introduction to Next.js',
+            contentType: 'video',
+            content: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+            duration: '15m',
+            isPreviewable: true,
+            lessonOrder: 0,
+          },
+          {
+            id: 'l2m1c1',
+            title: 'Setting up your development environment',
+            contentType: 'text',
+            content: 'Learn how to set up your development environment for Next.js development.',
+            duration: '10m',
+            isPreviewable: false,
+            lessonOrder: 1,
+          }
+        ]
+      }
+    ],
+    previewVideoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    level: 'Beginner',
+    tags: ['nextjs', 'react', 'javascript', 'web-development'],
+    paymentLink: 'https://buy.stripe.com/test',
+    redirectLink: '/learn/nextjs-bootcamp',
+  }
+];
 
 export let mockUserProfiles: UserProfile[] = [
   // IMPORTANT: To login as an admin, you must first create this user in the application
@@ -29,7 +73,19 @@ export let mockEnrollments: Enrollment[] = [];
 
 
 // AI Tool Marketplace Mock Data
-export let mockAITools: AITool[] = [];
+export let mockAITools: AITool[] = [
+  {
+    id: 'tool1',
+    name: 'AI Code Assistant',
+    description: 'Advanced AI-powered code completion and suggestions for developers.',
+    price: 29.99,
+    thumbnailUrl: 'https://picsum.photos/seed/ai-code/400/250',
+    previewLink: 'https://example.com/ai-code-demo',
+    tags: ['ai', 'coding', 'productivity'],
+    paymentLink: 'https://buy.stripe.com/test',
+    redirectLink: '/tools/tool1/access',
+  }
+];
 
 // --- Mock Data Functions ---
 

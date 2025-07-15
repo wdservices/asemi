@@ -29,7 +29,7 @@ const lessonSchema = z.object({
   contentType: z.enum(["video", "pdf", "text", "quiz"]),
   content: z.string().min(1, "Content/URL is required."),
   duration: z.string().optional(),
-  isPreviewable: z.boolean().default(false),
+  isPreviewable: z.boolean().optional(),
   lessonOrder: z.number().min(0),
   // downloadableResources: z.array(...) // Add if needed
 });

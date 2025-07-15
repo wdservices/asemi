@@ -35,7 +35,7 @@ export function CourseCard({ course }: CourseCardProps) {
             {course.title}
           </CardTitle>
         </Link>
-        <p className="text-xs text-muted-foreground mt-1">By {course.instructor.name}</p>
+        <p className="text-xs text-muted-foreground mt-1">By {course.instructor?.name || 'Unknown Instructor'}</p>
       </CardHeader>
       <CardContent className="p-4 pt-0 flex-grow">
         <p className="text-sm text-muted-foreground line-clamp-3">{course.description}</p>
@@ -51,7 +51,7 @@ export function CourseCard({ course }: CourseCardProps) {
               </>
             )}
           </div>
-          <span className="text-lg font-semibold text-primary">${course.price.toFixed(2)}</span>
+          <span className="text-lg font-semibold text-primary">${(course.price || 0).toFixed(2)}</span>
         </div>
         <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
           <Link href={`/courses/${course.slug}`}>View Details</Link>
