@@ -56,10 +56,10 @@ export default function DashboardPage() {
                  <Link href={`/learn/${course.slug}`} className="block">
                   <div className="relative w-full h-40">
                     <Image
-                      src={course.thumbnailUrl}
+                      src={course.thumbnailUrl || "/course-fallback.webp"}
                       alt={course.title}
                       fill
-                      className="object-cover"
+                      className="object-cover aspect-video"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       data-ai-hint="course image"
                     />

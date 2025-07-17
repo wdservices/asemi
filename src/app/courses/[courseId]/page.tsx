@@ -207,7 +207,7 @@ export default function CourseDetailPage() {
               <VideoPlayer src={course.previewVideoUrl} title={`Preview: ${course.title}`} />
             ) : (
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                <Image src={course.thumbnailUrl} alt={course.title} width={300} height={169} className="object-cover rounded-lg" data-ai-hint="course thumbnail" />
+                <Image src={course.thumbnailUrl || "/course-fallback.webp"} alt={course.title} width={300} height={169} className="object-cover rounded-lg aspect-video" data-ai-hint="course thumbnail" />
               </div>
             )}
           </div>

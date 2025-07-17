@@ -21,12 +21,13 @@ export default function AboutPage() {
       {/* Image Section */}
       <section>
         <Image
-          src="https://placehold.co/1200x500.png"
+          src="/about.webp"
           alt="Team working together"
           width={1200}
           height={500}
-          className="rounded-lg shadow-xl mx-auto"
+          className="rounded-lg shadow-xl mx-auto aspect-[1200/500]"
           data-ai-hint="team collaboration"
+          priority
         />
       </section>
 

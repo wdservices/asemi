@@ -8,9 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Send } from "lucide-react";
+import { useState } from "react";
 
 export default function ContactPage() {
     const { toast } = useToast();
+    const [form, setForm] = useState({
+        name: "",
+        email: "",
+        subject: "",
+        message: ""
+    });
 
     const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -19,7 +26,7 @@ export default function ContactPage() {
             title: "Message Sent!",
             description: "Thanks for reaching out. We'll get back to you shortly.",
         });
-        (event.target as HTMLFormElement).reset();
+        setForm({ name: "", email: "", subject: "", message: "" });
     };
 
     return (
@@ -45,20 +52,20 @@ export default function ContactPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="name">Full Name</Label>
-                                    <Input id="name" placeholder="John Doe" required />
+                                    <Input id="name" placeholder="John Doe" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email Address</Label>
-                                    <Input id="email" type="email" placeholder="john@example.com" required />
+                                    <Input id="email" type="email" placeholder="john@example.com" required value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="subject">Subject</Label>
-                                <Input id="subject" placeholder="e.g., Question about a course" required />
+                                <Input id="subject" placeholder="e.g., Question about a course" required value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="message">Your Message</Label>
-                                <Textarea id="message" placeholder="Please describe your question in detail..." rows={6} required />
+                                <Textarea id="message" placeholder="Please describe your question in detail..." rows={6} required value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} />
                             </div>
                             <Button type="submit" className="w-full md:w-auto">
                                 <Send className="mr-2 h-4 w-4" /> Send Message

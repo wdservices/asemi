@@ -38,12 +38,13 @@ export default function HomePage() {
             </div>
             <div className="mt-16">
               <Image
-                src="https://placehold.co/1200x600.png"
+                src="/learn.webp"
                 alt="Online learning platform with AI tools"
                 width={1200}
-                height={600}
-                className="rounded-lg shadow-xl mx-auto"
+                height={350}
+                className="rounded-lg shadow-xl mx-auto w-full object-cover h-[350px] aspect-[1200/350]"
                 data-ai-hint="online learning platform"
+                priority
               />
             </div>
           </div>

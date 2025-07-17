@@ -77,9 +77,9 @@ export default function AdminCoursesPage() {
                     <Image
                         alt={course.title}
                         className="aspect-square rounded-md object-cover"
-                        height="64"
-                        src={course.thumbnailUrl}
-                        width="64"
+                        height={64}
+                        src={course.thumbnailUrl || "/course-fallback.webp"}
+                        width={64}
                         data-ai-hint="course thumbnail"
                     />
                     </TableCell>
