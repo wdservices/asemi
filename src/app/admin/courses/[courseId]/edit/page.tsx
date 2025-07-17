@@ -69,9 +69,30 @@ export default function EditCoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const emptyLesson = { id: '', title: '', contentType: 'video', content: '', duration: '', isPreviewable: false, lessonOrder: 0 };
+  const emptyModule = { id: '', title: '', moduleOrder: 0, lessons: [emptyLesson] };
+  const emptyCourse: CourseFormData = {
+    title: '',
+    slug: '',
+    description: '',
+    longDescription: '',
+    thumbnailUrl: '',
+    price: 0,
+    category: '',
+    level: 'All Levels',
+    tags: '',
+    instructorName: '',
+    instructorBio: '',
+    instructorTitle: '',
+    previewVideoUrl: '',
+    paymentLink: '',
+    redirectLink: '',
+    modules: [emptyModule],
+  };
+
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseFormSchema),
-    // Default values will be set by useEffect once course data is fetched
+    defaultValues: emptyCourse,
   });
 
   useEffect(() => {

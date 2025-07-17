@@ -59,26 +59,30 @@ export default function NewCoursePage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const emptyLesson = { title: '', contentType: 'video', content: '', duration: '', isPreviewable: false, lessonOrder: 0 };
+  const emptyModule = { title: '', moduleOrder: 0, lessons: [emptyLesson] };
+  const emptyCourse: CourseFormData = {
+    title: '',
+    slug: '',
+    description: '',
+    longDescription: '',
+    thumbnailUrl: '',
+    price: 0,
+    category: '',
+    level: 'All Levels',
+    tags: '',
+    instructorName: '',
+    instructorBio: '',
+    instructorTitle: '',
+    previewVideoUrl: '',
+    paymentLink: '',
+    redirectLink: '',
+    modules: [emptyModule],
+  };
+
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseFormSchema),
-    defaultValues: {
-      title: "",
-      slug: "",
-      description: "",
-      longDescription: "",
-      thumbnailUrl: "",
-      price: 0,
-      category: "",
-      level: "All Levels",
-      tags: "",
-      instructorName: "",
-      instructorBio: "",
-      instructorTitle: "",
-      previewVideoUrl: "",
-      paymentLink: "",
-      redirectLink: "",
-      modules: [{ title: "", moduleOrder: 0, lessons: [{ title: "", contentType: "video", content: "", lessonOrder: 0, isPreviewable: false }] }],
-    },
+    defaultValues: emptyCourse,
   });
 
   const { fields: moduleFields, append: appendModule, remove: removeModule } = useFieldArray({
