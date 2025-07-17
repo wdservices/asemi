@@ -56,11 +56,11 @@ export let mockCourses: Course[] = [
 
 export let mockUserProfiles: UserProfile[] = [
   // IMPORTANT: To login as an admin, you must first create this user in the application
-  // via the registration page. Use the email 'admin@asemi.com' and any password.
+  // via the registration page. Use the email 'spellz49@gmail.com' and any password.
   // The system will then grant this user admin privileges based on the email.
   {
     id: 'GhqyPnaT79csl59mY2j2aDk1M792', // This is a placeholder UID and will be replaced by the actual Firebase UID on registration.
-    email: 'admin@asemi.com',
+    email: 'spellz49@gmail.com',
     displayName: 'Admin User',
     avatarUrl: 'https://picsum.photos/seed/admin1/100/100',
     enrolledCourseIds: [],
@@ -175,11 +175,11 @@ export const getUserProfile = (id: string): UserProfile | undefined => {
     const user = mockUserProfiles.find(user => user.id === id);
     if(user) return user;
     // Check if the registered user's email matches the admin email
-    const adminConfig = mockUserProfiles.find(p => p.email === 'admin@asemi.com');
+    const adminConfig = mockUserProfiles.find(p => p.email === 'spellz49@gmail.com');
     if (adminConfig) {
         // If an admin logs in whose UID is not the placeholder one, check by email.
         const authUser = auth.currentUser;
-        if (authUser && authUser.email === 'admin@asemi.com') {
+        if (authUser && authUser.email === 'spellz49@gmail.com') {
              // Return the admin profile template, which will be saved with the correct UID later
             return { ...adminConfig, id: authUser.uid };
         }
@@ -202,7 +202,7 @@ export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserP
             avatarUrl: data.avatarUrl || null,
             enrolledCourseIds: [],
             purchasedToolIds: [],
-            isAdmin: data.email === 'admin@asemi.com', // Grant admin if email matches
+            isAdmin: data.email === 'spellz49@gmail.com', // Grant admin if email matches
             ...data
         };
         mockUserProfiles.push(newUser);
@@ -236,7 +236,7 @@ export const enrollUserInCourse = (userId: string, courseId: string): boolean =>
 export const addPurchasedToolToUser = (userId: string, toolId: string): boolean => {
     const userIndex = mockUserProfiles.findIndex(u => u.id === userId);
     if (userIndex === -1) return false;
-    if (!mockUserProfiles[userIndex].purchasedToolIds?.includes(toolId)) {
+    if (!mockUserFiles[userIndex].purchasedToolIds?.includes(toolId)) {
         mockUserProfiles[userIndex].purchasedToolIds = [...(mockUserProfiles[userIndex].purchasedToolIds || []), toolId];
         console.log(`Mock: User ${userId} purchased tool ${toolId}`);
         return true;
