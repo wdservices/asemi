@@ -236,7 +236,7 @@ export const enrollUserInCourse = (userId: string, courseId: string): boolean =>
 export const addPurchasedToolToUser = (userId: string, toolId: string): boolean => {
     const userIndex = mockUserProfiles.findIndex(u => u.id === userId);
     if (userIndex === -1) return false;
-    if (!mockUserFiles[userIndex].purchasedToolIds?.includes(toolId)) {
+    if (!mockUserProfiles[userIndex].purchasedToolIds?.includes(toolId)) {
         mockUserProfiles[userIndex].purchasedToolIds = [...(mockUserProfiles[userIndex].purchasedToolIds || []), toolId];
         console.log(`Mock: User ${userId} purchased tool ${toolId}`);
         return true;
@@ -298,3 +298,4 @@ export const updateAITool = (toolId: string, toolData: AIToolFormDataInput): AIT
     console.log("Mock AI Tool Updated:", updatedTool);
     return updatedTool;
 }
+
