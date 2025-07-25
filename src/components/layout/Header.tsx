@@ -35,7 +35,7 @@ const HeaderContent = () => {
             </Link>
             </nav>
             <div className="ml-auto flex items-center space-x-2">
-            {!user && (
+            {!user ? (
                 <>
                 <Button variant="ghost" asChild>
                     <Link href="/auth/login">Login</Link>
@@ -44,8 +44,9 @@ const HeaderContent = () => {
                     <Link href="/auth/register">Sign Up</Link>
                 </Button>
                 </>
+            ) : (
+                 <UserNav />
             )}
-            <UserNav />
             </div>
         </div>
         </header>
