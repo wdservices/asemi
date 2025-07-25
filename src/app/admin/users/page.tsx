@@ -39,7 +39,7 @@ export default function AdminUsersPage() {
       <Card className="shadow-sm">
          <CardHeader>
             <CardTitle>All Users</CardTitle>
-            <CardDescription>View and manage platform users.</CardDescription>
+            <CardDescription>View and manage platform users, their roles, and course enrollments.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
@@ -49,7 +49,7 @@ export default function AdminUsersPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="hidden md:table-cell">Role</TableHead>
-                <TableHead className="hidden md:table-cell">Active Subscription</TableHead>
+                <TableHead className="hidden md:table-cell">Courses Enrolled</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
             </TableHeader>
@@ -70,9 +70,7 @@ export default function AdminUsersPage() {
                         </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                        <Badge variant={user.activeSubscription ? 'outline' : 'destructive'} className={user.activeSubscription ? "border-green-600 text-green-600" : ""}>
-                           {user.activeSubscription ? 'Active' : 'Inactive'}
-                        </Badge>
+                       {user.enrolledCourseIds?.length || 0}
                     </TableCell>
                     <TableCell>
                     <DropdownMenu>

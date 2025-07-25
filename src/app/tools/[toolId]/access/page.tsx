@@ -81,7 +81,7 @@ export default function AIToolAccessPage() {
                        This is where the interface or download links for the '{tool.name}' tool would be provided.
                     </p>
                     {/* Placeholder for tool interface/download */}
-                    <div className="border border-dashed border-muted-foreground/50 rounded-lg p-10 text-center bg-muted/40">
+                    <div className="border border-dashed border-border/50 rounded-lg p-10 text-center bg-muted/40">
                          <p className="text-lg font-medium text-foreground">Tool Interface / Download Area</p>
                          <p className="text-sm text-muted-foreground mt-2">(Placeholder Content)</p>
                     </div>

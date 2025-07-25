@@ -1,11 +1,12 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
-  title: 'PrepMate - Your Ultimate Exam Prep Tool',
-  description: 'Prepare for your exams with AI-powered tools and resources on PrepMate.',
+  title: 'Asemi - Online Courses & AI Tools',
+  description: 'Asemi is your platform for high-quality online courses and a marketplace for powerful AI tools.',
 };
 
 export default function RootLayout({

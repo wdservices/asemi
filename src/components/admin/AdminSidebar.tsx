@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/layout/Logo';
-import { LayoutDashboard, Users, BarChart2, Settings, LogOut, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart2, Settings, LogOut, Book, Wand2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from "@/lib/utils";
@@ -19,7 +19,8 @@ const AdminSidebar = () => {
     };
 
     const getActiveModule = () => {
-        if (isActive('/admin/exams')) return 'exams';
+        if (isActive('/admin/courses')) return 'courses';
+        if (isActive('/admin/tools')) return 'tools';
         return '';
     }
 
@@ -43,21 +44,40 @@ const AdminSidebar = () => {
             </Link>
 
             <Accordion type="single" collapsible defaultValue={getActiveModule()} className="w-full">
-              <AccordionItem value="exams" className="border-b-0">
+              <AccordionItem value="courses" className="border-b-0">
                 <AccordionTrigger className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
-                    isActive('/admin/exams') && 'text-primary'
+                    isActive('/admin/courses') && 'text-primary'
                 )}>
-                   <FileText className="h-4 w-4" />
-                   Exams
+                   <Book className="h-4 w-4" />
+                   Courses
                 </AccordionTrigger>
                 <AccordionContent className="pl-8">
                     <nav className="grid gap-1">
-                        <Link href="/admin/exams" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams', true) && 'text-primary')}>
-                            All Exams
+                        <Link href="/admin/courses" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses', true) && 'text-primary')}>
+                            All Courses
                         </Link>
-                         <Link href="/admin/exams/new" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams/new') && 'text-primary')}>
-                            Add New Exam
+                         <Link href="/admin/courses/new" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses/new') && 'text-primary')}>
+                            Add New Course
+                        </Link>
+                    </nav>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="tools" className="border-b-0">
+                <AccordionTrigger className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
+                    isActive('/admin/tools') && 'text-primary'
+                )}>
+                   <Wand2 className="h-4 w-4" />
+                   AI Tools
+                </AccordionTrigger>
+                <AccordionContent className="pl-8">
+                    <nav className="grid gap-1">
+                        <Link href="/admin/tools" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/tools', true) && 'text-primary')}>
+                            All AI Tools
+                        </Link>
+                         <Link href="/admin/tools/new" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/tools/new') && 'text-primary')}>
+                            Add New AI Tool
                         </Link>
                     </nav>
                 </AccordionContent>
@@ -115,7 +135,8 @@ export const MobileAdminSidebarContent = () => {
     };
 
     const getActiveModule = () => {
-        if (isActive('/admin/exams')) return 'exams';
+        if (isActive('/admin/courses')) return 'courses';
+        if (isActive('/admin/tools')) return 'tools';
         return '';
     }
 
@@ -138,21 +159,40 @@ export const MobileAdminSidebarContent = () => {
                 </Link>
 
                 <Accordion type="single" collapsible defaultValue={getActiveModule()} className="w-full">
-                   <AccordionItem value="exams" className="border-b-0">
+                   <AccordionItem value="courses" className="border-b-0">
                     <AccordionTrigger className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
-                        isActive('/admin/exams') && 'text-primary'
+                        isActive('/admin/courses') && 'text-primary'
                     )}>
-                       <FileText className="h-4 w-4" />
-                       Exams
+                       <Book className="h-4 w-4" />
+                       Courses
                     </AccordionTrigger>
                     <AccordionContent className="pl-8">
                         <nav className="grid gap-1">
-                            <Link href="/admin/exams" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams', true) && 'text-primary')}>
-                                All Exams
+                            <Link href="/admin/courses" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses', true) && 'text-primary')}>
+                                All Courses
                             </Link>
-                             <Link href="/admin/exams/new" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams/new') && 'text-primary')}>
-                                Add New Exam
+                             <Link href="/admin/courses/new" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses/new') && 'text-primary')}>
+                                Add New Course
+                            </Link>
+                        </nav>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="tools" className="border-b-0">
+                    <AccordionTrigger className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
+                        isActive('/admin/tools') && 'text-primary'
+                    )}>
+                       <Wand2 className="h-4 w-4" />
+                       AI Tools
+                    </AccordionTrigger>
+                    <AccordionContent className="pl-8">
+                        <nav className="grid gap-1">
+                            <Link href="/admin/tools" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/tools', true) && 'text-primary')}>
+                                All AI Tools
+                            </Link>
+                             <Link href="/admin/tools/new" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/tools/new') && 'text-primary')}>
+                                Add New AI Tool
                             </Link>
                         </nav>
                     </AccordionContent>

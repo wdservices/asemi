@@ -51,7 +51,7 @@ export default function RegisterPage() {
       await register(values.email, values.password, values.displayName);
       toast({
         title: "Account Created",
-        description: "Welcome to PrepMate! You have been successfully registered.",
+        description: "Welcome to Asemi! You have been successfully registered.",
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -76,7 +76,7 @@ export default function RegisterPage() {
         </div>
         <CardTitle className="text-2xl">Create an Account</CardTitle>
         <CardDescription>
-          Join PrepMate to start your exam preparation journey.
+          Join Asemi to start your learning and creation journey.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -116,7 +116,7 @@ export default function RegisterPage() {
                   <FormLabel>Password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} placeholder="••••••••" />
+                      <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field}/>
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}

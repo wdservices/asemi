@@ -16,16 +16,16 @@ const HeaderContent = () => {
             <Logo />
             <nav className="ml-6 hidden md:flex items-center space-x-4 lg:space-x-6">
             <Link
-                href="/#features"
+                href="/courses"
                 className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground"
             >
-                Features
+                Courses
             </Link>
             <Link
-                href="/exams"
+                href="/marketplace"
                 className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground"
             >
-                Exams
+                AI Marketplace
             </Link>
             <Link
                 href="/about"

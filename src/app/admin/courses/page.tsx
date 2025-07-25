@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { getAllExams, deleteExam } from '@/lib/mockData';
-import type { Exam } from '@/lib/types';
+import { getAllCourses, deleteCourse } from '@/lib/mockData';
+import type { Course } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,48 +13,48 @@ import { MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
-export default function AdminExamsPage() {
-  const [exams, setExams] = useState<Exam[]>([]);
+export default function AdminCoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
    useEffect(() => {
-    // Fetch exams on mount
+    // Fetch courses on mount
     setTimeout(() => {
-        setExams(getAllExams());
+        setCourses(getAllCourses());
         setIsLoading(false);
     }, 500);
   }, []);
 
-  const handleDeleteExam = (examId: string, examTitle: string) => {
-    if(confirm(`Are you sure you want to delete the exam "${examTitle}"? This action cannot be undone.`)) {
-        const success = deleteExam(examId);
+  const handleDeleteCourse = (courseId: string, courseTitle: string) => {
+    if(confirm(`Are you sure you want to delete the course "${courseTitle}"? This action cannot be undone.`)) {
+        const success = deleteCourse(courseId);
         if (success) {
-            toast({ title: "Exam Deleted", description: `Exam "${examTitle}" has been deleted.`, variant: "default" });
-            setExams(prevExams => prevExams.filter(exam => exam.id !== examId));
+            toast({ title: "Course Deleted", description: `Course "${courseTitle}" has been deleted.`, variant: "default" });
+            setCourses(prevCourses => prevCourses.filter(course => course.id !== courseId));
         } else {
-            toast({ title: "Deletion Failed", description: `Could not delete exam "${examTitle}".`, variant: "destructive" });
+            toast({ title: "Deletion Failed", description: `Could not delete course "${courseTitle}".`, variant: "destructive" });
         }
     }
   };
 
    if (isLoading) {
-      return <div className="text-center p-6">Loading exams...</div>
+      return <div className="text-center p-6">Loading courses...</div>
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Manage Exams</h1>
+        <h1 className="text-2xl font-semibold">Manage Courses</h1>
         <Button asChild>
-          <Link href="/admin/exams/new"><PlusCircle className="mr-2 h-4 w-4" /> Add New Exam</Link>
+          <Link href="/admin/courses/new"><PlusCircle className="mr-2 h-4 w-4" /> Add New Course</Link>
         </Button>
       </div>
 
       <Card className="shadow-sm">
         <CardHeader>
-            <CardTitle>All Exams</CardTitle>
-            <CardDescription>View, edit, or delete exams and their questions.</CardDescription>
+            <CardTitle>All Courses</CardTitle>
+            <CardDescription>View, edit, or delete courses and their content.</CardDescription>
         </CardHeader>
         <CardContent>
             <Table>
@@ -62,31 +62,31 @@ export default function AdminExamsPage() {
                 <TableRow>
                 <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead className="hidden md:table-cell">Year</TableHead>
-                <TableHead className="hidden md:table-cell">Questions</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead className="hidden md:table-cell">Level</TableHead>
+                <TableHead className="hidden md:table-cell">Modules</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {exams.map((exam) => (
-                <TableRow key={exam.id}>
+                {courses.map((course) => (
+                <TableRow key={course.id}>
                     <TableCell className="hidden sm:table-cell">
                     <Image
-                        alt={exam.title}
+                        alt={course.title}
                         className="aspect-video rounded-md object-cover"
                         height="45"
-                        src={exam.imageUrl || 'https://placehold.co/80x45.png'}
+                        src={course.imageUrl || 'https://placehold.co/80x45.png'}
                         width="80"
-                        data-ai-hint="exam subject"
+                        data-ai-hint="course category"
                     />
                     </TableCell>
-                    <TableCell className="font-medium">{exam.title}</TableCell>
+                    <TableCell className="font-medium">{course.title}</TableCell>
                     <TableCell>
-                        <Badge variant="outline">{exam.subject || 'N/A'}</Badge>
+                        <Badge variant="outline">{course.category || 'N/A'}</Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{exam.year || 'N/A'}</TableCell>
-                    <TableCell className="hidden md:table-cell">{exam.questions.length}</TableCell>
+                    <TableCell className="hidden md:table-cell">{course.level || 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{course.modules.length}</TableCell>
                     <TableCell>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -98,11 +98,11 @@ export default function AdminExamsPage() {
                         <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem asChild>
-                            <Link href={`/admin/exams/${exam.id}/edit`}><Edit className="mr-2 h-4 w-4" />Edit</Link>
+                            <Link href={`/admin/courses/${course.id}/edit`}><Edit className="mr-2 h-4 w-4" />Edit</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                            onClick={() => handleDeleteExam(exam.id, exam.title)}
+                            onClick={() => handleDeleteCourse(course.id, course.title)}
                         >
                             <Trash2 className="mr-2 h-4 w-4" />Delete
                         </DropdownMenuItem>
@@ -115,8 +115,8 @@ export default function AdminExamsPage() {
             </Table>
         </CardContent>
       </Card>
-       {exams.length === 0 && !isLoading && (
-        <p className="text-center text-muted-foreground py-4">No exams found.</p>
+       {courses.length === 0 && !isLoading && (
+        <p className="text-center text-muted-foreground py-4">No courses found.</p>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { GraduationCap } from 'lucide-react';
+import { BookMarked } from 'lucide-react';
 
 const Logo = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
   const textSizeClass = size === 'lg' ? 'text-3xl' : size === 'md' ? 'text-2xl' : 'text-xl';
@@ -8,9 +8,9 @@ const Logo = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
 
   return (
     <Link href="/" className="flex items-center gap-2 group">
-      <GraduationCap className={`text-primary group-hover:text-primary/80 transition-colors`} size={iconSize} />
+      <BookMarked className={`text-primary group-hover:text-primary/80 transition-colors`} size={iconSize} />
       <span className={`font-bold ${textSizeClass} text-foreground group-hover:text-foreground/80 transition-colors`}>
-        PrepMate
+        Asemi
       </span>
     </Link>
   );
