@@ -4,11 +4,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/layout/Logo';
-import { LayoutDashboard, BookOpen, Users, BarChart2, Settings, PlusCircle, LogOut, Store } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart2, Settings, LogOut, FileText } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from "@/lib/utils";
-import { Separator as UiSeparator } from '../ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
@@ -20,8 +19,7 @@ const AdminSidebar = () => {
     };
 
     const getActiveModule = () => {
-        if (isActive('/admin/courses')) return 'courses';
-        if (isActive('/admin/marketplace')) return 'marketplace';
+        if (isActive('/admin/exams')) return 'exams';
         return '';
     }
 
@@ -45,41 +43,21 @@ const AdminSidebar = () => {
             </Link>
 
             <Accordion type="single" collapsible defaultValue={getActiveModule()} className="w-full">
-              <AccordionItem value="courses" className="border-b-0">
+              <AccordionItem value="exams" className="border-b-0">
                 <AccordionTrigger className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
-                    isActive('/admin/courses') && 'text-primary'
+                    isActive('/admin/exams') && 'text-primary'
                 )}>
-                   <BookOpen className="h-4 w-4" />
-                   Courses
+                   <FileText className="h-4 w-4" />
+                   Exams
                 </AccordionTrigger>
                 <AccordionContent className="pl-8">
                     <nav className="grid gap-1">
-                        <Link href="/admin/courses" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses', true) && 'text-primary')}>
-                            All Courses
+                        <Link href="/admin/exams" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams', true) && 'text-primary')}>
+                            All Exams
                         </Link>
-                         <Link href="/admin/courses/new" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses/new') && 'text-primary')}>
-                            Add New
-                        </Link>
-                    </nav>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="marketplace" className="border-b-0">
-                <AccordionTrigger className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
-                    isActive('/admin/marketplace') && 'text-primary'
-                )}>
-                   <Store className="h-4 w-4" />
-                   AI Tools
-                </AccordionTrigger>
-                 <AccordionContent className="pl-8">
-                    <nav className="grid gap-1">
-                        <Link href="/admin/marketplace" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/marketplace', true) && 'text-primary')}>
-                            All Tools
-                        </Link>
-                         <Link href="/admin/marketplace/new" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/marketplace/new') && 'text-primary')}>
-                            Add New
+                         <Link href="/admin/exams/new" className={cn("rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams/new') && 'text-primary')}>
+                            Add New Exam
                         </Link>
                     </nav>
                 </AccordionContent>
@@ -137,8 +115,7 @@ export const MobileAdminSidebarContent = () => {
     };
 
     const getActiveModule = () => {
-        if (isActive('/admin/courses')) return 'courses';
-        if (isActive('/admin/marketplace')) return 'marketplace';
+        if (isActive('/admin/exams')) return 'exams';
         return '';
     }
 
@@ -161,41 +138,21 @@ export const MobileAdminSidebarContent = () => {
                 </Link>
 
                 <Accordion type="single" collapsible defaultValue={getActiveModule()} className="w-full">
-                  <AccordionItem value="courses" className="border-b-0">
+                   <AccordionItem value="exams" className="border-b-0">
                     <AccordionTrigger className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
-                        isActive('/admin/courses') && 'text-primary'
+                        isActive('/admin/exams') && 'text-primary'
                     )}>
-                       <BookOpen className="h-4 w-4" />
-                       Courses
+                       <FileText className="h-4 w-4" />
+                       Exams
                     </AccordionTrigger>
                     <AccordionContent className="pl-8">
                         <nav className="grid gap-1">
-                            <Link href="/admin/courses" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses', true) && 'text-primary')}>
-                                All Courses
+                            <Link href="/admin/exams" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams', true) && 'text-primary')}>
+                                All Exams
                             </Link>
-                             <Link href="/admin/courses/new" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/courses/new') && 'text-primary')}>
-                                Add New
-                            </Link>
-                        </nav>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="marketplace" className="border-b-0">
-                    <AccordionTrigger className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:no-underline",
-                        isActive('/admin/marketplace') && 'text-primary'
-                    )}>
-                       <Store className="h-4 w-4" />
-                       AI Tools
-                    </AccordionTrigger>
-                     <AccordionContent className="pl-8">
-                        <nav className="grid gap-1">
-                            <Link href="/admin/marketplace" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/marketplace', true) && 'text-primary')}>
-                                All Tools
-                            </Link>
-                             <Link href="/admin/marketplace/new" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/marketplace/new') && 'text-primary')}>
-                                Add New
+                             <Link href="/admin/exams/new" className={cn("block rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary", isActive('/admin/exams/new') && 'text-primary')}>
+                                Add New Exam
                             </Link>
                         </nav>
                     </AccordionContent>

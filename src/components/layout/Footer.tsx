@@ -5,20 +5,20 @@ import Logo from './Logo';
 const Footer = () => {
   return (
     <footer className="border-t bg-card">
-      <div className="container mx-auto max-w-screen-2xl px-4 py-8">
+      <div className="container mx-auto max-w-screen-xl px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
             <Logo size="md" />
             <p className="mt-4 text-sm text-muted-foreground max-w-sm">
-              Unlock your potential with expert-led courses and powerful AI tools designed to elevate your skills and streamline your workflow.
+             Your ultimate AI-powered companion for exam preparation. Access past questions, detailed solutions, and track your progress to ace your tests.
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Quick Links</h3>
+            <h3 className="font-semibold text-foreground">PrepMate</h3>
             <ul className="mt-4 space-y-2 text-sm">
-              <li><Link href="/courses" className="text-muted-foreground hover:text-primary">Courses</Link></li>
-              <li><Link href="/marketplace" className="text-muted-foreground hover:text-primary">AI Marketplace</Link></li>
-              <li><Link href="/about" className="text-muted-foreground hover:text-primary">About Us</Link></li>
+              <li><Link href="/#features" className="text-muted-foreground hover:text-primary">Features</Link></li>
+              <li><Link href="/pricing" className="text-muted-foreground hover:text-primary">Pricing</Link></li>
+               <li><Link href="/about" className="text-muted-foreground hover:text-primary">About Us</Link></li>
             </ul>
           </div>
           <div>
@@ -32,7 +32,7 @@ const Footer = () => {
           </div>
         </div>
         <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Asemi. All rights reserved.
+          &copy; {new Date().getFullYear()} PrepMate. All rights reserved.
         </div>
       </div>
     </footer>

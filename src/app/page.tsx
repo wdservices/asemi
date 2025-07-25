@@ -4,17 +4,10 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import { CourseCard } from '@/components/courses/CourseCard';
-import { AIToolCard } from '@/components/marketplace/AIToolCard'; // Import AI Tool Card
-import { mockCourses, getAllAITools } from '@/lib/mockData'; // Import getAllAITools
-import { ArrowRight, CheckCircle, Users, Video, Wand2 } from 'lucide-react'; // Added Wand2
+import { ArrowRight, CheckCircle, Users, Video, BookOpen } from 'lucide-react';
 
 export default function HomePage() {
-  // Defensive: always arrays
-  const featuredCourses = Array.isArray(mockCourses) ? mockCourses.slice(0, 3) : [];
-  const allTools = getAllAITools();
-  const featuredTools = Array.isArray(allTools) ? allTools.slice(0, 3) : [];
-
+ 
   return (
     <>
       <Header />
@@ -23,123 +16,78 @@ export default function HomePage() {
         <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
           <div className="container mx-auto max-w-screen-xl px-4 text-center">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
-              Unlock Your Potential with <span className="text-primary">Asemi</span>
+              Master Your Exams with <span className="text-primary">PrepMate</span>
             </h1>
-            <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Explore thousands of expert-led courses and powerful AI tools to boost your skills and workflow.
+            <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+              Your ultimate AI-powered companion for exam preparation. Access past questions, detailed solutions, and track your progress to ace your tests.
             </p>
-            <div className="mt-10 flex justify-center gap-4">
+            <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
               <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Link href="/courses">Explore Courses <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                <Link href="/auth/register">Get Started for Free <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
                <Button size="lg" variant="outline" asChild>
-                 <Link href="/marketplace">Discover AI Tools <Wand2 className="ml-2 h-5 w-5" /></Link>
+                 <Link href="/#features">Learn More</Link>
                </Button>
             </div>
-            <div className="mt-16">
-              <Image
+          </div>
+        </section>
+        
+        {/* Platform Image Section */}
+        <section className="py-16 -mt-16">
+           <div className="container mx-auto max-w-screen-xl px-4">
+             <Image
                 src="https://placehold.co/1200x600.png"
-                alt="Online learning platform with AI tools"
+                alt="PrepMate Platform Interface"
                 width={1200}
                 height={600}
-                className="rounded-lg shadow-xl mx-auto"
-                data-ai-hint="online learning platform"
+                className="rounded-lg shadow-2xl mx-auto ring-1 ring-border/10"
+                data-ai-hint="exam preparation platform"
               />
-            </div>
-          </div>
+           </div>
         </section>
 
         {/* Features Section */}
-        <section className="py-16 md:py-24 bg-background">
+        <section id="features" className="py-16 md:py-24 bg-background">
           <div className="container mx-auto max-w-screen-xl px-4">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-4">Why Choose Asemi?</h2>
+            <h2 className="text-3xl font-bold text-center text-foreground mb-4">Why PrepMate is Your Best Choice</h2>
             <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
-              We provide the resources and AI-powered tools you need to succeed.
+              We provide the best tools and resources you need to succeed in your academic journey.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md border">
                  <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
-                   <Users className="h-8 w-8" />
+                   <BookOpen className="h-8 w-8" />
                  </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">Expert Instructors</h3>
-                 <p className="text-muted-foreground text-sm">Learn from industry professionals with real-world experience.</p>
+                 <h3 className="text-xl font-semibold text-foreground mb-2">Extensive Question Bank</h3>
+                 <p className="text-muted-foreground text-sm">Access thousands of past questions from major exams like JAMB, WAEC, and more, complete with detailed explanations.</p>
                </div>
-               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md">
+               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md border">
                  <div className="p-3 rounded-full bg-accent/10 text-accent mb-4">
-                    <Video className="h-8 w-8" />
+                    <Users className="h-8 w-8" />
                  </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">Flexible Learning</h3>
-                 <p className="text-muted-foreground text-sm">Access courses anytime, anywhere, and learn at your own pace.</p>
+                 <h3 className="text-xl font-semibold text-foreground mb-2">AI-Powered Assistance</h3>
+                 <p className="text-muted-foreground text-sm">Our AI provides instant feedback, identifies your weak points, and suggests personalized study plans to help you improve.</p>
                </div>
-               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md">
+               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md border">
                   <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
                      <CheckCircle className="h-8 w-8" />
                   </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">Wide Range of Courses</h3>
-                 <p className="text-muted-foreground text-sm">From tech to business, find courses that match your interests.</p>
-               </div>
-                <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md">
-                  <div className="p-3 rounded-full bg-accent/10 text-accent mb-4">
-                     <Wand2 className="h-8 w-8" />
-                  </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">AI Tools Marketplace</h3>
-                 <p className="text-muted-foreground text-sm">Enhance your workflow with powerful, customizable AI tools.</p>
+                 <h3 className="text-xl font-semibold text-foreground mb-2">Performance Analytics</h3>
+                 <p className="text-muted-foreground text-sm">Track your progress over time with intuitive dashboards. See your scores, completion rates, and areas needing more focus.</p>
                </div>
              </div>
-          </div>
-        </section>
-
-        {/* Featured Courses Section */}
-        <section className="py-16 md:py-24 bg-secondary/30">
-          <div className="container mx-auto max-w-screen-xl px-4">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-12">Featured Courses</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredCourses.length > 0 ? (
-                featuredCourses.map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))
-              ) : (
-                <div className="col-span-full text-center text-muted-foreground">No featured courses available.</div>
-              )}
-            </div>
-            <div className="mt-12 text-center">
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/courses">View All Courses <ArrowRight className="ml-2 h-5 w-5" /></Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Featured AI Tools Section */}
-        <section className="py-16 md:py-24 bg-background">
-          <div className="container mx-auto max-w-screen-xl px-4">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-12">Featured AI Tools</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredTools.length > 0 ? (
-                featuredTools.map((tool) => (
-                  <AIToolCard key={tool.id} tool={tool} />
-                ))
-              ) : (
-                <div className="col-span-full text-center text-muted-foreground">No featured AI tools available.</div>
-              )}
-            </div>
-            <div className="mt-12 text-center">
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/marketplace">Explore AI Marketplace <ArrowRight className="ml-2 h-5 w-5" /></Link>
-              </Button>
-            </div>
           </div>
         </section>
 
         {/* Call to Action Section */}
         <section className="py-16 md:py-24 bg-primary text-primary-foreground">
           <div className="container mx-auto max-w-screen-md px-4 text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to Start Learning & Building?</h2>
+            <h2 className="text-3xl font-bold mb-6">Ready to Ace Your Exams?</h2>
             <p className="text-lg mb-8">
-              Join thousands of learners and innovators. Take your skills and projects to the next level.
+              Join thousands of students who trust PrepMate to achieve their academic goals. Sign up today and start your journey to success.
             </p>
             <Button size="lg" variant="secondary" asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link href="/auth/register">Sign Up Now</Link>
+              <Link href="/auth/register">Sign Up for Free</Link>
             </Button>
           </div>
         </section>

@@ -10,7 +10,7 @@ const Logo = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
     <Link href="/" className="flex items-center gap-2 group">
       <GraduationCap className={`text-primary group-hover:text-primary/80 transition-colors`} size={iconSize} />
       <span className={`font-bold ${textSizeClass} text-foreground group-hover:text-foreground/80 transition-colors`}>
-        Asemi
+        PrepMate
       </span>
     </Link>
   );

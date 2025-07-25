@@ -1,208 +1,143 @@
 
-import type { Course, UserProfile, Enrollment, Instructor, CourseModule, Lesson, AITool, AIToolFormDataInput, CourseFormData } from './types';
-import { auth } from '@/lib/firebase';
+import type { Exam, UserProfile, ExamFormData } from './types';
 
-export const mockInstructors: Instructor[] = [
-  { id: 'inst1', name: 'Alice Wonderland', bio: 'Expert in Web Development with 10 years of experience.', avatarUrl: 'https://picsum.photos/seed/alice/100/100', title: 'Senior Web Developer' },
-  { id: 'inst2', name: 'Bob The Builder', bio: 'Passionate about UI/UX design and teaching.', avatarUrl: 'https://picsum.photos/seed/bob/100/100', title: 'Lead UX Designer' },
-  { id: 'inst3', name: 'Charlie Brown', bio: 'Data Science enthusiast and practitioner.', avatarUrl: 'https://picsum.photos/seed/charlie/100/100', title: 'Data Scientist' },
-];
-
-export let mockCourses: Course[] = [
-  {
-    id: 'course1',
-    slug: 'nextjs-bootcamp',
-    title: 'Next.js Bootcamp: From Zero to Hero',
-    description: 'Master Next.js 15 with hands-on projects and real-world applications.',
-    longDescription: 'Learn Next.js 15 from the ground up with this comprehensive bootcamp. You\'ll build real-world applications, understand server-side rendering, and deploy your projects.',
-    thumbnailUrl: 'https://picsum.photos/seed/nextjs/400/250',
-    price: 49.99,
-    category: 'Web Development',
-    instructor: mockInstructors[0],
-    modules: [
-      {
-        id: 'm1c1',
-        title: 'Getting Started with Next.js',
-        moduleOrder: 0,
-        lessons: [
-          {
-            id: 'l1m1c1',
-            title: 'Introduction to Next.js',
-            contentType: 'video',
-            content: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-            duration: '15m',
-            isPreviewable: true,
-            lessonOrder: 0,
-          },
-          {
-            id: 'l2m1c1',
-            title: 'Setting up your development environment',
-            contentType: 'text',
-            content: 'Learn how to set up your development environment for Next.js development.',
-            duration: '10m',
-            isPreviewable: false,
-            lessonOrder: 1,
-          }
+export let mockExams: Exam[] = [
+    {
+        id: 'exam1',
+        title: 'JAMB 2023 Chemistry',
+        description: 'Past questions for the Joint Admissions and Matriculation Board (JAMB) 2023 Chemistry paper.',
+        subject: 'Chemistry',
+        year: 2023,
+        imageUrl: 'https://placehold.co/400x250.png',
+        questions: [
+            {
+                id: 'q1',
+                text: 'Which of the following is a noble gas?',
+                options: [
+                    { id: 'A', text: 'Oxygen' },
+                    { id: 'B', text: 'Nitrogen' },
+                    { id: 'C', text: 'Argon' },
+                    { id: 'D', text: 'Chlorine' },
+                ],
+                correctOptionId: 'C',
+                explanation: 'Argon is in Group 18 of the periodic table, making it a noble gas.',
+            },
+            {
+                id: 'q2',
+                text: 'What is the chemical formula for water?',
+                options: [
+                    { id: 'A', text: 'CO2' },
+                    { id: 'B', text: 'H2O' },
+                    { id: 'C', text: 'O2' },
+                    { id: 'D', text: 'NaCl' },
+                ],
+                correctOptionId: 'B',
+                explanation: 'H2O represents two hydrogen atoms and one oxygen atom, the composition of water.',
+            }
         ]
-      }
-    ],
-    previewVideoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    level: 'Beginner',
-    tags: ['nextjs', 'react', 'javascript', 'web-development'],
-    paymentLink: 'https://buy.stripe.com/test',
-    redirectLink: '/learn/nextjs-bootcamp',
-  }
+    },
+    {
+        id: 'exam2',
+        title: 'WAEC 2022 Mathematics',
+        description: 'Past questions for the West African Examinations Council (WAEC) 2022 Mathematics paper.',
+        subject: 'Mathematics',
+        year: 2022,
+        imageUrl: 'https://placehold.co/400x250.png',
+        questions: [
+            {
+                id: 'q1',
+                text: 'If x - 4 = 8, what is the value of x?',
+                options: [
+                    { id: 'A', text: '4' },
+                    { id: 'B', text: '12' },
+                    { id: 'C', 'text': '2' },
+                    { id: 'D', 'text': '-4' },
+                ],
+                correctOptionId: 'B',
+                explanation: 'Add 4 to both sides of the equation: x - 4 + 4 = 8 + 4, which simplifies to x = 12.',
+            }
+        ]
+    }
 ];
 
 export let mockUserProfiles: UserProfile[] = [
-  // IMPORTANT: To login as an admin, you must first create this user in the application
-  // via the registration page. Use the email 'spellz49@gmail.com' and any password.
-  // The system will then grant this user admin privileges based on the email.
+  // This user will be automatically granted admin privileges if registered with this email.
   {
-    id: 'GhqyPnaT79csl59mY2j2aDk1M792', // This is a placeholder UID and will be replaced by the actual Firebase UID on registration.
+    id: 'admin_placeholder_uid', 
     email: 'spellz49@gmail.com',
     displayName: 'Admin User',
-    avatarUrl: 'https://picsum.photos/seed/admin1/100/100',
-    enrolledCourseIds: [],
-    purchasedToolIds: [],
+    avatarUrl: 'https://avatar.vercel.sh/admin.png',
     isAdmin: true,
+    activeSubscription: true,
   },
-];
-
-export let mockEnrollments: Enrollment[] = [];
-
-
-// AI Tool Marketplace Mock Data
-export let mockAITools: AITool[] = [
-  {
-    id: 'tool1',
-    name: 'AI Code Assistant',
-    description: 'Advanced AI-powered code completion and suggestions for developers.',
-    price: 29.99,
-    thumbnailUrl: 'https://picsum.photos/seed/ai-code/400/250',
-    previewLink: 'https://example.com/ai-code-demo',
-    tags: ['ai', 'coding', 'productivity'],
-    paymentLink: 'https://buy.stripe.com/test',
-    redirectLink: '/tools/tool1/access',
-  }
+   {
+    id: 'user1_placeholder_uid', 
+    email: 'testuser@example.com',
+    displayName: 'Test User',
+    avatarUrl: 'https://avatar.vercel.sh/testuser.png',
+    isAdmin: false,
+    activeSubscription: false,
+  },
 ];
 
 // --- Mock Data Functions ---
 
-// Courses
-export const getCourseBySlug = (slug: string): Course | undefined => mockCourses.find(course => course.slug === slug);
-export const getCourseById = (id: string): Course | undefined => mockCourses.find(course => course.id === id);
-export const addCourse = (courseData: CourseFormData): Course => {
-    // Simulate adding a course
-    const newCourse: Course = {
-        id: `course${mockCourses.length + 1}`, // Simple ID generation
-        slug: courseData.slug,
-        title: courseData.title,
-        description: courseData.description,
-        longDescription: courseData.longDescription,
-        thumbnailUrl: courseData.thumbnailUrl,
-        price: courseData.price,
-        category: courseData.category,
-        instructor: mockInstructors.find(inst => inst.name === courseData.instructorName) || mockInstructors[0], // Simplified instructor linking
-        modules: courseData.modules.map((mod, modIndex) => ({
-            id: `m${modIndex + 1}c${mockCourses.length + 1}`,
-            title: mod.title,
-            moduleOrder: mod.moduleOrder,
-            lessons: mod.lessons.map((lesson, lessonIndex) => ({
-                id: `l${lessonIndex + 1}m${modIndex + 1}c${mockCourses.length + 1}`,
-                ...lesson,
+// Exams
+export const getAllExams = (): Exam[] => mockExams;
+export const getExamById = (id: string): Exam | undefined => mockExams.find(exam => exam.id === id);
+export const addExam = (examData: ExamFormData): Exam => {
+    const newExam: Exam = {
+        id: `exam${Date.now()}`,
+        ...examData,
+        year: examData.year || undefined,
+        imageUrl: examData.imageUrl || undefined,
+        questions: examData.questions.map((q, qIndex) => ({
+            id: `q${Date.now()}-${qIndex}`,
+            text: q.text,
+            imageUrl: q.imageUrl || undefined,
+            explanation: q.explanation || undefined,
+            options: q.options.map((opt, optIndex) => ({
+                id: String.fromCharCode(65 + optIndex), // A, B, C, D
+                text: opt.text,
             })),
+            correctOptionId: String.fromCharCode(65 + q.correctOptionIndex),
         })),
-        previewVideoUrl: courseData.previewVideoUrl,
-        level: courseData.level,
-        tags: courseData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
-        paymentLink: courseData.paymentLink,
-        redirectLink: courseData.redirectLink,
-        // rating, numberOfRatings, totalLessons, duration would be calculated or added later
     };
-    mockCourses.push(newCourse);
-    console.log("Mock Course Added:", newCourse);
-    return newCourse;
+    mockExams.unshift(newExam); // Add to the beginning of the array
+    console.log("Mock Exam Added:", newExam);
+    return newExam;
 }
-export const updateCourse = (courseId: string, courseData: CourseFormData): Course | undefined => {
-    const courseIndex = mockCourses.findIndex(c => c.id === courseId);
-    if (courseIndex === -1) return undefined;
-
-    const existingCourse = mockCourses[courseIndex];
-    const updatedCourse: Course = {
-        ...existingCourse,
-        title: courseData.title,
-        slug: courseData.slug,
-        description: courseData.description,
-        longDescription: courseData.longDescription,
-        thumbnailUrl: courseData.thumbnailUrl,
-        price: courseData.price,
-        category: courseData.category,
-        level: courseData.level,
-        tags: courseData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
-        instructor: mockInstructors.find(inst => inst.name === courseData.instructorName) || existingCourse.instructor,
-        previewVideoUrl: courseData.previewVideoUrl,
-        paymentLink: courseData.paymentLink,
-        redirectLink: courseData.redirectLink,
-        modules: courseData.modules.map((mod, modIndex) => ({
-            id: mod.id || `m${modIndex + 1}c${courseId}-new`, // Assign new ID if missing
-            title: mod.title,
-            moduleOrder: mod.moduleOrder,
-            lessons: mod.lessons.map((lesson, lessonIndex) => ({
-                id: lesson.id || `l${lessonIndex + 1}m${mod.id || modIndex + 1}c${courseId}-new`, // Assign new ID if missing
-                ...lesson,
-            })),
-        })),
-        // Recalculate derived fields if necessary
-    };
-
-    mockCourses[courseIndex] = updatedCourse;
-    console.log("Mock Course Updated:", updatedCourse);
-    return updatedCourse;
-}
-
-export const deleteCourse = (courseId: string): boolean => {
-     const initialLength = mockCourses.length;
-     mockCourses = mockCourses.filter(c => c.id !== courseId);
-     const success = mockCourses.length < initialLength;
-     if (success) console.log("Mock Course Deleted:", courseId);
+export const deleteExam = (examId: string): boolean => {
+     const initialLength = mockExams.length;
+     mockExams = mockExams.filter(e => e.id !== examId);
+     const success = mockExams.length < initialLength;
+     if (success) console.log("Mock Exam Deleted:", examId);
      return success;
 }
 
 
 // Users
 export const getUserProfile = (id: string): UserProfile | undefined => {
-    const user = mockUserProfiles.find(user => user.id === id);
-    if(user) return user;
-    // Check if the registered user's email matches the admin email
-    const adminConfig = mockUserProfiles.find(p => p.email === 'spellz49@gmail.com');
-    if (adminConfig) {
-        // If an admin logs in whose UID is not the placeholder one, check by email.
-        const authUser = auth.currentUser;
-        if (authUser && authUser.email === 'spellz49@gmail.com') {
-             // Return the admin profile template, which will be saved with the correct UID later
-            return { ...adminConfig, id: authUser.uid };
-        }
-    }
-    return undefined;
+    return mockUserProfiles.find(user => user.id === id);
 };
 
 export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserProfile | undefined => {
-    const userIndex = mockUserProfiles.findIndex(u => u.id === id);
+    let userIndex = mockUserProfiles.findIndex(u => u.id === id);
+
     if (userIndex !== -1) {
-        mockUserProfiles[userIndex] = { ...mockUserProfiles[userIndex], ...data };
+        // Update existing user
+        mockUserProfiles[userIndex] = { ...mockUserProfiles[userIndex], ...data, id };
         console.log(`Mock User Updated: ${id}`, mockUserProfiles[userIndex]);
         return mockUserProfiles[userIndex];
     } else {
-        // If user doesn't exist, create them (for new registrations / Google Sign-In)
+        // Create new user profile
         const newUser: UserProfile = {
             id: id,
             email: data.email || null,
             displayName: data.displayName || null,
             avatarUrl: data.avatarUrl || null,
-            enrolledCourseIds: [],
-            purchasedToolIds: [],
             isAdmin: data.email === 'spellz49@gmail.com', // Grant admin if email matches
+            activeSubscription: false, // Default value
             ...data
         };
         mockUserProfiles.push(newUser);
@@ -210,93 +145,3 @@ export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserP
         return newUser;
     }
 };
-
-// Function to add a course to a user's enrolled list (simulates purchase completion)
-export const enrollUserInCourse = (userId: string, courseId: string): boolean => {
-    const userIndex = mockUserProfiles.findIndex(u => u.id === userId);
-    if (userIndex === -1) return false;
-    if (!mockUserProfiles[userIndex].enrolledCourseIds?.includes(courseId)) {
-        mockUserProfiles[userIndex].enrolledCourseIds = [...(mockUserProfiles[userIndex].enrolledCourseIds || []), courseId];
-        // Add a basic enrollment record too
-        mockEnrollments.push({
-            id: `enroll-${userId}-${courseId}-${Date.now()}`,
-            userId: userId,
-            courseId: courseId,
-            enrolledAt: new Date(),
-            progress: 0,
-            completedLessons: [],
-        });
-        console.log(`Mock: User ${userId} enrolled in course ${courseId}`);
-        return true;
-    }
-    return false; // Already enrolled
-}
-
-// Function to add a tool to a user's purchased list (simulates purchase completion)
-export const addPurchasedToolToUser = (userId: string, toolId: string): boolean => {
-    const userIndex = mockUserProfiles.findIndex(u => u.id === userId);
-    if (userIndex === -1) return false;
-    if (!mockUserProfiles[userIndex].purchasedToolIds?.includes(toolId)) {
-        mockUserProfiles[userIndex].purchasedToolIds = [...(mockUserProfiles[userIndex].purchasedToolIds || []), toolId];
-        console.log(`Mock: User ${userId} purchased tool ${toolId}`);
-        return true;
-    }
-    return false; // Already purchased
-}
-
-
-// Enrollments
-export const getEnrollmentsByUserId = (userId: string): Enrollment[] => mockEnrollments.filter(enrollment => enrollment.userId === userId);
-
-// AI Tools
-export const getAllAITools = (): AITool[] => mockAITools;
-export const addAITool = (toolData: AIToolFormDataInput): AITool => {
-    const newTool: AITool = {
-        id: `tool${mockAITools.length + 1}`, // Simple ID generation
-        name: toolData.name,
-        description: toolData.description,
-        price: toolData.price,
-        thumbnailUrl: toolData.thumbnailUrl,
-        previewLink: toolData.previewLink,
-        tags: toolData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
-        paymentLink: toolData.paymentLink,
-        redirectLink: toolData.redirectLink,
-    };
-    mockAITools.push(newTool);
-    console.log("Mock AI Tool Added:", newTool);
-    return newTool;
-}
-
-export const deleteAITool = (toolId: string): boolean => {
-    const initialLength = mockAITools.length;
-    mockAITools = mockAITools.filter(t => t.id !== toolId);
-    const success = mockAITools.length < initialLength;
-    if (success) console.log("Mock AI Tool Deleted:", toolId);
-    return success;
-};
-
-export const getAIToolById = (id: string): AITool | undefined => mockAITools.find(tool => tool.id === id);
-
-export const updateAITool = (toolId: string, toolData: AIToolFormDataInput): AITool | undefined => {
-    const toolIndex = mockAITools.findIndex(t => t.id === toolId);
-    if (toolIndex === -1) return undefined;
-
-    const existingTool = mockAITools[toolIndex];
-    const updatedTool: AITool = {
-        ...existingTool,
-        name: toolData.name,
-        description: toolData.description,
-        price: toolData.price,
-        thumbnailUrl: toolData.thumbnailUrl,
-        previewLink: toolData.previewLink,
-        tags: toolData.tags?.split(',').map(tag => tag.trim()).filter(Boolean) || [],
-        paymentLink: toolData.paymentLink,
-        redirectLink: toolData.redirectLink,
-    };
-
-    mockAITools[toolIndex] = updatedTool;
-    console.log("Mock AI Tool Updated:", updatedTool);
-    return updatedTool;
-}
-
-

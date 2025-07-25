@@ -1,44 +1,45 @@
 
-import { CourseList } from '@/components/courses/CourseList';
-import { mockCourses } from '@/lib/mockData';
+
+import { getAllExams } from '@/lib/mockData';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Filter, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { ExamCard } from '@/components/exams/ExamCard';
+import type { Exam } from '@/lib/types';
 
-export default function CoursesPage() {
+export default function ExamsPage() {
   // Defensive: always array
-  const courses = Array.isArray(mockCourses) ? mockCourses : [];
+  const exams: Exam[] = Array.isArray(getAllExams()) ? getAllExams() : [];
 
   return (
     <div className="space-y-8">
       <section className="bg-card p-6 rounded-lg shadow">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Explore Our Courses</h1>
-        <p className="mt-2 text-muted-foreground">Find the perfect course to boost your skills and career.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Explore Our Exams</h1>
+        <p className="mt-2 text-muted-foreground">Find the perfect exam to practice and boost your skills.</p>
       </section>
 
       {/* Filters and Search Section */}
       <section className="bg-card p-6 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           <div className="lg:col-span-2">
-            <label htmlFor="search" className="block text-sm font-medium text-muted-foreground mb-1">Search Courses</label>
+            <label htmlFor="search" className="block text-sm font-medium text-muted-foreground mb-1">Search Exams</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="search" type="search" placeholder="Search by keyword, title..." className="pl-9" />
+              <Input id="search" type="search" placeholder="Search by subject, title..." className="pl-9" />
             </div>
           </div>
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-muted-foreground mb-1">Category</label>
+            <label htmlFor="category" className="block text-sm font-medium text-muted-foreground mb-1">Subject</label>
             <Select>
               <SelectTrigger id="category">
-                <SelectValue placeholder="All Categories" />
+                <SelectValue placeholder="All Subjects" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="web-dev">Web Development</SelectItem>
-                <SelectItem value="design">Web Design</SelectItem>
-                <SelectItem value="data-science">Data Science</SelectItem>
-                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="all">All Subjects</SelectItem>
+                <SelectItem value="chemistry">Chemistry</SelectItem>
+                <SelectItem value="mathematics">Mathematics</SelectItem>
+                <SelectItem value="physics">Physics</SelectItem>
+                <SelectItem value="english">English</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -46,31 +47,25 @@ export default function CoursesPage() {
             <label htmlFor="sort" className="block text-sm font-medium text-muted-foreground mb-1">Sort By</label>
             <Select>
               <SelectTrigger id="sort">
-                <SelectValue placeholder="Popularity" />
+                <SelectValue placeholder="Newest" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="popularity">Popularity</SelectItem>
-                <SelectItem value="rating">Rating</SelectItem>
                 <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
               </SelectContent>
             </Select>
           </div>
-           {/* 
-           <div className="lg:col-start-4">
-             <Button className="w-full">
-               <Filter className="mr-2 h-4 w-4" /> Apply Filters
-             </Button>
-           </div>
-           */}
         </div>
       </section>
 
-      {courses.length > 0 ? (
-        <CourseList courses={courses} />
+      {exams.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {exams.map((exam) => (
+                <ExamCard key={exam.id} exam={exam} />
+            ))}
+        </div>
       ) : (
-        <div className="text-center text-muted-foreground py-10">No courses found.</div>
+        <div className="text-center text-muted-foreground py-10">No exams found.</div>
       )}
     </div>
   );

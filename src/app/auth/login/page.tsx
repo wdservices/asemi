@@ -29,9 +29,11 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, login, isAdmin } = useAuth();
+  const { user, login } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const { isAdmin } = useAuth();
+
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
