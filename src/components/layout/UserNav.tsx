@@ -20,16 +20,8 @@ export function UserNav() {
   const { user, logout, isAdmin } = useAuth();
 
   if (!user) {
-    return (
-      <div className="flex items-center gap-2">
-        <Button variant="outline" asChild>
-          <Link href="/auth/login">Login</Link>
-        </Button>
-        <Button asChild>
-          <Link href="/auth/register">Sign Up</Link>
-        </Button>
-      </div>
-    );
+    // Return null or a placeholder if you don't want to show anything when logged out
+    return null;
   }
 
   const initials = user.displayName

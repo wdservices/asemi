@@ -15,7 +15,9 @@ import Logo from '@/components/layout/Logo';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+
 
 const registerSchema = z.object({
   displayName: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -47,22 +49,7 @@ export default function RegisterPage() {
   }, [user, router]);
 
   async function onSubmit(values: RegisterFormValues) {
-    try {
-      await register(values.email, values.password, values.displayName);
-      toast({ title: "Registration Successful", description: `Welcome to Asemi, ${values.displayName}!` });
-      router.push('/dashboard');
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      let errorMessage = "Could not create your account. Please try again.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "An account with this email already exists.";
-      }
-      toast({
-        title: "Registration Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
+    // This functionality is disabled
   }
 
   return (
@@ -71,74 +58,83 @@ export default function RegisterPage() {
          <div className="flex justify-center mb-4">
           <Logo />
         </div>
-        <CardTitle className="text-2xl">Create an Account</CardTitle>
+        <CardTitle className="text-2xl">Registration Disabled</CardTitle>
         <CardDescription>
-          Enter your details below to get started with Asemi.
+          User registration is temporarily disabled.
         </CardDescription>
       </CardHeader>
       <CardContent>
+         <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Functionality Disabled</AlertTitle>
+            <AlertDescription>
+                Login and registration are currently unavailable. Please check back later.
+            </AlertDescription>
+        </Alert>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="displayName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="m@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                       <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
-                       <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Creating account...' : 'Create Account'}
-            </Button>
+            <fieldset disabled>
+                <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                        <Input type="email" placeholder="m@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                        <div className="relative">
+                        <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
+                        </div>
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled>
+                Create Account
+                </Button>
+            </fieldset>
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="text-center text-sm">
+      <CardFooter className="flex justify-center text-sm">
          <p className="text-muted-foreground">
-            Already have an account?{' '}
-            <Link href="/auth/login" className="font-medium text-primary hover:underline">
-              Login
+            Need to go back?{' '}
+            <Link href="/" className="font-medium text-primary hover:underline">
+              Home
             </Link>
           </p>
       </CardFooter>
