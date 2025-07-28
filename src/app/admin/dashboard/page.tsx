@@ -29,10 +29,10 @@ ChartJS.register(
 );
 
 const stats = [
-  { title: "Monthly Revenue", value: "$1,250", icon: DollarSign, change: "+12.5%" , changeType: "positive" as "positive" | "negative", iconBg: "bg-blue-100 dark:bg-blue-900/50", iconColor: "text-blue-500 dark:text-blue-400" },
-  { title: "Total Registered Users", value: "840", icon: Users, change: "+80" , changeType: "positive" as "positive" | "negative", iconBg: "bg-green-100 dark:bg-green-900/50", iconColor: "text-green-500 dark:text-green-400"},
-  { title: "Active Users (24h)", value: "150", icon: Activity, change: "-5.2%" , changeType: "negative" as "positive" | "negative", iconBg: "bg-red-100 dark:bg-red-900/50", iconColor: "text-red-500 dark:text-red-400"},
-  { title: "Total Courses", value: "12", icon: Book, change: "+2" , changeType: "positive" as "positive" | "negative", iconBg: "bg-purple-100 dark:bg-purple-900/50", iconColor: "text-purple-500 dark:text-purple-400"},
+  { title: "Monthly Revenue", value: "$1,250", icon: DollarSign, change: "+12.5%" , changeType: "positive" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-blue-500 to-blue-400", textColor: "text-blue-500" },
+  { title: "Total Registered Users", value: "840", icon: Users, change: "+80" , changeType: "positive" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-green-500 to-green-400", textColor: "text-green-500"},
+  { title: "Active Users (24h)", value: "150", icon: Activity, change: "-5.2%" , changeType: "negative" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-orange-500 to-orange-400", textColor: "text-orange-500"},
+  { title: "Total Courses", value: "12", icon: Book, change: "+2" , changeType: "positive" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-purple-500 to-purple-400", textColor: "text-purple-500"},
 ];
 
 const getChartData = (isDark: boolean): { engagement: ChartData<'bar'>, popularity: ChartData<'bar'> } => ({
@@ -148,13 +148,13 @@ export default function AdminDashboardPage() {
         {stats.map((stat) => (
           <Card key={stat.title} className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <div className={`p-3 rounded-full ${stat.iconBg}`}>
-                <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+               <div className={`p-3 rounded-full ${stat.iconBg} text-white`}>
+                <stat.icon className="h-6 w-6" />
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">{stat.title}</p>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</div>
               <p className={`text-xs ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'} flex items-center gap-1`}>
                 {stat.change}
                  <span className="text-muted-foreground text-xs font-normal">from last month</span>
@@ -241,6 +241,8 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
 
     
 
