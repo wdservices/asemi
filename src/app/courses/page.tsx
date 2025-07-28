@@ -1,5 +1,4 @@
 
-
 import { getAllCourses } from '@/lib/mockData';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,9 +6,8 @@ import { Search } from 'lucide-react';
 import { CourseCard } from '@/components/courses/CourseCard';
 import type { Course } from '@/lib/types';
 
-export default function CoursesPage() {
-  // Defensive: always array
-  const courses: Course[] = Array.isArray(getAllCourses()) ? getAllCourses() : [];
+export default async function CoursesPage() {
+  const courses: Course[] = await getAllCourses();
 
   return (
     <div className="space-y-8">

@@ -32,7 +32,7 @@ export function AIToolCard({ tool }: AIToolCardProps) {
   }, [userProfile, tool]);
 
 
-  const handleMockPurchase = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMockPurchase = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
 
       if (!user) {
@@ -42,7 +42,7 @@ export function AIToolCard({ tool }: AIToolCardProps) {
       }
       if (tool && user) {
           // MOCK: Simulate successful purchase
-          const success = addPurchasedToolToUser(user.uid, tool.id);
+          const success = await addPurchasedToolToUser(user.uid, tool.id);
           if (success) {
               // Update the user state in the Auth context
               updateUserProfile({ purchasedToolIds: [...(userProfile?.purchasedToolIds || []), tool.id] });

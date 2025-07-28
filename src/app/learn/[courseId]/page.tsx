@@ -27,19 +27,22 @@ export default function CourseLearnPage() {
 
   useEffect(() => {
     if (courseSlug) {
-      const fetchedCourse = getCourseBySlug(courseSlug);
-      if (fetchedCourse) {
-        setCourse(fetchedCourse);
-        // Default to the first lesson of the first module
-        if (fetchedCourse.modules && fetchedCourse.modules.length > 0 && fetchedCourse.modules[0].lessons.length > 0) {
-          setCurrentLesson(fetchedCourse.modules[0].lessons[0]);
+      const fetchCourse = async () => {
+        const fetchedCourse = await getCourseBySlug(courseSlug);
+        if (fetchedCourse) {
+          setCourse(fetchedCourse);
+          // Default to the first lesson of the first module
+          if (fetchedCourse.modules && fetchedCourse.modules.length > 0 && fetchedCourse.modules[0].lessons.length > 0) {
+            setCurrentLesson(fetchedCourse.modules[0].lessons[0]);
+          } else {
+            // Handle case with no lessons or modules
+          }
         } else {
-          // Handle case with no lessons or modules
+          router.push('/dashboard'); // Course not found
         }
-      } else {
-        router.push('/dashboard'); // Course not found
+        setIsLoading(false);
       }
-      setIsLoading(false);
+      fetchCourse();
     }
   }, [courseSlug, router]);
 

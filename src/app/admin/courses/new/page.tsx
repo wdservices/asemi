@@ -64,13 +64,20 @@ export default function NewCoursePage() {
   });
 
   async function onSubmit(values: CourseFormData) {
-    console.log("New course data:", values);
-    addCourse(values);
-    toast({
-      title: "Course Created (Mock)",
-      description: `The course "${values.title}" has been successfully created.`,
-    });
-    router.push("/admin/courses");
+    const newCourse = await addCourse(values);
+    if (newCourse) {
+        toast({
+        title: "Course Created",
+        description: `The course "${values.title}" has been successfully created.`,
+        });
+        router.push("/admin/courses");
+    } else {
+        toast({
+        title: "Error",
+        description: `Failed to create course "${values.title}".`,
+        variant: 'destructive'
+        });
+    }
   }
 
   return (

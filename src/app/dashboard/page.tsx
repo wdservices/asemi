@@ -17,13 +17,16 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (userProfile) {
-      // In a real app, you would fetch recent courses based on user activity
-      // For now, we'll just show the first few mock courses as "recent"
-      const allCourses = getAllCourses();
-      setRecentCourses(allCourses.slice(0, 3));
+    const fetchCourses = async () => {
+        if (userProfile) {
+        // In a real app, you would fetch recent courses based on user activity
+        // For now, we'll just show the first few mock courses as "recent"
+        const allCourses = await getAllCourses();
+        setRecentCourses(allCourses.slice(0, 3));
+        }
+        setIsLoading(false);
     }
-    setIsLoading(false);
+    fetchCourses();
   }, [userProfile]);
 
   if (isLoading) {

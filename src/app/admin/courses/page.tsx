@@ -19,16 +19,18 @@ export default function AdminCoursesPage() {
   const { toast } = useToast();
 
    useEffect(() => {
-    // Fetch courses on mount
-    setTimeout(() => {
-        setCourses(getAllCourses());
+    const fetchCourses = async () => {
+        setIsLoading(true);
+        const fetchedCourses = await getAllCourses();
+        setCourses(fetchedCourses);
         setIsLoading(false);
-    }, 500);
+    }
+    fetchCourses();
   }, []);
 
-  const handleDeleteCourse = (courseId: string, courseTitle: string) => {
+  const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
     if(confirm(`Are you sure you want to delete the course "${courseTitle}"? This action cannot be undone.`)) {
-        const success = deleteCourse(courseId);
+        const success = await deleteCourse(courseId);
         if (success) {
             toast({ title: "Course Deleted", description: `Course "${courseTitle}" has been deleted.`, variant: "default" });
             setCourses(prevCourses => prevCourses.filter(course => course.id !== courseId));

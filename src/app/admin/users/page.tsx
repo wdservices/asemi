@@ -1,6 +1,8 @@
 
 "use client";
-import { mockUserProfiles } from '@/lib/mockData';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,10 +11,26 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MoreHorizontal, Edit, Trash2, ShieldCheck, UserCog } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect, useState } from 'react';
+
+async function getAllUsers(): Promise<UserProfile[]> {
+    const usersCol = collection(db, 'users');
+    const userSnapshot = await getDocs(usersCol);
+    return userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+}
+
 
 export default function AdminUsersPage() {
-  const users = mockUserProfiles; // In a real app, fetch users from backend
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+        const userList = await getAllUsers();
+        setUsers(userList);
+    }
+    fetchUsers();
+  }, []);
 
   const handleRoleChange = (userId: string, currentRole: boolean | undefined) => {
     // Placeholder for role change functionality

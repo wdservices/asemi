@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type { UserProfile } from '@/lib/types';
-import { getUserProfile, updateUserProfile as updateMockUserProfile } from '@/lib/mockData';
+import { getUserProfile, updateUserProfile as updateDbUserProfile } from '@/lib/mockData';
 
 interface AuthContextType {
   user: User | null;
@@ -41,28 +41,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setUser(user);
         
-        // Check if the user's email is the admin email.
         const isAdminUser = user.email === 'hello.wdservices@gmail.com';
-        
-        // Attempt to get the profile from mock data.
-        let profile = getUserProfile(user.uid);
+        let profile = await getUserProfile(user.uid);
 
-        // If a profile doesn't exist (e.g., first-time login), create one.
         if (!profile) {
             const newUserProfileData: UserProfile = {
                 id: user.uid,
                 email: user.email,
                 displayName: user.displayName,
                 avatarUrl: user.photoURL,
-                isAdmin: isAdminUser, // Set admin status based on email
+                isAdmin: isAdminUser,
                 enrolledCourseIds: [],
                 purchasedToolIds: []
             };
-            // This function also creates the profile if it doesn't exist
-            profile = updateMockUserProfile(user.uid, newUserProfileData);
+            profile = await updateDbUserProfile(user.uid, newUserProfileData);
         } else if (profile.isAdmin !== isAdminUser) {
-            // If the profile exists, ensure the admin status is correct.
-            profile = updateMockUserProfile(user.uid, { isAdmin: isAdminUser });
+            profile = await updateDbUserProfile(user.uid, { isAdmin: isAdminUser });
         }
 
         setUserProfile(profile || null);
@@ -82,8 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     await updateFirebaseProfile(userCredential.user, { displayName });
     
-    // Create a new user profile in our mock data store.
-    // The isAdmin flag will be set based on the email.
     const newUserProfile: UserProfile = {
         id: userCredential.user.uid,
         email: userCredential.user.email,
@@ -93,8 +85,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         enrolledCourseIds: [],
         purchasedToolIds: []
     };
-    updateMockUserProfile(userCredential.user.uid, newUserProfile);
-    setUserProfile(newUserProfile); // Set the profile for the current session
+    const createdProfile = await updateDbUserProfile(userCredential.user.uid, newUserProfile);
+    setUserProfile(createdProfile || null);
 
     return userCredential;
   };
@@ -111,11 +103,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return sendPasswordResetEmail(auth, email);
   }
 
-  const updateUserProfile = (data: Partial<UserProfile>) => {
+  const updateUserProfile = async (data: Partial<UserProfile>) => {
     if (userProfile) {
-        const updatedProfile = { ...userProfile, ...data };
-        setUserProfile(updatedProfile);
-        updateMockUserProfile(userProfile.id, data);
+        const updatedProfile = await updateDbUserProfile(userProfile.id, data);
+        if(updatedProfile) {
+            setUserProfile(updatedProfile);
+        }
     }
   };
 

@@ -34,15 +34,18 @@ export default function CourseLearnLayout({
 
   useEffect(() => {
     if (courseSlug) {
-      const fetchedCourse = getCourseBySlug(courseSlug);
-      setCourse(fetchedCourse || null);
-      setIsLoadingCourse(false);
-      // Set initial lesson (e.g., first lesson of first module)
-      if (fetchedCourse && fetchedCourse.modules[0]?.lessons[0]) {
-        // Construct lesson slug based on module and lesson IDs or orders
-        // For simplicity, let's assume the children page handles lesson selection or defaults.
-        // setCurrentLessonId(fetchedCourse.modules[0].lessons[0].id);
-      }
+      const fetchCourse = async () => {
+        const fetchedCourse = await getCourseBySlug(courseSlug);
+        setCourse(fetchedCourse || null);
+        setIsLoadingCourse(false);
+        // Set initial lesson (e.g., first lesson of first module)
+        if (fetchedCourse && fetchedCourse.modules[0]?.lessons[0]) {
+          // Construct lesson slug based on module and lesson IDs or orders
+          // For simplicity, let's assume the children page handles lesson selection or defaults.
+          // setCurrentLessonId(fetchedCourse.modules[0].lessons[0].id);
+        }
+      };
+      fetchCourse();
     }
   }, [courseSlug]);
 
