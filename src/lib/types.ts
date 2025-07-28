@@ -12,6 +12,7 @@ export interface Course {
   author: string;
   price: number;
   imageUrl?: string;
+  isPublished?: boolean;
   modules: CourseModule[];
 }
 

@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { getAllCourses, deleteCourse } from '@/lib/mockData';
+import { getAllCourses, deleteCourse, updateCourse } from '@/lib/mockData';
 import type { Course } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, PlusCircle, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -27,6 +29,24 @@ export default function AdminCoursesPage() {
     }
     fetchCourses();
   }, []);
+
+  const handleTogglePublish = async (course: Course) => {
+    const newStatus = !course.isPublished;
+    const success = await updateCourse(course.id, { isPublished: newStatus });
+    if (success) {
+      toast({
+        title: "Course Updated",
+        description: `"${course.title}" has been ${newStatus ? 'published' : 'unpublished'}.`,
+      });
+      setCourses(prev => prev.map(c => c.id === course.id ? { ...c, isPublished: newStatus } : c));
+    } else {
+      toast({
+        title: "Error",
+        description: `Failed to update "${course.title}".`,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
     if(confirm(`Are you sure you want to delete the course "${courseTitle}"? This action cannot be undone.`)) {
@@ -65,7 +85,7 @@ export default function AdminCoursesPage() {
                 <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead className="hidden md:table-cell">Level</TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
                 <TableHead className="hidden md:table-cell">Modules</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
@@ -87,7 +107,11 @@ export default function AdminCoursesPage() {
                     <TableCell>
                         <Badge variant="outline">{course.category || 'N/A'}</Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{course.level || 'N/A'}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant={course.isPublished ? 'default' : 'secondary'}>
+                        {course.isPublished ? 'Published' : 'Draft'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{course.modules.length}</TableCell>
                     <TableCell>
                     <DropdownMenu>
@@ -102,6 +126,11 @@ export default function AdminCoursesPage() {
                         <DropdownMenuItem asChild>
                             <Link href={`/admin/courses/${course.id}/edit`}><Edit className="mr-2 h-4 w-4" />Edit</Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleTogglePublish(course)}>
+                          {course.isPublished ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                          {course.isPublished ? 'Unpublish' : 'Publish'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
                             onClick={() => handleDeleteCourse(course.id, course.title)}

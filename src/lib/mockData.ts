@@ -1,6 +1,6 @@
 
 import { db } from './firebase';
-import { collection, getDocs, getDoc, doc, addDoc, deleteDoc, query, where, setDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, addDoc, deleteDoc, query, where, setDoc, updateDoc } from 'firebase/firestore';
 import type { Course, UserProfile, AITool, CourseFormData, Lesson } from './types';
 
 // --- Courses ---
@@ -42,10 +42,13 @@ export const getCourseBySlug = async (slug: string): Promise<Course | null> => {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             const courseDoc = querySnapshot.docs[0];
-            return { id: courseDoc.id, ...courseDoc.data() } as Course;
-        } else {
-            return null;
+            const courseData = { id: courseDoc.id, ...courseDoc.data() } as Course;
+            // Only return the course if it's published
+            if (courseData.isPublished) {
+                return courseData;
+            }
         }
+        return null;
     } catch (error) {
         console.error("Error fetching course by slug: ", error);
         return null;
@@ -57,6 +60,7 @@ export const addCourse = async (courseData: CourseFormData): Promise<Course | nu
         const newCourseData = {
             ...courseData,
             slug: `${courseData.title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+            isPublished: true, // Courses are published by default
             modules: courseData.modules.map((m, mIndex) => ({
                 id: `m${Date.now()}-${mIndex}`,
                 title: m.title,
@@ -71,6 +75,17 @@ export const addCourse = async (courseData: CourseFormData): Promise<Course | nu
     } catch (error) {
         console.error("Error adding course: ", error);
         return null;
+    }
+};
+
+export const updateCourse = async (courseId: string, data: Partial<Course>): Promise<boolean> => {
+    try {
+        const courseRef = doc(db, 'courses', courseId);
+        await updateDoc(courseRef, data);
+        return true;
+    } catch (error) {
+        console.error("Error updating course: ", error);
+        return false;
     }
 };
 
