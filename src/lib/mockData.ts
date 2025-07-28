@@ -43,10 +43,7 @@ export const getCourseBySlug = async (slug: string): Promise<Course | null> => {
         if (!querySnapshot.empty) {
             const courseDoc = querySnapshot.docs[0];
             const courseData = { id: courseDoc.id, ...courseDoc.data() } as Course;
-            // Only return the course if it's published
-            if (courseData.isPublished) {
-                return courseData;
-            }
+            return courseData; // Return the course regardless of published status
         }
         return null;
     } catch (error) {
