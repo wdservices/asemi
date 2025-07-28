@@ -82,7 +82,7 @@ export let mockUserProfiles: UserProfile[] = [
   // This user will be automatically granted admin privileges if registered with this email.
   {
     id: 'admin_placeholder_uid', 
-    email: 'spellz49@gmail.com',
+    email: 'hello.wdservices@gmail.com',
     displayName: 'Admin User',
     avatarUrl: 'https://avatar.vercel.sh/admin.png',
     isAdmin: true,
@@ -157,7 +157,7 @@ export const updateUserProfile = (id: string, data: Partial<UserProfile>): UserP
             email: data.email || null,
             displayName: data.displayName || null,
             avatarUrl: data.avatarUrl || null,
-            isAdmin: data.email === 'spellz49@gmail.com', // Grant admin if email matches
+            isAdmin: data.email === 'hello.wdservices@gmail.com', // Grant admin if email matches
             enrolledCourseIds: [],
             purchasedToolIds: []
         };

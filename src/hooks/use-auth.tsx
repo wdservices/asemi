@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(user);
         
         // Check if the user's email is the admin email.
-        const isAdminUser = user.email === 'spellz49@gmail.com';
+        const isAdminUser = user.email === 'hello.wdservices@gmail.com';
         
         // Attempt to get the profile from mock data.
         let profile = getUserProfile(user.uid);
@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: userCredential.user.email,
         displayName: userCredential.user.displayName,
         avatarUrl: userCredential.user.photoURL,
-        isAdmin: userCredential.user.email === 'spellz49@gmail.com',
+        isAdmin: userCredential.user.email === 'hello.wdservices@gmail.com',
         enrolledCourseIds: [],
         purchasedToolIds: []
     };

@@ -46,7 +46,7 @@ function LoginPageInner() {
     if (user) {
       // The redirect will happen based on isAdmin status after login.
       // We check here in case the user is already logged in and lands on the login page.
-      router.push(searchParams.get('redirect') || (user.email === 'spellz49@gmail.com' ? '/admin/dashboard' : '/dashboard'));
+      router.push(searchParams.get('redirect') || (user.email === 'hello.wdservices@gmail.com' ? '/admin/dashboard' : '/dashboard'));
     }
   }, [user, router, searchParams]);
 
@@ -55,7 +55,7 @@ function LoginPageInner() {
       await login(values.email, values.password);
       toast({ title: "Login Successful", description: "Welcome back!" });
       // Redirect path is re-evaluated after successful login
-      const newRedirectPath = searchParams.get('redirect') || (values.email === 'spellz49@gmail.com' ? '/admin/dashboard' : '/dashboard');
+      const newRedirectPath = searchParams.get('redirect') || (values.email === 'hello.wdservices@gmail.com' ? '/admin/dashboard' : '/dashboard');
       router.push(newRedirectPath);
     } catch (error: any) {
       console.error("Login error:", error);
