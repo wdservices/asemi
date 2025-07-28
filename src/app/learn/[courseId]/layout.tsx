@@ -1,16 +1,15 @@
 
 "use client";
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useParams, usePathname } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { getCourseBySlug } from '@/lib/mockData';
-import type { Course, CourseModule, Lesson } from '@/lib/types';
+import type { Course, Lesson } from '@/lib/types';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, CheckCircle, PlayCircle, FileText, CircleDot } from 'lucide-react';
-import Logo from '@/components/layout/Logo';
 
 export default function CourseLearnLayout({
   children,
@@ -20,11 +19,15 @@ export default function CourseLearnLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
+
   const courseSlug = typeof params.courseId === 'string' ? params.courseId : '';
+  const lessonParams = params.lessonParams as string[] || [];
+  const currentModuleId = lessonParams[0];
+  const currentLessonId = lessonParams[1];
   
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoadingCourse, setIsLoadingCourse] = useState(true);
-  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null); // Placeholder
 
   useEffect(() => {
     if (!loading && !user) {
@@ -35,19 +38,63 @@ export default function CourseLearnLayout({
   useEffect(() => {
     if (courseSlug) {
       const fetchCourse = async () => {
+        setIsLoadingCourse(true);
         const fetchedCourse = await getCourseBySlug(courseSlug);
         setCourse(fetchedCourse || null);
         setIsLoadingCourse(false);
-        // Set initial lesson (e.g., first lesson of first module)
-        if (fetchedCourse && fetchedCourse.modules[0]?.lessons[0]) {
-          // Construct lesson slug based on module and lesson IDs or orders
-          // For simplicity, let's assume the children page handles lesson selection or defaults.
-          // setCurrentLessonId(fetchedCourse.modules[0].lessons[0].id);
-        }
       };
       fetchCourse();
     }
   }, [courseSlug]);
+
+  const { allLessons, currentLessonIndex, currentLesson, defaultOpenModules } = useMemo(() => {
+    if (!course) {
+      return { allLessons: [], currentLessonIndex: -1, currentLesson: null, defaultOpenModules: [] };
+    }
+    
+    const allLessons: { lesson: Lesson; moduleId: string }[] = [];
+    const defaultOpenModules: string[] = [];
+    
+    course.modules.forEach(module => {
+      module.lessons.forEach(lesson => {
+        allLessons.push({ lesson, moduleId: module.id });
+      });
+      if (module.id === currentModuleId) {
+        defaultOpenModules.push(`module-${module.id}`);
+      }
+    });
+
+    let currentLessonIndex = -1;
+    if (currentLessonId) {
+        currentLessonIndex = allLessons.findIndex(l => l.lesson.id === currentLessonId);
+    } else if (allLessons.length > 0) {
+        currentLessonIndex = 0;
+    }
+    
+    const currentLesson = currentLessonIndex !== -1 ? allLessons[currentLessonIndex] : null;
+    
+    // If there's a current lesson but its module isn't in defaultOpen, add it.
+    if(currentLesson && !defaultOpenModules.includes(`module-${currentLesson.moduleId}`)) {
+        defaultOpenModules.push(`module-${currentLesson.moduleId}`);
+    }
+
+
+    return { allLessons, currentLessonIndex, currentLesson, defaultOpenModules };
+  }, [course, currentModuleId, currentLessonId]);
+
+  const handleNext = () => {
+    if (currentLessonIndex < allLessons.length - 1) {
+      const next = allLessons[currentLessonIndex + 1];
+      router.push(`/learn/${courseSlug}/${next.moduleId}/${next.lesson.id}`);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentLessonIndex > 0) {
+      const prev = allLessons[currentLessonIndex - 1];
+      router.push(`/learn/${courseSlug}/${prev.moduleId}/${prev.lesson.id}`);
+    }
+  };
 
   // Mock progress: assume all lessons in first module are completed
   const completedLessonsMock = new Set<string>(course?.modules[0]?.lessons.map(l => l.id) || []);
@@ -68,9 +115,6 @@ export default function CourseLearnLayout({
       </div>
     );
   }
-  
-  // Determine current lesson based on URL or state. For this layout, we'll focus on structure.
-  // The actual `page.tsx` inside `learn/[courseId]/[...lessonSlug]/page.tsx` would handle this.
 
   return (
     <div className="flex h-screen bg-background">
@@ -85,15 +129,15 @@ export default function CourseLearnLayout({
           <div className="mt-2">
             <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Overall Progress</span>
-                <span>30%</span> {/* Placeholder */}
+                <span>{Math.round(((currentLessonIndex + 1) / allLessons.length) * 100)}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                <div className="bg-primary h-1.5 rounded-full" style={{ width: "30%" }}></div> {/* Placeholder */}
+                <div className="bg-primary h-1.5 rounded-full" style={{ width: `${((currentLessonIndex + 1) / allLessons.length) * 100}%` }}></div>
             </div>
           </div>
         </div>
         <ScrollArea className="flex-grow">
-          <Accordion type="multiple" defaultValue={course.modules.map(m => `module-${m.id}`)} className="w-full p-2">
+          <Accordion type="multiple" defaultValue={defaultOpenModules} className="w-full p-2">
             {course.modules.map((moduleItem) => (
               <AccordionItem value={`module-${moduleItem.id}`} key={moduleItem.id} className="border-b-0 mb-1">
                 <AccordionTrigger className="px-3 py-2 hover:bg-secondary/70 rounded-md text-sm font-medium hover:no-underline">
@@ -102,16 +146,16 @@ export default function CourseLearnLayout({
                 <AccordionContent className="pt-1 pb-0">
                   <ul className="space-y-0.5 pl-3 border-l-2 border-primary/20 ml-3">
                     {moduleItem.lessons.map((lesson) => {
-                      const isCompleted = completedLessonsMock.has(lesson.id); // Mock completion
-                      const isActive = lesson.id === currentLessonId; // Mock active state
+                      const isCompleted = completedLessonsMock.has(lesson.id);
+                      const isActive = lesson.id === currentLessonId;
                       let Icon = PlayCircle;
                       if(lesson.contentType === 'pdf') Icon = FileText;
-                      if(lesson.contentType === 'quiz') Icon = CircleDot; // Quiz icon
+                      if(lesson.contentType === 'quiz') Icon = CircleDot;
 
                       return (
                         <li key={lesson.id}>
                           <Link 
-                            href={`/learn/${course.slug}/${moduleItem.id}/${lesson.id}`} // Example lesson path
+                            href={`/learn/${course.slug}/${moduleItem.id}/${lesson.id}`}
                             className={`flex items-center justify-between p-2.5 rounded-md text-xs hover:bg-secondary ${isActive ? 'bg-secondary text-primary font-semibold' : 'text-foreground/80'}`}
                           >
                             <div className="flex items-center truncate">
@@ -134,11 +178,10 @@ export default function CourseLearnLayout({
       {/* Main Content Area for Lesson */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-border bg-card flex items-center justify-between">
-            {/* Current Lesson Title placeholder */}
-            <h1 className="text-xl font-semibold">Current Lesson Title Placeholder</h1>
+            <h1 className="text-xl font-semibold truncate">{currentLesson?.lesson.title || "Course Content"}</h1>
             <div className="flex gap-2">
-                <Button variant="outline" size="sm">Previous</Button>
-                <Button variant="default" size="sm">Next Lesson</Button>
+                <Button variant="outline" size="sm" onClick={handlePrevious} disabled={currentLessonIndex <= 0}>Previous</Button>
+                <Button variant="default" size="sm" onClick={handleNext} disabled={currentLessonIndex >= allLessons.length - 1}>Next Lesson</Button>
             </div>
         </div>
         <ScrollArea className="flex-grow bg-background p-4 md:p-6">
