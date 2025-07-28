@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Users, Activity, Book, Wand2 } from "lucide-react";
+import { DollarSign, Users, Activity, Book, Wand2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Bar } from 'react-chartjs-2';
 import {
@@ -241,5 +241,7 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
 
     
