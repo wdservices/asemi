@@ -28,17 +28,17 @@ export default function CourseLearnPage() {
       const fetchCourse = async () => {
         setIsLoading(true);
         const fetchedCourse = await getCourseBySlug(courseSlug);
+        
         if (fetchedCourse) {
           setCourse(fetchedCourse);
-          // If no lesson params are present in the URL, redirect to the first lesson of the course.
+          // If no lesson params are in the URL, redirect to the first lesson.
           if ((!currentModuleId || !currentLessonId) && fetchedCourse.modules?.[0]?.lessons?.[0]) {
               const firstModule = fetchedCourse.modules[0];
               const firstLesson = firstModule.lessons[0];
-              // Use router.replace to avoid adding a redirect to the browser history.
               router.replace(`/learn/${courseSlug}/${firstModule.id}/${firstLesson.id}`);
           }
         } else {
-          // If the course slug is invalid or the course doesn't exist, redirect to the dashboard.
+          // If course is not found, redirect to dashboard.
           router.push('/dashboard');
         }
         setIsLoading(false);
@@ -56,13 +56,9 @@ export default function CourseLearnPage() {
   }, [course, currentModuleId, currentLessonId]);
 
 
-  if (isLoading || !course) {
-    return <div className="p-6 text-center">Loading course...</div>;
-  }
-
-  if (!currentLesson) {
-    // This state can occur briefly during the redirect or if the lesson/module ID is invalid.
-    return <div className="p-6 text-center">Loading lesson...</div>;
+  if (isLoading || !currentLesson) {
+    // Let the loading.tsx handle the loading state, or show a simple message if a lesson isn't found post-load.
+    return <div className="p-6 text-center">Loading lesson content...</div>;
   }
 
   return (
