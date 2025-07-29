@@ -28,7 +28,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, login, isAdmin } = useAuth();
+  const { user, login } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -40,23 +40,23 @@ function LoginPageInner() {
     },
   });
   
-  const redirectPath = searchParams.get('redirect') || (isAdmin ? '/admin/dashboard' : '/dashboard');
-
   useEffect(() => {
     if (user) {
-      // The redirect will happen based on isAdmin status after login.
-      // We check here in case the user is already logged in and lands on the login page.
-      router.push(searchParams.get('redirect') || (user.email === 'hello.wdservices@gmail.com' ? '/admin/dashboard' : '/dashboard'));
+      // If user is already logged in, redirect them.
+      // The logic inside useAuth handles determining if they are admin.
+      // A simple push to a default dashboard is fine here.
+      router.push(searchParams.get('redirect') || '/dashboard');
     }
   }, [user, router, searchParams]);
 
   async function onSubmit(values: LoginFormValues) {
     try {
-      await login(values.email, values.password);
+      const { isAdmin } = await login(values.email, values.password);
       toast({ title: "Login Successful", description: "Welcome back!" });
-      // Redirect path is re-evaluated after successful login
-      const newRedirectPath = searchParams.get('redirect') || (values.email === 'hello.wdservices@gmail.com' ? '/admin/dashboard' : '/dashboard');
-      router.push(newRedirectPath);
+      
+      const redirectPath = searchParams.get('redirect') || (isAdmin ? '/admin/dashboard' : '/dashboard');
+      router.push(redirectPath);
+
     } catch (error: any) {
       console.error("Login error:", error);
       let description = "An unexpected error occurred. Please try again.";

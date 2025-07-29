@@ -22,7 +22,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   register: (email: string, pass: string, displayName: string) => Promise<any>;
-  login: (email: string, pass: string) => Promise<any>;
+  login: (email: string, pass: string) => Promise<{ isAdmin: boolean }>;
   logout: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => void;
@@ -91,8 +91,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return userCredential;
   };
 
-  const login = (email: string, pass: string) => {
-    return signInWithEmailAndPassword(auth, email, pass);
+  const login = async (email: string, pass: string) => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    // After successful sign-in, onAuthStateChanged will trigger.
+    // However, to ensure the redirect logic gets the latest admin status immediately,
+    // we can fetch the profile here and return the status.
+    const profile = await getUserProfile(userCredential.user.uid);
+    return { isAdmin: profile?.isAdmin || false };
   };
 
   const logout = () => {
