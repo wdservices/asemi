@@ -29,20 +29,6 @@ export default function HomePage() {
                  <Link href="/#features">Learn More</Link>
                </Button>
             </div>
-<<<<<<< HEAD
-          </div>
-        </section>
-        
-        {/* Platform Image Section */}
-        <section className="py-16 -mt-16">
-           <div className="container mx-auto max-w-screen-xl px-4">
-             <Image
-                src="https://placehold.co/1200x600.png"
-                alt="Asemi Platform Interface"
-                width={1200}
-                height={600}
-                className="rounded-lg shadow-2xl mx-auto ring-1 ring-border/10"
-=======
             <div className="mt-16">
               <Image
                 src="/learn.webp"
@@ -50,11 +36,11 @@ export default function HomePage() {
                 width={1200}
                 height={350}
                 className="rounded-lg shadow-xl mx-auto w-full object-cover h-[350px] aspect-[1200/350]"
->>>>>>> 6eac0ccc0308dd5cc8e1982a3a6b9ae0241f424c
                 data-ai-hint="online learning platform"
                 priority
               />
-           </div>
+            </div>
+          </div>
         </section>
 
         {/* Features Section */}

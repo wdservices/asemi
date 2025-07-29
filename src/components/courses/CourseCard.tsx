@@ -17,6 +17,27 @@ export function CourseCard({ course }: CourseCardProps) {
 
   const firstModule = course.modules?.[0];
   const firstLesson = firstModule?.lessons?.[0];
+  
+  // Debug logging
+  if (course.title.includes('AI') || course.title.includes('CV')) {
+    console.log('Course data for', course.title, ':', {
+      id: course.id,
+      slug: course.slug,
+      isPublished,
+      hasModules: !!course.modules?.length,
+      firstModuleId: firstModule?.id,
+      firstModuleTitle: firstModule?.title,
+      firstLessonId: firstLesson?.id,
+      firstLessonTitle: firstLesson?.title,
+      modules: course.modules?.map(m => ({
+        id: m.id,
+        title: m.title,
+        lessonCount: m.lessons?.length || 0,
+        firstLessonId: m.lessons?.[0]?.id
+      }))
+    });
+  }
+  
   const courseLink = (isPublished && firstModule && firstLesson) 
     ? `/learn/${course.slug}/${firstModule.id}/${firstLesson.id}` 
     : '#';

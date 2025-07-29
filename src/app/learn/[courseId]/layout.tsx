@@ -138,22 +138,29 @@ export default function CourseLearnLayout({
         </div>
         <ScrollArea className="flex-grow">
           <Accordion type="multiple" defaultValue={defaultOpenModules} className="w-full p-2">
-            {course.modules.map((moduleItem) => (
-              <AccordionItem value={`module-${moduleItem.id}`} key={moduleItem.id} className="border-b-0 mb-1">
+            {course.modules.map((moduleItem, moduleIndex) => {
+              const moduleKey = `module-${moduleItem.id || moduleIndex}`;
+              return (
+                <AccordionItem 
+                  key={moduleKey}
+                  value={moduleKey}
+                  className="border-b-0 mb-1"
+                >
                 <AccordionTrigger className="px-3 py-2 hover:bg-secondary/70 rounded-md text-sm font-medium hover:no-underline">
                   {moduleItem.title}
                 </AccordionTrigger>
                 <AccordionContent className="pt-1 pb-0">
                   <ul className="space-y-0.5 pl-3 border-l-2 border-primary/20 ml-3">
-                    {moduleItem.lessons.map((lesson) => {
+                    {moduleItem.lessons.map((lesson, lessonIndex) => {
                       const isCompleted = completedLessonsMock.has(lesson.id);
                       const isActive = lesson.id === currentLessonId;
                       let Icon = PlayCircle;
                       if(lesson.contentType === 'pdf') Icon = FileText;
                       if(lesson.contentType === 'quiz') Icon = CircleDot;
+                      const lessonKey = `${moduleItem.id || 'module'}-${lesson.id || lessonIndex}`;
 
                       return (
-                        <li key={lesson.id}>
+                        <li key={lessonKey}>
                           <Link 
                             href={`/learn/${course.slug}/${moduleItem.id}/${lesson.id}`}
                             className={`flex items-center justify-between p-2.5 rounded-md text-xs hover:bg-secondary ${isActive ? 'bg-secondary text-primary font-semibold' : 'text-foreground/80'}`}
@@ -170,7 +177,8 @@ export default function CourseLearnLayout({
                   </ul>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            );
+          })}
           </Accordion>
         </ScrollArea>
       </aside>

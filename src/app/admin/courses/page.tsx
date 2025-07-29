@@ -24,6 +24,14 @@ export default function AdminCoursesPage() {
     const fetchCourses = async () => {
         setIsLoading(true);
         const fetchedCourses = await getAllCourses();
+        console.log('Fetched courses data:', fetchedCourses.map(c => ({
+          id: c.id,
+          title: c.title,
+          imageUrl: c.imageUrl,
+          hasImage: !!c.imageUrl,
+          modules: c.modules?.length || 0,
+          lessons: c.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0
+        })));
         setCourses(fetchedCourses);
         setIsLoading(false);
     }
@@ -96,19 +104,16 @@ export default function AdminCoursesPage() {
                     <TableCell className="hidden sm:table-cell">
                     <Image
                         alt={course.title}
-<<<<<<< HEAD
-                        className="aspect-video rounded-md object-cover"
-                        height="45"
-                        src={course.imageUrl || 'https://placehold.co/80x45.png'}
-                        width="80"
-                        data-ai-hint="course category"
-=======
                         className="aspect-square rounded-md object-cover"
                         height={64}
-                        src={course.thumbnailUrl || "/course-fallback.webp"}
+                        src={course.imageUrl || '/placeholder-course.png'}
                         width={64}
-                        data-ai-hint="course thumbnail"
->>>>>>> 6eac0ccc0308dd5cc8e1982a3a6b9ae0241f424c
+                        onError={(e) => {
+                          // Fallback to placeholder if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/placeholder-course.png';
+                        }}
+                        data-ai-hint="course image"
                     />
                     </TableCell>
                     <TableCell className="font-medium">{course.title}</TableCell>
