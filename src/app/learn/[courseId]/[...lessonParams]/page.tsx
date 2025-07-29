@@ -30,14 +30,16 @@ export default function CourseLearnPage() {
         const fetchedCourse = await getCourseBySlug(courseSlug);
         if (fetchedCourse) {
           setCourse(fetchedCourse);
-          // If no lesson params, redirect to the first lesson
+          // If no lesson params are present in the URL, redirect to the first lesson of the course.
           if ((!currentModuleId || !currentLessonId) && fetchedCourse.modules?.[0]?.lessons?.[0]) {
               const firstModule = fetchedCourse.modules[0];
               const firstLesson = firstModule.lessons[0];
+              // Use router.replace to avoid adding a redirect to the browser history.
               router.replace(`/learn/${courseSlug}/${firstModule.id}/${firstLesson.id}`);
           }
         } else {
-          router.push('/dashboard'); // Course not found
+          // If the course slug is invalid or the course doesn't exist, redirect to the dashboard.
+          router.push('/dashboard');
         }
         setIsLoading(false);
       }
@@ -54,17 +56,13 @@ export default function CourseLearnPage() {
   }, [course, currentModuleId, currentLessonId]);
 
 
-  if (isLoading || !currentLesson) {
-    return <div className="p-6 text-center">Loading lesson...</div>;
+  if (isLoading || !course) {
+    return <div className="p-6 text-center">Loading course...</div>;
   }
 
-  if (!course) {
-    return (
-      <div className="p-6 text-center">
-        <h2 className="text-2xl font-semibold mb-4">Welcome to the course!</h2>
-        <p className="text-muted-foreground">Please select a lesson from the sidebar to begin.</p>
-      </div>
-    );
+  if (!currentLesson) {
+    // This state can occur briefly during the redirect or if the lesson/module ID is invalid.
+    return <div className="p-6 text-center">Loading lesson...</div>;
   }
 
   return (
