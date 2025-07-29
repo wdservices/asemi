@@ -96,11 +96,19 @@ export default function AdminCoursesPage() {
                     <TableCell className="hidden sm:table-cell">
                     <Image
                         alt={course.title}
+<<<<<<< HEAD
                         className="aspect-video rounded-md object-cover"
                         height="45"
                         src={course.imageUrl || 'https://placehold.co/80x45.png'}
                         width="80"
                         data-ai-hint="course category"
+=======
+                        className="aspect-square rounded-md object-cover"
+                        height={64}
+                        src={course.thumbnailUrl || "/course-fallback.webp"}
+                        width={64}
+                        data-ai-hint="course thumbnail"
+>>>>>>> 6eac0ccc0308dd5cc8e1982a3a6b9ae0241f424c
                     />
                     </TableCell>
                     <TableCell className="font-medium">{course.title}</TableCell>

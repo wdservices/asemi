@@ -48,8 +48,47 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-semibold mb-6 text-foreground">My Courses</h2>
         {recentCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<<<<<<< HEAD
             {recentCourses.map((course) => (
                <CourseCard key={course.id} course={course} />
+=======
+            {enrolledCourses.map((course) => (
+              <div key={course.id} className="bg-card rounded-lg shadow-lg overflow-hidden flex flex-col">
+                 <Link href={`/learn/${course.slug}`} className="block">
+                  <div className="relative w-full h-40">
+                    <Image
+                      src={course.thumbnailUrl || "/course-fallback.webp"}
+                      alt={course.title}
+                      fill
+                      className="object-cover aspect-video"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      data-ai-hint="course image"
+                    />
+                  </div>
+                </Link>
+                <div className="p-4 flex-grow flex flex-col">
+                  <h3 className="text-lg font-semibold text-foreground mb-1 hover:text-primary transition-colors">
+                    <Link href={`/learn/${course.slug}`}>{course.title}</Link>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-3">By {course.instructor.name}</p>
+                  
+                  {course.enrollmentProgress !== undefined && (
+                    <div className="mt-auto space-y-2">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Progress</span>
+                        <span>{course.enrollmentProgress}%</span>
+                      </div>
+                      <Progress value={course.enrollmentProgress} className="h-2" />
+                       <Button asChild size="sm" className="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Link href={`/learn/${course.slug}`}>
+                          {course.enrollmentProgress > 0 ? 'Continue Learning' : 'Start Learning'}
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+>>>>>>> 6eac0ccc0308dd5cc8e1982a3a6b9ae0241f424c
             ))}
           </div>
         ) : (
