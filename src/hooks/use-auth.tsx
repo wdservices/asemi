@@ -37,28 +37,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-        
-        const isAdminUser = user.email === 'hello.wdservices@gmail.com';
-        let profile = await getUserProfile(user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const isAdminUser = firebaseUser.email === 'hello.wdservices@gmail.com';
+        let profile = await getUserProfile(firebaseUser.uid);
 
         if (!profile) {
             const newUserProfileData: UserProfile = {
-                id: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-                avatarUrl: user.photoURL,
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                avatarUrl: firebaseUser.photoURL || null,
                 isAdmin: isAdminUser,
-                enrolledCourseIds: [],
+                enrolledCourses: [],
                 purchasedToolIds: []
             };
-            profile = await updateDbUserProfile(user.uid, newUserProfileData);
+            profile = await updateDbUserProfile(firebaseUser.uid, newUserProfileData);
         } else if (profile.isAdmin !== isAdminUser) {
-            profile = await updateDbUserProfile(user.uid, { isAdmin: isAdminUser });
+            profile = await updateDbUserProfile(firebaseUser.uid, { ...profile, isAdmin: isAdminUser });
         }
 
+        // Create extended user object with profile
+        const userWithProfile = {
+          ...firebaseUser,
+          userProfile: profile,
+          isAdmin: profile?.isAdmin || false
+        } as User;
+
+        setUser(userWithProfile);
         setUserProfile(profile || null);
         setIsAdmin(profile?.isAdmin || false);
       } else {
@@ -80,13 +86,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: userCredential.user.uid,
         email: userCredential.user.email,
         displayName: userCredential.user.displayName,
-        avatarUrl: userCredential.user.photoURL,
+        avatarUrl: userCredential.user.photoURL || null,
         isAdmin: userCredential.user.email === 'hello.wdservices@gmail.com',
-        enrolledCourseIds: [],
+        enrolledCourses: [],
         purchasedToolIds: []
     };
     const createdProfile = await updateDbUserProfile(userCredential.user.uid, newUserProfile);
-    setUserProfile(createdProfile || null);
+    
+    if (createdProfile) {
+      const userWithProfile = {
+        ...userCredential.user,
+        userProfile: createdProfile,
+        isAdmin: createdProfile.isAdmin || false
+      } as User;
+      
+      setUser(userWithProfile);
+      setUserProfile(createdProfile);
+      setIsAdmin(createdProfile.isAdmin || false);
+    }
 
     return userCredential;
   };
@@ -109,14 +126,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const updateUserProfile = async (data: Partial<UserProfile>) => {
-    if (userProfile) {
-        const updatedProfile = await updateDbUserProfile(userProfile.id, data);
-        if(updatedProfile) {
-            setUserProfile(updatedProfile);
-        }
-    }
+    if (!user || !userProfile) return;
+    
+    const updatedProfile: UserProfile = {
+      ...userProfile,
+      ...data,
+      id: user.uid, // Ensure ID is always set
+      email: user.email,
+      displayName: user.displayName
+    };
+    
+    await updateDbUserProfile(user.uid, updatedProfile);
+    
+    // Update both user and userProfile states
+    const updatedUser = {
+      ...user,
+      userProfile: updatedProfile,
+      isAdmin: updatedProfile.isAdmin || false
+    } as User;
+    
+    setUser(updatedUser);
+    setUserProfile(updatedProfile);
+    setIsAdmin(updatedProfile.isAdmin || false);
+    
+    return updatedProfile;
   };
-
 
   return (
     <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, register, login, logout, sendPasswordReset, updateUserProfile }}>

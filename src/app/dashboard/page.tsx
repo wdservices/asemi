@@ -13,19 +13,30 @@ import { CourseCard } from '@/components/courses/CourseCard';
 
 export default function DashboardPage() {
   const { user, userProfile } = useAuth();
-  const [recentCourses, setRecentCourses] = useState<Course[]>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
+  const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCourses = async () => {
-        if (userProfile) {
-        // In a real app, you would fetch recent courses based on user activity
-        // For now, we'll just show the first few mock courses as "recent"
+      if (userProfile) {
         const allCourses = await getAllCourses();
-        setRecentCourses(allCourses.slice(0, 3));
-        }
-        setIsLoading(false);
-    }
+        
+        // Filter enrolled courses
+        const enrolled = allCourses.filter(course => 
+          userProfile.enrolledCourses?.includes(course.id)
+        );
+        setEnrolledCourses(enrolled);
+        
+        // Get recommended courses (first 3 courses not enrolled in)
+        const recommended = allCourses
+          .filter(course => !userProfile.enrolledCourses?.includes(course.id))
+          .slice(0, 3);
+        setRecommendedCourses(recommended);
+      }
+      setIsLoading(false);
+    };
+    
     fetchCourses();
   }, [userProfile]);
 
@@ -45,11 +56,16 @@ export default function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="text-2xl font-semibold mb-6 text-foreground">My Courses</h2>
-        {recentCourses.length > 0 ? (
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-foreground">My Enrolled Courses</h2>
+          <Button asChild variant="outline">
+            <Link href="/courses">Browse All Courses</Link>
+          </Button>
+        </div>
+        {enrolledCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentCourses.map((course) => (
-               <CourseCard key={course.id} course={course} />
+            {enrolledCourses.map((course) => (
+              <CourseCard key={course.id} course={course} />
             ))}
           </div>
         ) : (
@@ -62,12 +78,17 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {/* Placeholder for other dashboard sections like performance stats, etc. */}
-       <section className="mt-12">
+{/* Recommended courses section - shows if user has no enrolled courses */}
+      {enrolledCourses.length === 0 && recommendedCourses.length > 0 && (
+        <section className="mt-12">
           <h2 className="text-2xl font-semibold mb-6 text-foreground">Recommended For You</h2>
-           <p className="text-muted-foreground">Based on your interests and learning history. (Placeholder)</p>
-          {/* Placeholder: Render some course cards here */}
-       </section>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recommendedCourses.map((course) => (
+              <CourseCard key={course.id} course={course} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

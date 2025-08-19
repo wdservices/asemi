@@ -1,18 +1,25 @@
 
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Course } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '../ui/button';
-import { BookOpen, BarChart, EyeOff } from 'lucide-react';
+
+import { BookOpen, BarChart, EyeOff, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import { updateUserProfile, getUserProfile } from '@/lib/mockData';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CourseCardProps {
   course: Course;
+  onEnrollSuccess?: () => void;
 }
 
-export function CourseCard({ course }: CourseCardProps) {
+export function CourseCard({ course, onEnrollSuccess }: CourseCardProps) {
   const isPublished = course.isPublished ?? true; // Default to published if undefined
 
   const firstModule = course.modules?.[0];
@@ -41,7 +48,64 @@ export function CourseCard({ course }: CourseCardProps) {
   const courseLink = (isPublished && firstModule && firstLesson) 
     ? `/learn/${course.slug}/${firstModule.id}/${firstLesson.id}` 
     : '#';
-  const isClickable = courseLink !== '#';
+  const { user } = useAuth();
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const isClickable = isEnrolled && courseLink !== '#';
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const checkEnrollment = async () => {
+      if (user) {
+        const userProfile = await getUserProfile(user.uid);
+        if (isMounted) {
+          const enrolled = userProfile?.enrolledCourses?.includes(course.id);
+          setIsEnrolled(!!enrolled);
+        }
+      } else if (isMounted) {
+        setIsEnrolled(false);
+      }
+    };
+    
+    checkEnrollment();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user, course.id]);
+
+  const handleEnroll = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    try {
+      setIsEnrolling(true);
+      // Get current user profile
+      const userProfile = await getUserProfile(user.uid);
+      
+      // Get current enrolled courses, defaulting to empty array if none exist
+      const currentEnrolled = userProfile?.enrolledCourses || [];
+      
+      // Only update if user is not already enrolled
+      if (!currentEnrolled.includes(course.id)) {
+        const updatedCourses = [...currentEnrolled, course.id];
+        await updateUserProfile(user.uid, {
+          ...userProfile,
+          enrolledCourses: updatedCourses
+        });
+      }
+      
+      setIsEnrolled(true);
+      if (onEnrollSuccess) {
+        onEnrollSuccess();
+      }
+    } catch (error) {
+      console.error('Error enrolling in course:', error);
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
 
   return (
     <Card className={cn(
@@ -90,13 +154,22 @@ export function CourseCard({ course }: CourseCardProps) {
           <p className="text-xs text-muted-foreground mt-2">By {course.author}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button asChild={isClickable} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={!isClickable}>
-          {isClickable ? (
-            <Link href={courseLink}>Start Learning</Link>
-          ) : (
-            <span>Unavailable</span>
-          )}
-        </Button>
+        {isEnrolled ? (
+          <Button asChild className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Link href={courseLink} className="flex items-center justify-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Start Learning</span>
+            </Link>
+          </Button>
+        ) : (
+          <Button 
+            onClick={handleEnroll} 
+            disabled={isEnrolling}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            {isEnrolling ? 'Enrolling...' : 'Enroll Now'}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

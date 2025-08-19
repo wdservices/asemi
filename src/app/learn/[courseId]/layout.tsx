@@ -98,6 +98,7 @@ export default function CourseLearnLayout({
 
   // Mock progress: assume all lessons in first module are completed
   const completedLessonsMock = new Set<string>(course?.modules[0]?.lessons.map(l => l.id) || []);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (loading || isLoadingCourse || !user) {
     return (
@@ -117,9 +118,21 @@ export default function CourseLearnLayout({
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background relative">
+      {/* Mobile sidebar toggle button */}
+      <button 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-primary text-primary-foreground"
+        aria-label="Toggle sidebar"
+      >
+        {isSidebarOpen ? '✕' : '☰'}
+      </button>
+      
       {/* Sidebar for Course Navigation */}
-      <aside className="w-80 border-r border-border bg-card flex flex-col">
+      <aside 
+        className={`fixed md:sticky top-0 left-0 h-screen w-[300px] border-r border-border bg-card flex flex-col transition-transform duration-300 ease-in-out z-40 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}>
         <div className="p-4 border-b border-border">
           <Link href="/dashboard" className="flex items-center text-sm text-primary hover:underline mb-2">
             <ChevronLeft className="h-4 w-4 mr-1" /> Back to Dashboard
@@ -137,7 +150,7 @@ export default function CourseLearnLayout({
           </div>
         </div>
         <ScrollArea className="flex-grow">
-          <Accordion type="multiple" defaultValue={defaultOpenModules} className="w-full p-2">
+          <Accordion type="multiple" defaultValue={defaultOpenModules} className="w-full p-1.5">
             {course.modules.map((moduleItem, moduleIndex) => {
               const moduleKey = `module-${moduleItem.id || moduleIndex}`;
               return (
@@ -146,8 +159,8 @@ export default function CourseLearnLayout({
                   value={moduleKey}
                   className="border-b-0 mb-1"
                 >
-                <AccordionTrigger className="px-3 py-2 hover:bg-secondary/70 rounded-md text-sm font-medium hover:no-underline">
-                  {moduleItem.title}
+                <AccordionTrigger className="px-3 py-2 hover:bg-secondary/70 rounded-md text-sm font-medium hover:no-underline w-full text-left">
+                  <span className="truncate pr-2 text-left w-full">{moduleItem.title}</span>
                 </AccordionTrigger>
                 <AccordionContent className="pt-1 pb-0">
                   <ul className="space-y-0.5 pl-3 border-l-2 border-primary/20 ml-3">
@@ -163,13 +176,17 @@ export default function CourseLearnLayout({
                         <li key={lessonKey}>
                           <Link 
                             href={`/learn/${course.slug}/${moduleItem.id}/${lesson.id}`}
-                            className={`flex items-center justify-between p-2.5 rounded-md text-xs hover:bg-secondary ${isActive ? 'bg-secondary text-primary font-semibold' : 'text-foreground/80'}`}
+                            className={`flex items-center justify-between p-2 rounded-md text-xs hover:bg-secondary ${isActive ? 'bg-secondary text-primary font-semibold' : 'text-foreground/80'}`}
                           >
-                            <div className="flex items-center truncate">
-                              {isCompleted ? <CheckCircle className="h-4 w-4 mr-2 text-green-500 flex-shrink-0" /> : <Icon className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />}
-                              <span className="truncate">{lesson.title}</span>
+                            <div className="flex items-center min-w-0 flex-1">
+                              {isCompleted ? (
+                                <CheckCircle className="h-4 w-4 mr-2 flex-shrink-0 text-green-500" />
+                              ) : (
+                                <Icon className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
+                              )}
+                              <span className="truncate pr-2">{lesson.title}</span>
                             </div>
-                            {lesson.duration && <span className="text-muted-foreground text-xs ml-2 flex-shrink-0">{lesson.duration}</span>}
+                            {lesson.duration && <span className="text-muted-foreground text-xs ml-2 whitespace-nowrap flex-shrink-0">{lesson.duration}</span>}
                           </Link>
                         </li>
                       );
@@ -183,9 +200,24 @@ export default function CourseLearnLayout({
         </ScrollArea>
       </aside>
 
+      {/* Overlay for mobile when sidebar is open */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
       {/* Main Content Area for Lesson */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden md:ml-[300px]">
         <div className="p-4 border-b border-border bg-card flex items-center justify-between">
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="md:hidden mr-2 p-1 rounded-md hover:bg-secondary"
+            aria-label="Toggle sidebar"
+          >
+            ☰
+          </button>
             <h1 className="text-xl font-semibold truncate">{currentLesson?.lesson.title || "Course Content"}</h1>
             <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={handlePrevious} disabled={currentLessonIndex <= 0}>Previous</Button>

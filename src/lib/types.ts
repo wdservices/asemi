@@ -1,5 +1,12 @@
 
-import type { User } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
+
+// Extended User type that includes our custom fields
+export interface User extends FirebaseUser {
+  enrolledCourses?: string[];
+  isAdmin?: boolean;
+  userProfile?: UserProfile;
+}
 
 // Main type for a Course
 export interface Course {
@@ -49,7 +56,7 @@ export interface UserProfile {
   avatarUrl?: string | null;
   isAdmin?: boolean;
   // Asemi specific fields
-  enrolledCourseIds?: string[];
+  enrolledCourses?: string[];
   purchasedToolIds?: string[];
 }
 
