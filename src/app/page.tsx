@@ -36,6 +36,7 @@ export default function HomePage() {
                 width={1200}
                 height={350}
                 className="rounded-lg shadow-xl mx-auto w-full object-cover h-[350px] aspect-[1200/350]"
+                style={{ height: "auto" }}
                 data-ai-hint="online learning platform"
                 priority
               />

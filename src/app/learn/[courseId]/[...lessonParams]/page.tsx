@@ -4,16 +4,20 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { Course, Lesson as LessonType, CourseModule } from '@/lib/types';
-import { getCourseBySlug } from '@/lib/mockData';
+import { getCourseBySlug, verifyUserPaymentForCourse, getUserProfile } from '@/lib/mockData';
 import VideoPlayer from '@/components/courses/VideoPlayer';
 import ResourceList from '@/components/courses/ResourceList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Lightbulb } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Lightbulb, Lock } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+import Link from 'next/link';
 
 export default function CourseLearnPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, userProfile } = useAuth();
   
   const courseSlug = typeof params.courseId === 'string' ? params.courseId : '';
   const lessonParams = params.lessonParams as string[] || [];
@@ -22,15 +26,56 @@ export default function CourseLearnPage() {
   
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+
+  // Check enrollment status and verify payment
+  useEffect(() => {
+    const checkEnrollment = async () => {
+      if (userProfile && course && user) {
+        // First check if user is enrolled
+        let enrolled = userProfile.enrolledCourses?.includes(course.id) || false;
+        
+        // If not enrolled locally, check Firestore for payment and enrollment
+        if (!enrolled) {
+          setIsVerifyingPayment(true);
+          try {
+            // Fetch latest user profile from Firestore
+            const latestProfile = await getUserProfile(user.uid);
+            if (latestProfile && latestProfile.enrolledCourses?.includes(course.id)) {
+              enrolled = true;
+              // Update local state if enrollment found in Firestore
+              setIsEnrolled(true);
+            } else {
+              // Check if payment exists for this course
+              const hasPayment = await verifyUserPaymentForCourse(user.uid, course.id);
+              if (hasPayment) {
+                // Payment exists but not enrolled - this shouldn't happen
+                console.warn('Payment found but user not enrolled. Contact support.');
+              }
+            }
+          } catch (error) {
+            console.error('Error verifying enrollment:', error);
+          } finally {
+            setIsVerifyingPayment(false);
+          }
+        } else {
+          setIsEnrolled(enrolled);
+        }
+      } else {
+        setIsEnrolled(false);
+      }
+    };
+    
+    checkEnrollment();
+  }, [userProfile, course, user]);
 
   useEffect(() => {
     if (courseSlug) {
       const fetchCourse = async () => {
-        console.log('Fetching course with slug:', courseSlug);
         setIsLoading(true);
         try {
           const fetchedCourse = await getCourseBySlug(courseSlug);
-          console.log('Fetched course:', fetchedCourse);
           
           if (fetchedCourse) {
             setCourse(fetchedCourse);
@@ -38,14 +83,7 @@ export default function CourseLearnPage() {
             if ((!currentModuleId || !currentLessonId) && fetchedCourse.modules?.[0]?.lessons?.[0]) {
                 const firstModule = fetchedCourse.modules[0];
                 const firstLesson = firstModule.lessons[0];
-                console.log('No lesson params, redirecting to first lesson:', {
-                  courseSlug,
-                  moduleId: firstModule.id,
-                  lessonId: firstLesson.id
-                });
                 router.replace(`/learn/${courseSlug}/${firstModule.id}/${firstLesson.id}`);
-            } else {
-              console.log('Using provided lesson params:', { currentModuleId, currentLessonId });
             }
           } else {
             console.error('Course not found, redirecting to dashboard');
@@ -62,33 +100,30 @@ export default function CourseLearnPage() {
     }
   }, [courseSlug, currentModuleId, currentLessonId, router]);
   
-  const { currentLesson, error } = useMemo(() => {
-    console.log('Finding current lesson with params:', { currentModuleId, currentLessonId });
-    
-    // If we don't have the required data yet, return early
-    if (!course) {
-      console.log('Course data not loaded yet');
-      return { currentLesson: null, error: 'Loading course data...' };
+  const [currentLesson, setCurrentLesson] = useState<LessonType | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Handle redirects and lesson finding in useEffect to avoid setState during render
+  useEffect(() => {
+    // Only process if user is authenticated and enrolled
+    if (!user || !course || !isEnrolled) {
+      setCurrentLesson(null);
+      setError(null);
+      return;
     }
     
     if (!currentModuleId || !currentLessonId) {
-      console.log('Missing module or lesson ID in URL');
-      return { currentLesson: null, error: 'Loading lesson...' };
+      setError('Loading lesson...');
+      setCurrentLesson(null);
+      return;
     }
-    
-    // Log detailed course structure for debugging
-    console.log('Course structure:', {
-      courseId: course.id,
-      courseSlug: course.slug,
-      moduleCount: course.modules?.length || 0,
-      moduleIds: course.modules?.map(m => m.id) || [],
-      requestedModuleId: currentModuleId
-    });
     
     // If course has no modules, return error
     if (!course.modules || course.modules.length === 0) {
       console.error('No modules found in course');
-      return { currentLesson: null, error: 'No modules found in this course.' };
+      setError('No modules found in this course.');
+      setCurrentLesson(null);
+      return;
     }
     
     // Find the requested module
@@ -103,9 +138,13 @@ export default function CourseLearnPage() {
       if (firstLesson) {
         console.log(`Redirecting to first module: ${firstModule.id}, first lesson: ${firstLesson.id}`);
         router.replace(`/learn/${courseSlug}/${firstModule.id}/${firstLesson.id}`);
-        return { currentLesson: null, error: 'Redirecting to first module...' };
+        setError('Redirecting to first module...');
+        setCurrentLesson(null);
+        return;
       }
-      return { currentLesson: null, error: 'No valid modules found in this course.' };
+      setError('No valid modules found in this course.');
+      setCurrentLesson(null);
+      return;
     }
     
     console.log('Found module:', module);
@@ -121,7 +160,9 @@ export default function CourseLearnPage() {
     // If module has no lessons, return error
     if (!module.lessons || module.lessons.length === 0) {
       console.error('No lessons found in module');
-      return { currentLesson: null, error: 'No lessons found in this module.' };
+      setError('No lessons found in this module.');
+      setCurrentLesson(null);
+      return;
     }
     
     const lesson = module.lessons.find(l => l.id === currentLessonId);
@@ -131,16 +172,61 @@ export default function CourseLearnPage() {
       console.error('Lesson not found, redirecting to first lesson in module');
       const firstLesson = module.lessons[0];
       router.replace(`/learn/${courseSlug}/${module.id}/${firstLesson.id}`);
-      return { currentLesson: null, error: 'Redirecting to first lesson...' };
+      setError('Redirecting to first lesson...');
+      setCurrentLesson(null);
+      return;
     }
     
     console.log('Found lesson:', lesson);
-    return { currentLesson: lesson, error: null };
-  }, [course, currentModuleId, currentLessonId, courseSlug, router]);
+    setCurrentLesson(lesson);
+    setError(null);
+  }, [user, course, isEnrolled, currentModuleId, currentLessonId, courseSlug, router]);
 
 
-  if (isLoading) {
-    return <div className="p-6 text-center">Loading lesson content...</div>;
+  if (isLoading || isVerifyingPayment) {
+    return <div className="p-6 text-center">
+      {isVerifyingPayment ? 'Verifying enrollment...' : 'Loading lesson content...'}
+    </div>;
+  }
+
+  // Check if user is logged in
+  if (!user) {
+    return (
+      <div className="p-6 text-center">
+        <div className="bg-card p-8 rounded-lg shadow max-w-md mx-auto">
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Login Required</h2>
+          <p className="text-muted-foreground mb-4">
+            Please log in to access course content.
+          </p>
+          <Button asChild>
+            <Link href={`/auth/login?redirect=/learn/${courseSlug}/${currentModuleId}/${currentLessonId}`}>
+              Login to Continue
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is enrolled in the course
+  if (course && !isEnrolled) {
+    return (
+      <div className="p-6 text-center">
+        <div className="bg-card p-8 rounded-lg shadow max-w-md mx-auto">
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Enrollment Required</h2>
+          <p className="text-muted-foreground mb-4">
+            You need to enroll in <strong>{course.title}</strong> to access this content.
+          </p>
+          <Button asChild>
+            <Link href={`/courses/${courseSlug}`}>
+              Enroll in Course
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
   
   if (error) {

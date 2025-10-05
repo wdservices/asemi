@@ -16,6 +16,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script src="https://js.paystack.co/v1/inline.js" async></script>
+      </head>
       <body className="antialiased bg-background text-foreground" style={{ fontFamily: 'system-ui, sans-serif' }}>
         <AuthProvider>
           {children}

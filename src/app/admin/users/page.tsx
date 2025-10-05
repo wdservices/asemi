@@ -88,7 +88,7 @@ export default function AdminUsersPage() {
                         </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                       {user.enrolledCourseIds?.length || 0}
+                       {user.enrolledCourses?.length || 0}
                     </TableCell>
                     <TableCell>
                     <DropdownMenu>

@@ -24,14 +24,6 @@ export default function AdminCoursesPage() {
     const fetchCourses = async () => {
         setIsLoading(true);
         const fetchedCourses = await getAllCourses();
-        console.log('Fetched courses data:', fetchedCourses.map(c => ({
-          id: c.id,
-          title: c.title,
-          imageUrl: c.imageUrl,
-          hasImage: !!c.imageUrl,
-          modules: c.modules?.length || 0,
-          lessons: c.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0
-        })));
         setCourses(fetchedCourses);
         setIsLoading(false);
     }

@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Trash2, X } from "lucide-react";
 import type { CourseFormData } from "@/lib/types";
 import { addCourse } from '@/lib/mockData';
+import PricingSelector from '@/components/admin/PricingSelector';
 
 const lessonSchema = z.object({
   title: z.string().min(1, "Lesson title is required."),
@@ -29,13 +30,20 @@ const moduleSchema = z.object({
   lessons: z.array(lessonSchema).min(1, "Module must have at least one lesson."),
 });
 
+const pricingSchema = z.object({
+  type: z.enum(['free', 'donation', 'payment']),
+  amount: z.number().optional(),
+  suggestedDonation: z.number().optional(),
+});
+
 const courseFormSchema = z.object({
   title: z.string().min(3, "Course title must be at least 3 characters."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   category: z.string().min(1, "Category is required."),
   level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'All Levels']),
   author: z.string().min(1, "Author is required."),
-  price: z.coerce.number().min(0, "Price must be a positive number."),
+  pricing: pricingSchema,
+  price: z.coerce.number().min(0, "Price must be a positive number."), // Keep for backward compatibility
   imageUrl: z.string().url().optional().or(z.literal('')),
   modules: z.array(moduleSchema).min(1, "Course must have at least one module."),
 });
@@ -53,6 +61,7 @@ export default function NewCoursePage() {
     longDescription: '',
     thumbnailUrl: '',
     price: 0,
+    pricing: { type: 'free' },
     category: '',
     level: 'All Levels',
     tags: '',
@@ -114,12 +123,22 @@ export default function NewCoursePage() {
             <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Course Title</FormLabel><FormControl><Input placeholder="e.g., Ultimate Next.js Course" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="author" render={({ field }) => (<FormItem><FormLabel>Author</FormLabel><FormControl><Input placeholder="e.g., John Doe" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="e.g., Web Development" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Price ($)</FormLabel><FormControl><Input type="number" placeholder="e.g., 99.99" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="level" render={({ field }) => (<FormItem><FormLabel>Level</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Beginner">Beginner</SelectItem><SelectItem value="Intermediate">Intermediate</SelectItem><SelectItem value="Advanced">Advanced</SelectItem><SelectItem value="All Levels">All Levels</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>Cover Image URL (Optional)</FormLabel><FormControl><Input type="url" placeholder="https://example.com/image.png" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="description" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="A brief summary of the course..." {...field} /></FormControl><FormMessage /></FormItem>)} />
           </CardContent>
         </Card>
+
+        <FormField
+          control={form.control}
+          name="pricing"
+          render={({ field }) => (
+            <FormItem>
+              <PricingSelector value={field.value} onChange={field.onChange} />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Card>
           <CardHeader>

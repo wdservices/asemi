@@ -1,11 +1,31 @@
 
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { DollarSign, Users, Activity, Book, Wand2, CheckCircle } from "lucide-react";
-import Link from "next/link";
-import { Bar } from 'react-chartjs-2';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { 
+  DollarSign, 
+  Users, 
+  Activity, 
+  Book, 
+  CheckCircle, 
+  TrendingUp, 
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  Eye,
+  ShoppingBag,
+  Calendar,
+  Clock,
+  Star
+} from 'lucide-react';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,10 +34,10 @@ import {
   Title,
   Tooltip,
   Legend,
-  ChartOptions,
-  ChartData,
+  ArcElement,
+  PointElement,
+  LineElement,
 } from 'chart.js';
-import { useEffect, useState } from "react";
 
 ChartJS.register(
   CategoryScale,
@@ -25,219 +45,400 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
 );
 
 const stats = [
-  { title: "Monthly Revenue", value: "$1,250", icon: DollarSign, change: "+12.5%" , changeType: "positive" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-blue-500 to-blue-400", textColor: "text-blue-500" },
-  { title: "Total Registered Users", value: "840", icon: Users, change: "+80" , changeType: "positive" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-green-500 to-green-400", textColor: "text-green-500"},
-  { title: "Active Users (24h)", value: "150", icon: Activity, change: "-5.2%" , changeType: "negative" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-orange-500 to-orange-400", textColor: "text-orange-500"},
-  { title: "Total Courses", value: "12", icon: Book, change: "+2" , changeType: "positive" as "positive" | "negative", iconBg: "bg-gradient-to-tr from-purple-500 to-purple-400", textColor: "text-purple-500"},
+  {
+    title: "Total Revenue",
+    value: "$45,231.89",
+    change: "+20.1%",
+    changeType: "positive" as const,
+    icon: DollarSign,
+    description: "from last month",
+    trend: [20, 25, 30, 28, 35, 40, 45]
+  },
+  {
+    title: "Active Users",
+    value: "2,350",
+    change: "+180.1%",
+    changeType: "positive" as const,
+    icon: Users,
+    description: "from last month",
+    trend: [15, 18, 22, 25, 28, 30, 35]
+  },
+  {
+    title: "Course Completions",
+    value: "12,234",
+    change: "+19%",
+    changeType: "positive" as const,
+    icon: Activity,
+    description: "from last month",
+    trend: [10, 12, 15, 18, 20, 22, 25]
+  },
+  {
+    title: "Total Courses",
+    value: "573",
+    change: "+201",
+    changeType: "positive" as const,
+    icon: Book,
+    description: "new this month",
+    trend: [5, 8, 12, 15, 18, 20, 25]
+  },
 ];
 
-const getChartData = (isDark: boolean): { engagement: ChartData<'bar'>, popularity: ChartData<'bar'> } => ({
-  engagement: {
-    labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-    datasets: [
-      {
-        label: 'New Users',
-        data: [65, 59, 80, 81, 56, 55],
-        backgroundColor: 'hsl(var(--chart-1))',
-        borderRadius: 4,
-      },
-      {
-        label: 'Completed Courses',
-        data: [28, 48, 40, 19, 86, 27],
-        backgroundColor: 'hsl(var(--chart-2))',
-        borderRadius: 4,
-      },
-    ],
+const recentActivities = [
+  {
+    id: 1,
+    user: "John Doe",
+    action: "enrolled in",
+    course: "Advanced React Development",
+    time: "2 hours ago",
+    type: "enrollment",
+    avatar: "JD"
   },
-  popularity: {
-    labels: ['Intro to React', 'Advanced CSS', 'AI for Devs', 'UX Fundamentals', 'Project Management'],
-    datasets: [{
-      label: '# of Enrolled Users',
-      data: [120, 95, 150, 75, 60],
-      backgroundColor: [
-          'hsl(var(--chart-1))',
-          'hsl(var(--chart-2))',
-          'hsl(var(--chart-3))',
-          'hsl(var(--chart-4))',
-          'hsl(var(--chart-5))',
-      ],
-      borderColor: 'hsl(var(--border))',
-      borderWidth: 1,
-      borderRadius: 4,
-    }]
+  {
+    id: 2,
+    user: "Jane Smith",
+    action: "completed",
+    course: "CSS Grid Mastery",
+    time: "5 hours ago",
+    type: "completion",
+    avatar: "JS"
   },
-});
-
-const getChartOptions = (isDark: boolean): ChartOptions<'bar'> => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'top' as const,
-      labels: {
-        color: isDark ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))',
-        boxWidth: 20,
-        padding: 20,
-      }
-    },
-    tooltip: {
-      backgroundColor: isDark ? 'hsl(var(--background))' : '#fff',
-      titleColor: isDark ? 'hsl(var(--foreground))' : '#000',
-      bodyColor: isDark ? 'hsl(var(--foreground))' : '#000',
-      borderColor: 'hsl(var(--border))',
-      borderWidth: 1,
-    }
+  {
+    id: 3,
+    user: "Mike Ross",
+    action: "purchased",
+    course: "JavaScript Fundamentals",
+    time: "1 day ago",
+    type: "purchase",
+    avatar: "MR"
   },
-  scales: {
-      x: {
-          ticks: { color: 'hsl(var(--muted-foreground))' },
-          grid: { color: 'hsl(var(--border))' }
-      },
-      y: {
-          ticks: { color: 'hsl(var(--muted-foreground))' },
-          grid: { color: 'hsl(var(--border))' }
-      }
+  {
+    id: 4,
+    user: "Sarah Wilson",
+    action: "started",
+    course: "UI/UX Design Principles",
+    time: "2 days ago",
+    type: "start",
+    avatar: "SW"
   }
-});
+];
 
+const topCourses = [
+  { name: "React Development", students: 1234, rating: 4.8, revenue: "$12,450" },
+  { name: "JavaScript Mastery", students: 987, rating: 4.7, revenue: "$9,870" },
+  { name: "CSS Advanced", students: 756, rating: 4.6, revenue: "$7,560" },
+  { name: "Node.js Backend", students: 543, rating: 4.9, revenue: "$5,430" },
+];
 
 export default function AdminDashboardPage() {
-    const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
-    useEffect(() => {
-        const checkDarkMode = () => {
-            const isDarkTheme = document.documentElement.classList.contains('dark');
-            setIsDark(isDarkTheme);
-        };
+  useEffect(() => {
+    const checkDarkMode = () => {
+      const isDarkTheme = document.documentElement.classList.contains('dark');
+      setIsDark(isDarkTheme);
+    };
 
-        checkDarkMode(); // Initial check
+    checkDarkMode();
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
-        // Optional: Listen for changes if you have a theme switcher
-        const observer = new MutationObserver(checkDarkMode);
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
-        return () => observer.disconnect();
-    }, []);
+  const chartData = {
+    revenue: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      datasets: [
+        {
+          label: 'Revenue',
+          data: [12000, 19000, 15000, 25000, 22000, 30000],
+          borderColor: 'hsl(var(--primary))',
+          backgroundColor: 'hsl(var(--primary) / 0.1)',
+          tension: 0.4,
+        },
+      ],
+    },
+    courseDistribution: {
+      labels: ['Programming', 'Design', 'Marketing', 'Business', 'Other'],
+      datasets: [
+        {
+          data: [35, 25, 20, 15, 5],
+          backgroundColor: [
+            'hsl(var(--primary))',
+            'hsl(var(--secondary))',
+            'hsl(var(--accent))',
+            'hsl(var(--muted))',
+            'hsl(var(--destructive))',
+          ],
+        },
+      ],
+    },
+  };
 
-    const chartData = getChartData(isDark);
-    const chartOptions = getChartOptions(isDark);
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: 'hsl(var(--muted-foreground))' },
+      },
+      y: {
+        grid: { color: 'hsl(var(--border))' },
+        ticks: { color: 'hsl(var(--muted-foreground))' },
+      },
+    },
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6">
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Welcome Back, Admin!</h1>
-          <p className="text-muted-foreground">Here's a summary of your platform's activity.</p>
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here's what's happening with your platform today.
+          </p>
         </div>
-        <div className="flex gap-2">
-            <Button asChild>
-              <Link href="/admin/courses/new"><Book className="mr-2 h-4 w-4" /> Add Course</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/admin/tools/new"><Wand2 className="mr-2 h-4 w-4" /> Add AI Tool</Link>
-            </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" asChild>
+            <Link href="/admin/analytics">
+              <Eye className="mr-2 h-4 w-4" />
+              View Analytics
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/courses/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Course
+            </Link>
+          </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-sm hover:shadow-md transition-shadow">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat, index) => (
+          <Card key={stat.title} className="relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-               <div className={`p-3 rounded-full ${stat.iconBg} text-white`}>
-                <stat.icon className="h-6 w-6" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {stat.title}
+              </CardTitle>
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <stat.icon className="h-4 w-4 text-primary" />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-muted-foreground">{stat.title}</p>
-              <div className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</div>
-              <p className={`text-xs ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'} flex items-center gap-1`}>
-                {stat.change}
-                 <span className="text-muted-foreground text-xs font-normal">from last month</span>
-              </p>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className={`flex items-center gap-1 ${
+                  stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {stat.changeType === 'positive' ? (
+                    <ArrowUpRight className="h-3 w-3" />
+                  ) : (
+                    <ArrowDownRight className="h-3 w-3" />
+                  )}
+                  {stat.change}
+                </div>
+                <span>{stat.description}</span>
+              </div>
+              {/* Mini trend chart */}
+              <div className="mt-3 h-8">
+                <div className="flex items-end gap-1 h-full">
+                  {stat.trend.map((value, i) => (
+                    <div
+                      key={i}
+                      className="bg-primary/20 rounded-sm flex-1"
+                      style={{ height: `${(value / Math.max(...stat.trend)) * 100}%` }}
+                    />
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="shadow-sm hover:shadow-md transition-shadow col-span-2 lg:col-span-1">
-            <CardHeader>
-                <CardTitle>User Engagement</CardTitle>
-                <CardDescription>New users and course completions over the last 6 months.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <div className="h-80 w-full">
-                    <Bar options={chartOptions} data={chartData.engagement} />
-                </div>
-            </CardContent>
-        </Card>
-         <Card className="shadow-sm hover:shadow-md transition-shadow col-span-2 lg:col-span-1">
-            <CardHeader>
-                <CardTitle>Most Popular Courses</CardTitle>
-                <CardDescription>Top courses by user enrollment.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="h-80 w-full">
-                    <Bar options={{...chartOptions, indexAxis: 'y' as const}} data={chartData.popularity} />
-                </div>
-            </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity / Quick Links Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
+      {/* Charts and Analytics */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Revenue Chart */}
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Recent User Activity</CardTitle>
-            <CardDescription>Overview of the latest user engagement.</CardDescription>
+            <CardTitle>Revenue Overview</CardTitle>
+            <CardDescription>
+              Monthly revenue for the last 6 months
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Placeholder for recent enrollments list */}
-            <ul className="space-y-4 text-sm">
-              <li className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>John Doe enrolled in "Intro to React"</span> 
-                </div>
-                <span className="text-muted-foreground text-xs">2 hours ago</span>
-              </li>
-               <li className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                  <span>Jane Smith completed "Advanced CSS"</span> 
-                </div>
-                <span className="text-muted-foreground text-xs">5 hours ago</span>
-              </li>
-               <li className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>Mike Ross purchased "AI Content Generator"</span> 
-                </div>
-                <span className="text-muted-foreground text-xs">1 day ago</span>
-              </li>
-            </ul>
+            <div className="h-80">
+              <Line options={chartOptions} data={chartData.revenue} />
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
+        {/* Course Distribution */}
+        <Card>
           <CardHeader>
-            <CardTitle>Quick Links</CardTitle>
-             <CardDescription>Access common admin tasks quickly.</CardDescription>
+            <CardTitle>Course Categories</CardTitle>
+            <CardDescription>
+              Distribution by category
+            </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Button variant="outline" asChild><Link href="/admin/courses">Manage Courses</Link></Button>
-            <Button variant="outline" asChild><Link href="/admin/tools">Manage AI Tools</Link></Button>
-            <Button variant="outline" asChild><Link href="/admin/users">Manage Users</Link></Button>
-            <Button variant="outline" asChild><Link href="/admin/settings">Platform Settings</Link></Button>
+          <CardContent>
+            <div className="h-80">
+              <Doughnut 
+                data={chartData.courseDistribution}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                      },
+                    },
+                  },
+                }}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Activity and Top Courses */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>
+              Latest user interactions on your platform
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                    {activity.avatar}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm">
+                      <span className="font-medium">{activity.user}</span>{' '}
+                      {activity.action}{' '}
+                      <span className="font-medium">{activity.course}</span>
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        {activity.time}
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant={
+                    activity.type === 'completion' ? 'default' :
+                    activity.type === 'purchase' ? 'secondary' :
+                    'outline'
+                  }>
+                    {activity.type}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Courses */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Performing Courses</CardTitle>
+            <CardDescription>
+              Your most successful courses this month
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {topCourses.map((course, index) => (
+                <div key={course.name} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{course.name}</p>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {course.students} students
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          {course.rating}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{course.revenue}</p>
+                      <p className="text-xs text-muted-foreground">revenue</p>
+                    </div>
+                  </div>
+                  <Progress value={(course.students / 1500) * 100} className="h-2" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+          <CardDescription>
+            Common tasks and shortcuts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+              <Link href="/admin/courses">
+                <Book className="h-6 w-6" />
+                <span>Manage Courses</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+              <Link href="/admin/users">
+                <Users className="h-6 w-6" />
+                <span>Manage Users</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+              <Link href="/admin/marketplace">
+                <ShoppingBag className="h-6 w-6" />
+                <span>Marketplace</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+              <Link href="/admin/settings">
+                <Activity className="h-6 w-6" />
+                <span>Settings</span>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 
 import { db } from './firebase';
-import { collection, getDocs, getDoc, doc, addDoc, deleteDoc, query, where, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, addDoc, deleteDoc, query, where, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Course, UserProfile, AITool, CourseFormData, Lesson } from './types';
 
 // --- Courses ---
@@ -9,10 +9,33 @@ export const getAllCourses = async (): Promise<Course[]> => {
     try {
         const coursesCol = collection(db, 'courses');
         const courseSnapshot = await getDocs(coursesCol);
-        const coursesList = courseSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Course));
+        const coursesList = courseSnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Ensure pricing field exists and is properly formatted
+            if (!data.pricing || typeof data.pricing !== 'object') {
+                data.pricing = {
+                    type: data.price && data.price > 0 ? 'payment' : 'free',
+                    amount: data.price || undefined
+                };
+            }
+            
+            // Ensure modules and lessons have IDs (for backward compatibility)
+            if (data.modules && Array.isArray(data.modules)) {
+                data.modules = data.modules.map((module: any, moduleIndex: number) => ({
+                    ...module,
+                    id: module.id || `module-${moduleIndex}`,
+                    lessons: module.lessons ? module.lessons.map((lesson: any, lessonIndex: number) => ({
+                        ...lesson,
+                        id: lesson.id || `lesson-${moduleIndex}-${lessonIndex}`
+                    })) : []
+                }));
+            }
+            
+            return {
+                id: doc.id,
+                ...data
+            } as Course;
+        });
         return coursesList;
     } catch (error) {
         console.error("Error fetching courses: ", error);
@@ -25,7 +48,28 @@ export const getCourseById = async (id: string): Promise<Course | null> => {
         const courseRef = doc(db, 'courses', id);
         const courseSnap = await getDoc(courseRef);
         if (courseSnap.exists()) {
-            return { id: courseSnap.id, ...courseSnap.data() } as Course;
+            const data = courseSnap.data();
+            // Ensure pricing field exists and is properly formatted
+            if (!data.pricing || typeof data.pricing !== 'object') {
+                data.pricing = {
+                    type: data.price && data.price > 0 ? 'payment' : 'free',
+                    amount: data.price || undefined
+                };
+            }
+            
+            // Ensure modules and lessons have IDs (for backward compatibility)
+            if (data.modules && Array.isArray(data.modules)) {
+                data.modules = data.modules.map((module: any, moduleIndex: number) => ({
+                    ...module,
+                    id: module.id || `module-${moduleIndex}`,
+                    lessons: module.lessons ? module.lessons.map((lesson: any, lessonIndex: number) => ({
+                        ...lesson,
+                        id: lesson.id || `lesson-${moduleIndex}-${lessonIndex}`
+                    })) : []
+                }));
+            }
+            
+            return { id: courseSnap.id, ...data } as Course;
         } else {
             console.log("No such course!");
             return null;
@@ -42,9 +86,113 @@ export const getCourseBySlug = async (slug: string): Promise<Course | null> => {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             const courseDoc = querySnapshot.docs[0];
-            const courseData = { id: courseDoc.id, ...courseDoc.data() } as Course;
+            const data = courseDoc.data();
+            // Ensure pricing field exists and is properly formatted
+            if (!data.pricing || typeof data.pricing !== 'object') {
+                data.pricing = {
+                    type: data.price && data.price > 0 ? 'payment' : 'free',
+                    amount: data.price || undefined
+                };
+            }
+            
+            // Ensure modules and lessons have IDs (for backward compatibility)
+            if (data.modules && Array.isArray(data.modules)) {
+                data.modules = data.modules.map((module: any, moduleIndex: number) => ({
+                    ...module,
+                    id: module.id || `module-${moduleIndex}`,
+                    lessons: module.lessons ? module.lessons.map((lesson: any, lessonIndex: number) => ({
+                        ...lesson,
+                        id: lesson.id || `lesson-${moduleIndex}-${lessonIndex}`
+                    })) : []
+                }));
+            }
+            
+            const courseData = { id: courseDoc.id, ...data } as Course;
             return courseData; // Return the course regardless of published status
         }
+        
+        // If no course found and slug matches our mock course, return mock data
+        if (slug === "react-development-fundamentals") {
+            return {
+                id: "test-course-1",
+                title: "React Development Fundamentals",
+                slug: "react-development-fundamentals",
+                description: "Learn the basics of React development from scratch",
+                longDescription: "This comprehensive course covers everything you need to know about React development, from basic concepts to advanced patterns.",
+                thumbnailUrl: "/course-fallback.webp",
+                price: 0,
+                pricing: { type: 'free' },
+                category: "Web Development",
+                level: "Beginner",
+                tags: ["react", "javascript", "frontend"],
+                instructorName: "John Doe",
+                instructorBio: "Senior React Developer with 5+ years of experience",
+                instructorTitle: "Senior Frontend Developer",
+                previewVideoUrl: "https://www.youtube.com/watch?v=dGcsHMXbSOA",
+                paymentLink: "",
+                author: "John Doe",
+                imageUrl: "/course-fallback.webp",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                modules: [
+                    {
+                        id: "module-1",
+                        title: "Getting Started with React",
+                        moduleOrder: 0,
+                        lessons: [
+                            {
+                                id: "lesson-1-1",
+                                title: "Introduction to React",
+                                contentType: "video",
+                                content: "https://www.youtube.com/watch?v=dGcsHMXbSOA",
+                                duration: "15:30",
+                                isPreviewable: true,
+                                lessonOrder: 0,
+                                downloadableResources: []
+                            },
+                            {
+                                id: "lesson-1-2",
+                                title: "Setting up Development Environment",
+                                contentType: "video",
+                                content: "https://www.youtube.com/watch?v=SqcY0GlETPk",
+                                duration: "12:45",
+                                isPreviewable: false,
+                                lessonOrder: 1,
+                                downloadableResources: []
+                            }
+                        ]
+                    },
+                    {
+                        id: "module-2",
+                        title: "React Components",
+                        moduleOrder: 1,
+                        lessons: [
+                            {
+                                id: "lesson-2-1",
+                                title: "Understanding Components",
+                                contentType: "video",
+                                content: "https://www.youtube.com/watch?v=Y2hgEGPzTZY",
+                                duration: "18:20",
+                                isPreviewable: false,
+                                lessonOrder: 0,
+                                downloadableResources: []
+                            },
+                            {
+                                id: "lesson-2-2",
+                                title: "Props and State",
+                                contentType: "video",
+                                content: "https://www.youtube.com/watch?v=IYvD9oBCuJI",
+                                duration: "22:15",
+                                isPreviewable: false,
+                                lessonOrder: 1,
+                                downloadableResources: []
+                            }
+                        ]
+                    }
+                ]
+            };
+        }
+        
         return null;
     } catch (error) {
         console.error("Error fetching course by slug: ", error);
@@ -145,4 +293,184 @@ export const updateUserProfile = async (id: string, data: Partial<UserProfile>):
 export const addPurchasedToolToUser = async (userId: string, toolId: string): Promise<boolean> => {
     // Placeholder - would need to fetch user, update array, and save.
     return false;
+};
+
+export const enrollUserInCourse = async (userId: string, courseId: string): Promise<boolean> => {
+    try {
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+            const userData = userSnap.data() as UserProfile;
+            const enrolledCourses = userData.enrolledCourses || [];
+            
+            // Check if user is already enrolled
+            if (!enrolledCourses.includes(courseId)) {
+                // Add the course to enrolled courses
+                const updatedEnrolledCourses = [...enrolledCourses, courseId];
+                
+                // Update the user profile
+                await setDoc(userRef, { 
+                    enrolledCourses: updatedEnrolledCourses 
+                }, { merge: true });
+                
+                return true;
+            }
+            return true; // Already enrolled
+        } else {
+            // Create new user profile with this course enrollment
+            await setDoc(userRef, {
+                enrolledCourses: [courseId],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+            
+            return true;
+        }
+    } catch (error) {
+        console.error("Error enrolling user in course: ", error);
+        return false;
+    }
+};
+
+// Function to create sample course data for testing
+export const createSampleCourse = async (): Promise<Course | null> => {
+    const sampleCourse: CourseFormData = {
+        title: "React Development Fundamentals",
+        slug: "react-development-fundamentals",
+        description: "Learn the basics of React development from scratch",
+        longDescription: "This comprehensive course covers everything you need to know about React development, from basic concepts to advanced patterns.",
+        thumbnailUrl: "/course-fallback.webp",
+        price: 0,
+        pricing: { type: 'free' },
+        category: "Web Development",
+        level: "Beginner",
+        tags: "react,javascript,frontend",
+        instructorName: "John Doe",
+        instructorBio: "Senior React Developer with 5+ years of experience",
+        instructorTitle: "Senior Frontend Developer",
+        previewVideoUrl: "https://www.youtube.com/watch?v=dGcsHMXbSOA",
+        paymentLink: "",
+        author: "John Doe",
+        imageUrl: "/course-fallback.webp",
+        modules: [
+            {
+                id: "module-1",
+                title: "Getting Started with React",
+                moduleOrder: 0,
+                lessons: [
+                    {
+                        id: "lesson-1-1",
+                        title: "Introduction to React",
+                        contentType: "video",
+                        content: "https://www.youtube.com/watch?v=dGcsHMXbSOA",
+                        duration: "15:30",
+                        isPreviewable: true,
+                        lessonOrder: 0,
+                        downloadableResources: []
+                    },
+                    {
+                        id: "lesson-1-2",
+                        title: "Setting up Development Environment",
+                        contentType: "video",
+                        content: "https://www.youtube.com/watch?v=SqcY0GlETPk",
+                        duration: "12:45",
+                        isPreviewable: false,
+                        lessonOrder: 1,
+                        downloadableResources: []
+                    }
+                ]
+            },
+            {
+                id: "module-2",
+                title: "React Components",
+                moduleOrder: 1,
+                lessons: [
+                    {
+                        id: "lesson-2-1",
+                        title: "Understanding Components",
+                        contentType: "video",
+                        content: "https://www.youtube.com/watch?v=Y2hgEGPzTZY",
+                        duration: "18:20",
+                        isPreviewable: false,
+                        lessonOrder: 0,
+                        downloadableResources: []
+                    },
+                    {
+                        id: "lesson-2-2",
+                        title: "Props and State",
+                        contentType: "video",
+                        content: "https://www.youtube.com/watch?v=IYvD9oBCuJI",
+                        duration: "22:15",
+                        isPreviewable: false,
+                        lessonOrder: 1,
+                        downloadableResources: []
+                    }
+                ]
+            }
+        ]
+    };
+
+    return await addCourse(sampleCourse);
+};
+
+// --- Payment Records ---
+
+export interface PaymentRecord {
+    id?: string;
+    userId: string;
+    courseId: string;
+    amount: number;
+    currency: string;
+    reference: string;
+    status: 'success' | 'failed' | 'pending';
+    pricingType: string;
+    customerEmail: string;
+    paidAt: string;
+    createdAt: any;
+}
+
+export const createPaymentRecord = async (paymentData: Omit<PaymentRecord, 'id' | 'createdAt'>): Promise<boolean> => {
+    try {
+        console.log('Creating payment record in Firestore payments collection:', paymentData);
+        const docRef = await addDoc(collection(db, 'payments'), {
+            ...paymentData,
+            createdAt: serverTimestamp()
+        });
+        console.log('Payment record created with ID:', docRef.id);
+        return true;
+    } catch (error) {
+        console.error('Error creating payment record in Firestore:', error);
+        return false;
+    }
+};
+
+export const getPaymentsByUserId = async (userId: string): Promise<PaymentRecord[]> => {
+    try {
+        const q = query(collection(db, 'payments'), where('userId', '==', userId));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as PaymentRecord));
+    } catch (error) {
+        console.error('Error fetching payments:', error);
+        return [];
+    }
+};
+
+export const verifyUserPaymentForCourse = async (userId: string, courseId: string): Promise<boolean> => {
+    try {
+        const q = query(
+            collection(db, 'payments'),
+            where('userId', '==', userId),
+            where('courseId', '==', courseId),
+            where('status', '==', 'success')
+        );
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty;
+    } catch (error) {
+        console.error('Error verifying payment:', error);
+        return false;
+    }
 };

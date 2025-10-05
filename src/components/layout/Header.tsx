@@ -22,12 +22,6 @@ const HeaderContent = () => {
                 Courses
             </Link>
             <Link
-                href="/marketplace"
-                className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground"
-            >
-                AI Marketplace
-            </Link>
-            <Link
                 href="/about"
                 className="text-sm font-medium text-foreground/70 transition-colors hover:text-foreground"
             >

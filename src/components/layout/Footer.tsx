@@ -18,7 +18,6 @@ const Footer = () => {
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/#features" className="text-muted-foreground hover:text-primary">Features</Link></li>
               <li><Link href="/courses" className="text-muted-foreground hover:text-primary">Courses</Link></li>
-              <li><Link href="/marketplace" className="text-muted-foreground hover:text-primary">AI Marketplace</Link></li>
               <li><Link href="/about" className="text-muted-foreground hover:text-primary">About Us</Link></li>
             </ul>
           </div>

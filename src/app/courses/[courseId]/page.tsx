@@ -9,16 +9,18 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { Course, CourseModule, Lesson as LessonType } from '@/lib/types';
-import { getCourseBySlug, enrollUserInCourse } from '@/lib/mockData'; // Using slug as ID for fetching, added enrollUserInCourse
+import { getCourseBySlug, enrollUserInCourse, getUserProfile } from '@/lib/mockData'; // Using slug as ID for fetching, added enrollUserInCourse
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Star, PlayCircle, Clock, BarChart, Users, FileText, Lock, CheckCircle, ShoppingCart } from 'lucide-react'; // Added ShoppingCart
+import { Star, PlayCircle, Clock, BarChart, Users, FileText, Lock, CheckCircle, ShoppingCart, Heart, DollarSign } from 'lucide-react'; // Added ShoppingCart
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { getCoursePriceDisplay } from '@/lib/utils';
+import PaystackPayment from '@/components/courses/PaystackPayment';
 
 // Placeholder for Video Player
 const VideoPlayer = ({ src, title }: { src: string, title: string }) => (
@@ -45,13 +47,14 @@ export default function CourseDetailPage() {
   const courseSlug = typeof params.courseId === 'string' ? params.courseId : '';
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Check enrollment status based on the current user state
   const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
     if (userProfile && course) {
-      setIsEnrolled(userProfile.enrolledCourseIds?.includes(course.id) || false);
+      setIsEnrolled(userProfile.enrolledCourses?.includes(course.id) || false);
     } else {
       setIsEnrolled(false);
     }
@@ -60,33 +63,76 @@ export default function CourseDetailPage() {
 
   useEffect(() => {
     if (courseSlug) {
-      const fetchedCourse = getCourseBySlug(courseSlug);
-      if (fetchedCourse) {
-        setCourse(fetchedCourse);
-      } else {
-        // Handle course not found, e.g., redirect to 404 or show message
-        router.push('/courses'); // Redirect to courses list for simplicity
-      }
-      setIsLoading(false);
+      const fetchCourse = async () => {
+        setIsLoading(true);
+        try {
+          const fetchedCourse = await getCourseBySlug(courseSlug);
+          if (fetchedCourse) {
+            setCourse(fetchedCourse);
+          } else {
+            // Handle course not found, e.g., redirect to 404 or show message
+            router.push('/courses'); // Redirect to courses list for simplicity
+          }
+        } catch (error) {
+          console.error('Error fetching course:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchCourse();
     }
   }, [courseSlug, router]);
 
-  const handleMockPurchase = () => {
+  const handleEnrollClick = () => {
     if (!user) {
-        toast({ title: "Login Required", description: "Please login to purchase this course.", variant: "destructive" });
+        toast({ title: "Login Required", description: "Please login to enroll in this course.", variant: "destructive" });
         router.push(`/auth/login?redirect=/courses/${courseSlug}`);
         return;
     }
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = async (reference: string) => {
     if (course && user) {
-        // MOCK: Simulate successful purchase and enrollment
-        const success = enrollUserInCourse(user.uid, course.id);
-        if (success) {
-            // Update the user state in the Auth context
-            updateUserProfile({ enrolledCourseIds: [...(userProfile?.enrolledCourseIds || []), course.id] });
-            toast({ title: "Purchase Successful (Mock)", description: `You now have access to ${course.title}. Redirecting...`, variant: "default" });
-            // The UI will update based on the new 'isEnrolled' state.
-        } else {
-             toast({ title: "Already Enrolled", description: `You already have access to ${course.title}.`, variant: "default" });
+        try {
+            // Fetch the latest user profile to get updated enrollment status
+            const latestProfile = await getUserProfile(user.uid);
+            
+            if (latestProfile && latestProfile.enrolledCourses?.includes(course.id)) {
+                // Update the local user state with the latest profile
+                updateUserProfile({ enrolledCourses: latestProfile.enrolledCourses });
+                
+                toast({ 
+                    title: "Enrollment Successful", 
+                    description: `You now have access to ${course.title}!`, 
+                    variant: "default" 
+                });
+                setShowPaymentModal(false);
+                
+                // Wait a bit for state to update before redirecting
+                setTimeout(() => {
+                    const firstModule = course.modules?.[0];
+                    const firstLesson = firstModule?.lessons?.[0];
+                    if (firstModule && firstLesson) {
+                        router.push(`/learn/${course.slug}/${firstModule.id}/${firstLesson.id}`);
+                    }
+                }, 500);
+            } else {
+                toast({ 
+                    title: "Enrollment Failed", 
+                    description: "There was an error enrolling you in the course. Please try again.", 
+                    variant: "destructive" 
+                });
+                setShowPaymentModal(false);
+            }
+        } catch (error) {
+            console.error('Error during enrollment:', error);
+            toast({ 
+                title: "Enrollment Failed", 
+                description: "There was an error enrolling you in the course. Please try again.", 
+                variant: "destructive" 
+            });
+            setShowPaymentModal(false);
         }
     }
   };
@@ -212,33 +258,35 @@ export default function CourseDetailPage() {
             )}
           </div>
           <div className="p-6 pt-0">
-            {!isEnrolled && <h2 className="text-3xl font-bold text-primary mb-4">${course.price.toFixed(2)}</h2>}
+            {!isEnrolled && (() => {
+              const priceInfo = getCoursePriceDisplay(course.pricing, course.price);
+              return (
+                <div className="flex items-center gap-2 mb-4">
+                  {priceInfo.isDonation && <Heart className="h-6 w-6 text-pink-500" />}
+                  {priceInfo.isPaid && <DollarSign className="h-6 w-6 text-green-600" />}
+                  <h2 className={`text-3xl font-bold mb-0 ${
+                    priceInfo.isFree ? 'text-green-600' : 
+                    priceInfo.isDonation ? 'text-pink-600' : 
+                    'text-primary'
+                  }`}>
+                    {priceInfo.display}
+                  </h2>
+                </div>
+              );
+            })()}
 
             {isEnrolled ? (
               <Button size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white" asChild>
                 <Link href={course.redirectLink || `/learn/${course.slug}`}>Go to Course</Link>
               </Button>
-            ) : course.paymentLink ? (
-              // Use an <a> tag for external payment links
-              // In this mock, we call handleMockPurchase onClick instead of direct navigation
+            ) : (
               <Button
                   size="lg"
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  onClick={handleMockPurchase} // Simulate purchase on click for demo
-                  // In a real app, this might be: asChild
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                  onClick={handleEnrollClick}
               >
-                   {/* In a real app, this would be:
-                   <a href={course.paymentLink} target="_blank" rel="noopener noreferrer">
-                       <ShoppingCart className="mr-2 h-5 w-5" /> Purchase Now
-                   </a>
-                   */}
-                   {/* Mock Button Text: */}
-                   <ShoppingCart className="mr-2 h-5 w-5" /> Purchase Now (Mock)
+                   <ShoppingCart className="mr-2 h-5 w-5" /> Enroll Now
               </Button>
-            ) : (
-                 <Button size="lg" className="w-full" disabled>
-                    Enrollment Unavailable
-                 </Button>
             )}
 
              {!isEnrolled && <Button variant="outline" size="lg" className="w-full mt-3">Add to Wishlist</Button>} {/* Wishlist functionality is a placeholder */}
@@ -258,6 +306,35 @@ export default function CourseDetailPage() {
           </div>
         </Card>
       </aside>
+
+      {/* Payment Modal */}
+      {showPaymentModal && course && user && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Enroll in Course</h3>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4">
+              <PaystackPayment
+                courseId={course.id}
+                courseTitle={course.title}
+                pricing={course.pricing || { type: 'payment', amount: course.price }}
+                fallbackPrice={course.price}
+                userEmail={user.email || ''}
+                userId={user.uid}
+                onSuccess={handlePaymentSuccess}
+                onClose={() => setShowPaymentModal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

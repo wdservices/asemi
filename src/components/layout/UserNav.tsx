@@ -2,6 +2,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import { LayoutDashboard, LogOut, User, Settings, ShieldCheck } from 'lucide-rea
 
 export function UserNav() {
   const { user, logout, isAdmin } = useAuth();
+  const router = useRouter();
 
   if (!user) {
     // Return null or a placeholder if you don't want to show anything when logged out
@@ -79,7 +81,10 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>
+        <DropdownMenuItem onClick={async () => {
+          await logout();
+          router.push('/courses');
+        }}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>

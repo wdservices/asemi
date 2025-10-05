@@ -8,6 +8,15 @@ export interface User extends FirebaseUser {
   userProfile?: UserProfile;
 }
 
+// Pricing options for courses
+export type CoursePricingType = 'free' | 'donation' | 'payment';
+
+export interface CoursePricing {
+  type: CoursePricingType;
+  amount?: number; // Only used for 'payment' type
+  suggestedDonation?: number; // Optional suggested amount for 'donation' type
+}
+
 // Main type for a Course
 export interface Course {
   id: string;
@@ -17,7 +26,8 @@ export interface Course {
   category: string;
   level: 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels';
   author: string;
-  price: number;
+  pricing: CoursePricing;
+  price: number; // Keep for backward compatibility, will be deprecated
   imageUrl?: string;
   isPublished?: boolean;
   modules: CourseModule[];
