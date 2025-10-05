@@ -35,10 +35,12 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-primary/50 transition-all">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.displayName || "User Avatar"} data-ai-hint="user avatar" />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "User Avatar"} />
+            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+              {initials}
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

@@ -184,22 +184,31 @@ export default function CourseLearnPage() {
 
 
   if (isLoading || isVerifyingPayment) {
-    return <div className="p-6 text-center">
-      {isVerifyingPayment ? 'Verifying enrollment...' : 'Loading lesson content...'}
-    </div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">
+            {isVerifyingPayment ? 'Verifying enrollment...' : 'Loading lesson content...'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Check if user is logged in
   if (!user) {
     return (
-      <div className="p-6 text-center">
-        <div className="bg-card p-8 rounded-lg shadow max-w-md mx-auto">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Login Required</h2>
-          <p className="text-muted-foreground mb-4">
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="bg-card p-10 rounded-2xl shadow-2xl border-2 border-primary/20 max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3">Login Required</h2>
+          <p className="text-muted-foreground mb-6">
             Please log in to access course content.
           </p>
-          <Button asChild>
+          <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 w-full">
             <Link href={`/auth/login?redirect=/learn/${courseSlug}/${currentModuleId}/${currentLessonId}`}>
               Login to Continue
             </Link>
@@ -212,14 +221,16 @@ export default function CourseLearnPage() {
   // Check if user is enrolled in the course
   if (course && !isEnrolled) {
     return (
-      <div className="p-6 text-center">
-        <div className="bg-card p-8 rounded-lg shadow max-w-md mx-auto">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Enrollment Required</h2>
-          <p className="text-muted-foreground mb-4">
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="bg-card p-10 rounded-2xl shadow-2xl border-2 border-primary/20 max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="h-10 w-10 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3">Enrollment Required</h2>
+          <p className="text-muted-foreground mb-6">
             You need to enroll in <strong>{course.title}</strong> to access this content.
           </p>
-          <Button asChild>
+          <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 w-full">
             <Link href={`/courses/${courseSlug}`}>
               Enroll in Course
             </Link>
@@ -231,9 +242,9 @@ export default function CourseLearnPage() {
   
   if (error) {
     return (
-      <div className="p-6 text-center">
-        <div className="bg-destructive/10 text-destructive p-4 rounded-lg inline-block">
-          {error}
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="bg-destructive/10 text-destructive p-6 rounded-xl border-2 border-destructive/30 max-w-md">
+          <p className="font-semibold">{error}</p>
         </div>
       </div>
     );
@@ -241,60 +252,70 @@ export default function CourseLearnPage() {
   
   if (!currentLesson) {
     return (
-      <div className="p-6 text-center">
-        <div className="bg-destructive/10 text-destructive p-4 rounded-lg inline-block">
-          Unable to load the requested lesson. Please try again or contact support.
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="bg-destructive/10 text-destructive p-6 rounded-xl border-2 border-destructive/30 max-w-md text-center">
+          <p className="font-semibold">Unable to load the requested lesson. Please try again or contact support.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       {currentLesson.contentType === 'video' && currentLesson.content && (
-        <VideoPlayer videoUrl={currentLesson.content} title={currentLesson.title} />
+        <div className="rounded-2xl overflow-hidden shadow-2xl border-2 border-primary/20 mb-8">
+          <VideoPlayer videoUrl={currentLesson.content} title={currentLesson.title} />
+        </div>
       )}
 
-      <div className="mt-6 bg-card p-6 rounded-lg shadow">
-        <h2 className="text-2xl font-semibold mb-2 text-foreground">{currentLesson.title}</h2>
+      <div className="mt-6 bg-card p-8 rounded-2xl shadow-xl border-2 border-primary/10">
+        <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{currentLesson.title}</h2>
         
-        <Tabs defaultValue="overview" className="mt-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="resources">Resources</TabsTrigger>
-            <TabsTrigger value="qna">Q&A</TabsTrigger> {/* Placeholder */}
+        <Tabs defaultValue="overview" className="mt-6">
+          <TabsList className="bg-gradient-to-r from-primary/10 to-accent/10 p-1 h-12">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white font-semibold">Overview</TabsTrigger>
+            <TabsTrigger value="resources" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white font-semibold">Resources</TabsTrigger>
+            <TabsTrigger value="qna" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white font-semibold">Q&A</TabsTrigger>
           </TabsList>
-          <TabsContent value="overview" className="mt-4 prose prose-sm max-w-none text-foreground">
+          <TabsContent value="overview" className="mt-6 prose prose-sm max-w-none text-foreground">
             {currentLesson.contentType === 'text' && (
-              <div dangerouslySetInnerHTML={{ __html: currentLesson.content.replace(/\n/g, '<br />') }} />
+              <div className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl" dangerouslySetInnerHTML={{ __html: currentLesson.content.replace(/\n/g, '<br />') }} />
             )}
             {currentLesson.contentType === 'pdf' && (
               <div>
-                <p className="mb-4">This lesson contains a PDF document. You can download it from the resources tab or view it below.</p>
-                <iframe src={currentLesson.content} width="100%" height="500px" className="rounded border"></iframe>
+                <p className="mb-4 text-lg">This lesson contains a PDF document. You can download it from the resources tab or view it below.</p>
+                <iframe src={currentLesson.content} width="100%" height="500px" className="rounded-xl border-2 border-primary/20 shadow-lg"></iframe>
               </div>
             )}
              {currentLesson.contentType === 'video' && (
-              <p>Watch the video above. Key takeaways and notes will be displayed here. (Placeholder for video description/notes)</p>
+              <div className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl">
+                <p className="text-lg">Watch the video above. Key takeaways and notes will be displayed here. (Placeholder for video description/notes)</p>
+              </div>
             )}
-            <Alert className="mt-6">
-              <Lightbulb className="h-4 w-4" />
-              <AlertTitle>Tip!</AlertTitle>
-              <AlertDescription>
+            <Alert className="mt-8 border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5 shadow-md">
+              <Lightbulb className="h-5 w-5 text-primary" />
+              <AlertTitle className="text-lg font-bold">Pro Tip!</AlertTitle>
+              <AlertDescription className="text-base">
                 Take notes while you learn. It helps with retention! (Placeholder for lesson-specific tips)
               </AlertDescription>
             </Alert>
           </TabsContent>
-          <TabsContent value="resources" className="mt-4">
+          <TabsContent value="resources" className="mt-6">
             {currentLesson.downloadableResources && currentLesson.downloadableResources.length > 0 ? (
-              <ResourceList resources={currentLesson.downloadableResources} />
+              <div className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl">
+                <ResourceList resources={currentLesson.downloadableResources} />
+              </div>
             ) : (
-              <p className="text-muted-foreground">No downloadable resources for this lesson.</p>
+              <div className="text-center p-12 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl">
+                <p className="text-lg text-muted-foreground">No downloadable resources for this lesson.</p>
+              </div>
             )}
           </TabsContent>
-          <TabsContent value="qna" className="mt-4">
-             <p className="text-muted-foreground">Q&A section for this lesson. (Placeholder)</p>
-             {/* Add Q&A component here */}
+          <TabsContent value="qna" className="mt-6">
+            <div className="text-center p-12 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl">
+              <p className="text-lg text-muted-foreground">Q&A section for this lesson. (Placeholder)</p>
+              {/* Add Q&A component here */}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

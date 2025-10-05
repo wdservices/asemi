@@ -13,78 +13,83 @@ export default function HomePage() {
       <Header />
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-          <div className="container mx-auto max-w-screen-xl px-4 text-center">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
-              Unlock Your Potential with <span className="text-primary">Asemi</span>
+        <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-accent/5 to-background relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+          <div className="container mx-auto max-w-screen-xl px-4 text-center relative z-10">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground animate-in fade-in slide-in-from-bottom-4 duration-1000">
+              Unlock Your Potential with <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Asemi</span>
             </h1>
-            <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+            <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150">
               Explore expert-led courses and powerful AI tools. Asemi is your partner in learning, creating, and achieving your goals.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-              <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
+              <Button size="lg" asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-lg hover:shadow-xl transition-all duration-300">
                 <Link href="/auth/register">Get Started for Free <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
-               <Button size="lg" variant="outline" asChild>
+               <Button size="lg" variant="outline" asChild className="border-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300">
                  <Link href="/#features">Learn More</Link>
                </Button>
             </div>
-            <div className="mt-16">
-              <Image
-                src="/learn.webp"
-                alt="Online learning platform with AI tools"
-                width={1200}
-                height={350}
-                className="rounded-lg shadow-xl mx-auto w-full object-cover h-[350px] aspect-[1200/350]"
-                style={{ height: "auto" }}
-                data-ai-hint="online learning platform"
-                priority
-              />
+            <div className="mt-16 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                <Image
+                  src="/learn.webp"
+                  alt="Online learning platform with AI tools"
+                  width={1200}
+                  height={500}
+                  className="relative rounded-lg shadow-2xl mx-auto w-full object-cover h-[500px] aspect-[1200/500] border-2 border-primary/20"
+                  style={{ height: "auto" }}
+                  data-ai-hint="online learning platform"
+                  priority
+                />
+              </div>
             </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-16 md:py-24 bg-background">
+        <section id="features" className="py-16 md:py-24 bg-gradient-to-b from-background to-primary/5">
           <div className="container mx-auto max-w-screen-xl px-4">
-            <h2 className="text-3xl font-bold text-center text-foreground mb-4">Why Asemi is Your Best Choice</h2>
-            <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-center text-foreground mb-4">Why Asemi is Your Best Choice</h2>
+            <p className="text-center text-muted-foreground mb-12 max-w-xl mx-auto text-lg">
               We provide the best tools and resources you need to succeed in your professional and personal journey.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md border">
-                 <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
-                   <Video className="h-8 w-8" />
+               <div className="group flex flex-col items-center text-center p-8 bg-card rounded-xl shadow-lg border-2 border-transparent hover:border-primary/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                 <div className="p-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+                   <Video className="h-10 w-10" />
                  </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">Expert-Led Video Courses</h3>
-                 <p className="text-muted-foreground text-sm">Learn from industry professionals with our high-quality, comprehensive video courses designed for all skill levels.</p>
+                 <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors">Expert-Led Video Courses</h3>
+                 <p className="text-muted-foreground">Learn from industry professionals with our high-quality, comprehensive video courses designed for all skill levels.</p>
                </div>
-               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md border">
-                 <div className="p-3 rounded-full bg-accent/10 text-accent mb-4">
-                    <Wand2 className="h-8 w-8" />
+               <div className="group flex flex-col items-center text-center p-8 bg-card rounded-xl shadow-lg border-2 border-transparent hover:border-accent/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                 <div className="p-4 rounded-full bg-gradient-to-br from-accent/20 to-accent/10 text-accent mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <Wand2 className="h-10 w-10" />
                  </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">AI Tools Marketplace</h3>
-                 <p className="text-muted-foreground text-sm">Enhance your workflow with powerful AI tools. Purchase, customize, and integrate them into your projects with ease.</p>
+                 <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-accent transition-colors">Powerful Learning Tools</h3>
+                 <p className="text-muted-foreground">Enhance your learning experience with interactive tools and resources designed to accelerate your progress.</p>
                </div>
-               <div className="flex flex-col items-center text-center p-6 bg-card rounded-lg shadow-md border">
-                  <div className="p-3 rounded-full bg-primary/10 text-primary mb-4">
-                     <Users className="h-8 w-8" />
+               <div className="group flex flex-col items-center text-center p-8 bg-card rounded-xl shadow-lg border-2 border-transparent hover:border-primary/50 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                  <div className="p-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary mb-4 group-hover:scale-110 transition-transform duration-300">
+                     <Users className="h-10 w-10" />
                   </div>
-                 <h3 className="text-xl font-semibold text-foreground mb-2">Community & Analytics</h3>
-                 <p className="text-muted-foreground text-sm">Track your learning progress with intuitive dashboards and connect with a vibrant community of learners and creators.</p>
+                 <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors">Community & Analytics</h3>
+                 <p className="text-muted-foreground">Track your learning progress with intuitive dashboards and connect with a vibrant community of learners and creators.</p>
                </div>
              </div>
           </div>
         </section>
 
         {/* Call to Action Section */}
-        <section className="py-16 md:py-24 bg-primary text-primary-foreground">
-          <div className="container mx-auto max-w-screen-md px-4 text-center">
-            <h2 className="text-3xl font-bold mb-6">Ready to Start Learning?</h2>
-            <p className="text-lg mb-8">
+        <section className="py-16 md:py-24 bg-gradient-to-r from-primary via-accent to-primary animate-gradient text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+          <div className="container mx-auto max-w-screen-md px-4 text-center relative z-10">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Start Learning?</h2>
+            <p className="text-lg md:text-xl mb-8 opacity-90">
               Join thousands of users who trust Asemi to achieve their goals. Sign up today and start your journey to success.
             </p>
-            <Button size="lg" variant="secondary" asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button size="lg" asChild className="bg-white text-primary hover:bg-white/90 shadow-2xl hover:shadow-3xl transition-all duration-300 font-semibold px-8 h-12">
               <Link href="/auth/register">Sign Up for Free</Link>
             </Button>
           </div>

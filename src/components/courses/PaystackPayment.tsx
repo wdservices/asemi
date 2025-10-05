@@ -41,7 +41,7 @@ export default function PaystackPayment({
   onSuccess,
   onClose
 }: PaystackPaymentProps) {
-  const [donationAmount, setDonationAmount] = useState<string>('100');
+  const [donationAmount, setDonationAmount] = useState<string>('1000');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -247,8 +247,8 @@ export default function PaystackPayment({
                 id="donationAmount"
                 type="number"
                 step="1"
-                min="100"
-                placeholder="100"
+                min="1000"
+                placeholder="1000"
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
                 className="mt-1"
@@ -259,7 +259,7 @@ export default function PaystackPayment({
                 </p>
               )}
               <p className="text-sm text-muted-foreground mt-1">
-                Enter amount in Nigerian Naira (minimum ₦100)
+                Enter amount in Nigerian Naira (minimum ₦1,000)
               </p>
             </div>
           </div>
@@ -314,7 +314,7 @@ export default function PaystackPayment({
     }
     if (pricing.type === 'donation') {
       const amount = parseFloat(donationAmount);
-      return isNaN(amount) || amount < 100;
+      return isNaN(amount) || amount < 1000;
     }
     return false;
   };

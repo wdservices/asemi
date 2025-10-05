@@ -102,27 +102,34 @@ export default function CourseLearnLayout({
 
   if (loading || isLoadingCourse || !user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        Loading learning environment...
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Loading learning environment...</p>
+        </div>
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        Course not found or you are not enrolled. 
-        <Button variant="link" asChild><Link href="/dashboard">Go to Dashboard</Link></Button>
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="text-center bg-card p-8 rounded-xl shadow-xl border-2 border-primary/20">
+          <p className="text-xl text-foreground mb-4">Course not found or you are not enrolled.</p>
+          <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+            <Link href="/dashboard">Go to Dashboard</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className="flex h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5 relative">
       {/* Mobile sidebar toggle button */}
       <button 
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-primary text-primary-foreground"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-gradient-to-r from-primary to-accent text-white shadow-lg hover:shadow-xl transition-all"
         aria-label="Toggle sidebar"
       >
         {isSidebarOpen ? '✕' : '☰'}
@@ -130,27 +137,27 @@ export default function CourseLearnLayout({
       
       {/* Sidebar for Course Navigation */}
       <aside 
-        className={`fixed md:sticky top-0 left-0 h-screen w-[300px] border-r border-border bg-card flex flex-col transition-transform duration-300 ease-in-out z-40 ${
+        className={`fixed md:sticky top-0 left-0 h-screen w-[320px] border-r-2 border-primary/20 bg-card/95 backdrop-blur-sm flex flex-col transition-transform duration-300 ease-in-out z-40 shadow-xl ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}>
-        <div className="p-4 border-b border-border">
-          <Link href="/dashboard" className="flex items-center text-sm text-primary hover:underline mb-2">
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back to Dashboard
+        <div className="p-5 border-b-2 border-primary/10 bg-gradient-to-r from-primary/5 to-accent/5">
+          <Link href="/dashboard" className="flex items-center text-sm font-medium text-primary hover:text-accent transition-colors mb-3 group">
+            <ChevronLeft className="h-4 w-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
           </Link>
-          <h2 className="text-lg font-semibold truncate" title={course.title}>{course.title}</h2>
+          <h2 className="text-xl font-bold truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent" title={course.title}>{course.title}</h2>
           {/* Placeholder for overall course progress */}
-          <div className="mt-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Overall Progress</span>
-                <span>{Math.round(((currentLessonIndex + 1) / allLessons.length) * 100)}%</span>
+          <div className="mt-4 p-3 bg-card rounded-lg border border-primary/20">
+            <div className="flex justify-between text-sm font-semibold mb-2">
+                <span className="text-foreground">Overall Progress</span>
+                <span className="text-primary">{Math.round(((currentLessonIndex + 1) / allLessons.length) * 100)}%</span>
             </div>
-            <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                <div className="bg-primary h-1.5 rounded-full" style={{ width: `${((currentLessonIndex + 1) / allLessons.length) * 100}%` }}></div>
+            <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                <div className="bg-gradient-to-r from-primary to-accent h-2.5 rounded-full transition-all duration-500" style={{ width: `${((currentLessonIndex + 1) / allLessons.length) * 100}%` }}></div>
             </div>
           </div>
         </div>
         <ScrollArea className="flex-grow">
-          <Accordion type="multiple" defaultValue={defaultOpenModules} className="w-full p-1.5">
+          <Accordion type="multiple" defaultValue={defaultOpenModules} className="w-full p-3">
             {course.modules.map((moduleItem, moduleIndex) => {
               const moduleKey = `module-${moduleItem.id || moduleIndex}`;
               return (
@@ -159,11 +166,11 @@ export default function CourseLearnLayout({
                   value={moduleKey}
                   className="border-b-0 mb-1"
                 >
-                <AccordionTrigger className="px-3 py-2 hover:bg-secondary/70 rounded-md text-sm font-medium hover:no-underline w-full text-left">
+                <AccordionTrigger className="px-4 py-3 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 rounded-lg text-sm font-semibold hover:no-underline w-full text-left transition-all">
                   <span className="truncate pr-2 text-left w-full">{moduleItem.title}</span>
                 </AccordionTrigger>
-                <AccordionContent className="pt-1 pb-0">
-                  <ul className="space-y-0.5 pl-3 border-l-2 border-primary/20 ml-3">
+                <AccordionContent className="pt-2 pb-0">
+                  <ul className="space-y-1 pl-4 border-l-2 border-gradient-to-b from-primary to-accent ml-3">
                     {moduleItem.lessons.map((lesson, lessonIndex) => {
                       const isCompleted = completedLessonsMock.has(lesson.id);
                       const isActive = lesson.id === currentLessonId;
@@ -176,7 +183,11 @@ export default function CourseLearnLayout({
                         <li key={lessonKey}>
                           <Link 
                             href={`/learn/${course.slug}/${moduleItem.id}/${lesson.id}`}
-                            className={`flex items-center justify-between p-2 rounded-md text-xs hover:bg-secondary ${isActive ? 'bg-secondary text-primary font-semibold' : 'text-foreground/80'}`}
+                            className={`flex items-center justify-between p-2.5 rounded-lg text-sm transition-all ${
+                              isActive 
+                                ? 'bg-gradient-to-r from-primary/20 to-accent/20 text-primary font-semibold shadow-md border-l-4 border-primary' 
+                                : 'text-foreground/80 hover:bg-gradient-to-r hover:from-primary/5 hover:to-accent/5 hover:text-foreground'
+                            }`}
                           >
                             <div className="flex items-center min-w-0 flex-1">
                               {isCompleted ? (
@@ -209,8 +220,8 @@ export default function CourseLearnLayout({
       )}
       
       {/* Main Content Area for Lesson */}
-      <main className="flex-1 flex flex-col overflow-hidden md:ml-[300px]">
-        <div className="p-4 border-b border-border bg-card flex items-center justify-between">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="p-5 border-b-2 border-primary/10 bg-card/95 backdrop-blur-sm flex items-center justify-between shadow-sm">
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="md:hidden mr-2 p-1 rounded-md hover:bg-secondary"
@@ -218,13 +229,28 @@ export default function CourseLearnLayout({
           >
             ☰
           </button>
-            <h1 className="text-xl font-semibold truncate">{currentLesson?.lesson.title || "Course Content"}</h1>
-            <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handlePrevious} disabled={currentLessonIndex <= 0}>Previous</Button>
-                <Button variant="default" size="sm" onClick={handleNext} disabled={currentLessonIndex >= allLessons.length - 1}>Next Lesson</Button>
+            <h1 className="text-2xl font-bold truncate">{currentLesson?.lesson.title || "Course Content"}</h1>
+            <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handlePrevious} 
+                  disabled={currentLessonIndex <= 0}
+                  className="border-2 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
+                >
+                  Previous
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleNext} 
+                  disabled={currentLessonIndex >= allLessons.length - 1}
+                  className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-md hover:shadow-lg transition-all"
+                >
+                  Next Lesson
+                </Button>
             </div>
         </div>
-        <ScrollArea className="flex-grow bg-background p-4 md:p-6">
+        <ScrollArea className="flex-grow bg-gradient-to-br from-background to-primary/5 p-6 md:p-8">
           {children}
         </ScrollArea>
       </main>

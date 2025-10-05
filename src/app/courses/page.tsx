@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { getAllCourses, createSampleCourse } from '@/lib/mockData';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 import { CourseCard } from '@/components/courses/CourseCard';
@@ -132,26 +133,44 @@ export default function CoursesPage() {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading courses...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Loading courses...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
-    return <div className="text-center py-8">Please login to view courses.</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center bg-card p-8 rounded-xl shadow-xl border-2 border-primary/20">
+          <p className="text-xl text-foreground mb-4">Please login to view courses.</p>
+          <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
+            <a href="/auth/login">Login Now</a>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      <section className="bg-card p-6 rounded-lg shadow">
-        <div className="flex justify-between items-start">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-primary/10 via-accent/5 to-background p-12 rounded-2xl shadow-xl border-2 border-primary/10 overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="flex justify-between items-start relative z-10">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Explore Our Courses</h1>
-            <p className="mt-2 text-muted-foreground">Find the perfect course to practice and boost your skills.</p>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Explore Our Courses</h1>
+            <p className="mt-3 text-lg text-muted-foreground max-w-2xl">Find the perfect course to practice and boost your skills. Start learning today!</p>
           </div>
           {courses.length === 0 && (
             <Button 
               onClick={handleCreateSampleCourse} 
               disabled={isCreatingSample}
-              className="ml-4"
+              className="ml-4 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-lg hover:shadow-xl transition-all"
             >
               {isCreatingSample ? 'Creating...' : 'Create Sample Course'}
             </Button>
@@ -160,19 +179,28 @@ export default function CoursesPage() {
       </section>
 
       {/* Filters and Search Section */}
-      <section className="bg-card p-6 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <section className="bg-card p-8 rounded-xl shadow-lg border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+        <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
+          <Search className="h-5 w-5 text-primary" />
+          Find Your Perfect Course
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
           <div className="lg:col-span-2">
-            <label htmlFor="search" className="block text-sm font-medium text-muted-foreground mb-1">Search Courses</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="search" type="search" placeholder="Search by category, title..." className="pl-9" />
+            <label htmlFor="search" className="block text-sm font-semibold text-foreground mb-2">Search Courses</label>
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
+              <Input 
+                id="search" 
+                type="search" 
+                placeholder="Search by category, title..." 
+                className="pl-10 h-11 border-2 border-primary/20 focus:border-primary transition-all" 
+              />
             </div>
           </div>
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-muted-foreground mb-1">Category</label>
+            <label htmlFor="category" className="block text-sm font-semibold text-foreground mb-2">Category</label>
             <Select>
-              <SelectTrigger id="category">
+              <SelectTrigger id="category" className="h-11 border-2 border-primary/20 hover:border-primary/40 transition-all">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -185,9 +213,9 @@ export default function CoursesPage() {
             </Select>
           </div>
           <div>
-            <label htmlFor="sort" className="block text-sm font-medium text-muted-foreground mb-1">Sort By</label>
+            <label htmlFor="sort" className="block text-sm font-semibold text-foreground mb-2">Sort By</label>
             <Select>
-              <SelectTrigger id="sort">
+              <SelectTrigger id="sort" className="h-11 border-2 border-primary/20 hover:border-primary/40 transition-all">
                 <SelectValue placeholder="Newest" />
               </SelectTrigger>
               <SelectContent>
@@ -199,14 +227,34 @@ export default function CoursesPage() {
         </div>
       </section>
 
+      {/* Courses Grid */}
       {courses.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {courses.map((course) => (
-                <CourseCard key={course.id} course={course} />
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-foreground">Available Courses ({courses.length})</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {courses.map((course, index) => (
+              <div 
+                key={course.id} 
+                className="animate-in fade-in slide-in-from-bottom-4 duration-700"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CourseCard course={course} />
+              </div>
             ))}
-        </div>
+          </div>
+        </section>
       ) : (
-        <div className="text-center text-muted-foreground py-10">No courses found.</div>
+        <div className="text-center py-20">
+          <div className="bg-card p-12 rounded-xl shadow-xl border-2 border-dashed border-primary/30 max-w-md mx-auto">
+            <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="h-10 w-10 text-primary" />
+            </div>
+            <p className="text-xl font-semibold text-foreground mb-2">No courses found</p>
+            <p className="text-muted-foreground">Try adjusting your search or filters</p>
+          </div>
+        </div>
       )}
     </div>
   );
