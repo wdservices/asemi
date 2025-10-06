@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CoursePricing } from '@/lib/types';
 import { formatCoursePricing } from '@/lib/utils';
-import { Heart, DollarSign, Gift } from 'lucide-react';
+import { Heart, DollarSign, Gift, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface PaystackPaymentProps {
@@ -59,6 +59,59 @@ export default function PaystackPayment({
       return pricing.amount;
     }
     return fallbackPrice || 0;
+  };
+
+  // Define callback function outside of setup to ensure it's a proper function reference
+  const handlePaystackCallback = (response: any) => {
+    console.log('Payment successful:', response);
+    
+    // Verify payment on backend
+    fetch('/api/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        reference: response.reference,
+        courseId,
+        amount: getPaymentAmount(),
+        pricingType: pricing.type,
+        userId
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success' && data.data?.enrolled) {
+        // Payment verified and user enrolled successfully
+        toast({
+          title: "Payment Successful",
+          description: `You have been enrolled in ${courseTitle}!`,
+        });
+        
+        // Call onSuccess which will handle the enrollment state update
+        onSuccess(response.reference);
+      } else {
+        toast({
+          title: "Payment Verification Failed",
+          description: data.message || "Please contact support for assistance.",
+          variant: "destructive",
+        });
+      }
+    })
+    .catch(error => {
+      console.error('Verification error:', error);
+      toast({
+        title: "Verification Error",
+        description: "Payment completed but verification failed. Please contact support.",
+        variant: "destructive",
+      });
+    })
+    .finally(() => {
+      setIsLoading(false);
+    });
+  };
+
+  const handlePaystackClose = () => {
+    setIsLoading(false);
+    if (onClose) onClose();
   };
 
   const handlePayment = async () => {
@@ -124,56 +177,8 @@ export default function PaystackPayment({
             }
           ]
         },
-        callback: async function(response: any) {
-          console.log('Payment successful:', response);
-          
-          // Verify payment on backend
-          try {
-            const verifyResponse = await fetch('/api/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                reference: response.reference,
-                courseId,
-                amount,
-                pricingType: pricing.type,
-                userId
-              })
-            });
-            
-            const data = await verifyResponse.json();
-            
-            if (data.status === 'success' && data.data?.enrolled) {
-              // Payment verified and user enrolled successfully
-              toast({
-                title: "Payment Successful",
-                description: `You have been enrolled in ${courseTitle}!`,
-              });
-              
-              // Call onSuccess which will handle the enrollment state update
-              onSuccess(response.reference);
-            } else {
-              toast({
-                title: "Payment Verification Failed",
-                description: data.message || "Please contact support for assistance.",
-                variant: "destructive",
-              });
-            }
-          } catch (error) {
-            console.error('Verification error:', error);
-            toast({
-              title: "Verification Error",
-              description: "Payment completed but verification failed. Please contact support.",
-              variant: "destructive",
-            });
-          } finally {
-            setIsLoading(false);
-          }
-        },
-        onClose: function() {
-          setIsLoading(false);
-          if (onClose) onClose();
-        }
+        callback: handlePaystackCallback,
+        onClose: handlePaystackClose
       });
 
       handler.openIframe();
@@ -263,9 +268,9 @@ export default function PaystackPayment({
               </p>
             </div>
           </div>
-          {pricing.suggestedAmount && (
+          {pricing.suggestedDonation && (
             <p className="text-sm text-gray-500 text-center">
-              Suggested amount: ₦{pricing.suggestedAmount.toLocaleString()}
+              Suggested amount: ₦{pricing.suggestedDonation.toLocaleString()}
             </p>
           )}
         </div>

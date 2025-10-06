@@ -76,6 +76,18 @@ const nextConfig: NextConfig = {
         hostname: 'assets.rbl.ms',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'drive.google.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.google.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

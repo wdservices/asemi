@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { updateUserProfile, getUserProfile, enrollUserInCourse } from '@/lib/mockData';
 import { useState, useEffect } from 'react';
 import { cn, getCoursePriceDisplay } from '@/lib/utils';
+import { convertGoogleDriveUrl, getFallbackImageUrl } from '@/lib/imageUtils';
 import PaystackPayment from './PaystackPayment';
 import { createPortal } from 'react-dom';
 
@@ -71,7 +72,7 @@ export function CourseCard({ course, onEnrollSuccess }: CourseCardProps) {
       setIsEnrolling(true);
       
       // Use the enrollUserInCourse function to properly enroll the user
-      const success = await enrollUserInCourse(user.uid, course.id);
+      const success = await enrollUserInCourse(user?.uid || '', course.id);
       
       if (success) {
         setIsEnrolled(true);
@@ -98,7 +99,7 @@ export function CourseCard({ course, onEnrollSuccess }: CourseCardProps) {
       <Link href={courseLink} aria-disabled={!isClickable} className={cn("block relative overflow-hidden", !isClickable && "pointer-events-none")}>
         <div className="relative w-full h-48 bg-gradient-to-br from-primary/10 to-accent/10">
           <Image
-            src={course.imageUrl || 'https://placehold.co/400x200.png'}
+            src={convertGoogleDriveUrl(course.imageUrl || '') || getFallbackImageUrl()}
             alt={course.title}
             fill
             className="object-cover group-hover:scale-110 transition-transform duration-500"

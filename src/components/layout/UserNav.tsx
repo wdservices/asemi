@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from '@/hooks/use-auth';
-import { LayoutDashboard, LogOut, User, Settings, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, Settings, ShieldCheck, BookOpen } from 'lucide-react';
 
 export function UserNav() {
   const { user, logout, isAdmin } = useAuth();
@@ -59,6 +59,12 @@ export function UserNav() {
             <Link href="/dashboard">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               <span>Dashboard</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/courses">
+              <BookOpen className="mr-2 h-4 w-4" />
+              <span>My Courses</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
