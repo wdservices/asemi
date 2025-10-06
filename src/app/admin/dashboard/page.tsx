@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -23,7 +22,8 @@ import {
   ShoppingBag,
   Calendar,
   Clock,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
@@ -38,6 +38,18 @@ import {
   PointElement,
   LineElement,
 } from 'chart.js';
+import {
+  getDashboardStats,
+  getRecentActivities,
+  getTopCourses,
+  getRevenueChartData,
+  getCourseDistribution,
+  type DashboardStats,
+  type RecentActivity,
+  type TopCourse,
+  type RevenueData,
+  type CourseDistribution
+} from '@/lib/dashboardData';
 
 ChartJS.register(
   CategoryScale,
@@ -51,93 +63,14 @@ ChartJS.register(
   LineElement
 );
 
-const stats = [
-  {
-    title: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1%",
-    changeType: "positive" as const,
-    icon: DollarSign,
-    description: "from last month",
-    trend: [20, 25, 30, 28, 35, 40, 45]
-  },
-  {
-    title: "Active Users",
-    value: "2,350",
-    change: "+180.1%",
-    changeType: "positive" as const,
-    icon: Users,
-    description: "from last month",
-    trend: [15, 18, 22, 25, 28, 30, 35]
-  },
-  {
-    title: "Course Completions",
-    value: "12,234",
-    change: "+19%",
-    changeType: "positive" as const,
-    icon: Activity,
-    description: "from last month",
-    trend: [10, 12, 15, 18, 20, 22, 25]
-  },
-  {
-    title: "Total Courses",
-    value: "573",
-    change: "+201",
-    changeType: "positive" as const,
-    icon: Book,
-    description: "new this month",
-    trend: [5, 8, 12, 15, 18, 20, 25]
-  },
-];
-
-const recentActivities = [
-  {
-    id: 1,
-    user: "John Doe",
-    action: "enrolled in",
-    course: "Advanced React Development",
-    time: "2 hours ago",
-    type: "enrollment",
-    avatar: "JD"
-  },
-  {
-    id: 2,
-    user: "Jane Smith",
-    action: "completed",
-    course: "CSS Grid Mastery",
-    time: "5 hours ago",
-    type: "completion",
-    avatar: "JS"
-  },
-  {
-    id: 3,
-    user: "Mike Ross",
-    action: "purchased",
-    course: "JavaScript Fundamentals",
-    time: "1 day ago",
-    type: "purchase",
-    avatar: "MR"
-  },
-  {
-    id: 4,
-    user: "Sarah Wilson",
-    action: "started",
-    course: "UI/UX Design Principles",
-    time: "2 days ago",
-    type: "start",
-    avatar: "SW"
-  }
-];
-
-const topCourses = [
-  { name: "React Development", students: 1234, rating: 4.8, revenue: "$12,450" },
-  { name: "JavaScript Mastery", students: 987, rating: 4.7, revenue: "$9,870" },
-  { name: "CSS Advanced", students: 756, rating: 4.6, revenue: "$7,560" },
-  { name: "Node.js Backend", students: 543, rating: 4.9, revenue: "$5,430" },
-];
-
 export default function AdminDashboardPage() {
   const [isDark, setIsDark] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [topCourses, setTopCourses] = useState<TopCourse[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData>({ labels: [], data: [] });
+  const [courseDistribution, setCourseDistribution] = useState<CourseDistribution>({ labels: [], data: [] });
 
   useEffect(() => {
     const checkDarkMode = () => {
@@ -152,13 +85,40 @@ export default function AdminDashboardPage() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        const [statsData, activities, courses, revenue, distribution] = await Promise.all([
+          getDashboardStats(),
+          getRecentActivities(),
+          getTopCourses(),
+          getRevenueChartData(),
+          getCourseDistribution()
+        ]);
+
+        setStats(statsData);
+        setRecentActivities(activities);
+        setTopCourses(courses);
+        setRevenueData(revenue);
+        setCourseDistribution(distribution);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const chartData = {
     revenue: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      labels: revenueData.labels,
       datasets: [
         {
           label: 'Revenue',
-          data: [12000, 19000, 15000, 25000, 22000, 30000],
+          data: revenueData.data,
           borderColor: 'hsl(var(--primary))',
           backgroundColor: 'hsl(var(--primary) / 0.1)',
           tension: 0.4,
@@ -166,10 +126,10 @@ export default function AdminDashboardPage() {
       ],
     },
     courseDistribution: {
-      labels: ['Programming', 'Design', 'Marketing', 'Business', 'Other'],
+      labels: courseDistribution.labels,
       datasets: [
         {
-          data: [35, 25, 20, 15, 5],
+          data: courseDistribution.data,
           backgroundColor: [
             'hsl(var(--primary))',
             'hsl(var(--secondary))',
@@ -228,52 +188,131 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <Card key={stat.title} className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <stat.icon className="h-4 w-4 text-primary" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className={`flex items-center gap-1 ${
-                  stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.changeType === 'positive' ? (
-                    <ArrowUpRight className="h-3 w-3" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3" />
-                  )}
-                  {stat.change}
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          {/* Stats Cards */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Revenue
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="h-4 w-4 text-primary" />
                 </div>
-                <span>{stat.description}</span>
-              </div>
-              {/* Mini trend chart */}
-              <div className="mt-3 h-8">
-                <div className="flex items-end gap-1 h-full">
-                  {stat.trend.map((value, i) => (
-                    <div
-                      key={i}
-                      className="bg-primary/20 rounded-sm flex-1"
-                      style={{ height: `${(value / Math.max(...stat.trend)) * 100}%` }}
-                    />
-                  ))}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₦{stats?.totalRevenue.toLocaleString() || '0'}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className={`flex items-center gap-1 ${
+                    (stats?.revenueChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(stats?.revenueChange || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {stats?.revenueChange.toFixed(1)}%
+                  </div>
+                  <span>from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Active Users
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stats?.activeUsers.toLocaleString() || '0'}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className={`flex items-center gap-1 ${
+                    (stats?.usersChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(stats?.usersChange || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {stats?.usersChange.toFixed(1)}%
+                  </div>
+                  <span>from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Course Completions
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Activity className="h-4 w-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stats?.courseCompletions.toLocaleString() || '0'}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className={`flex items-center gap-1 ${
+                    (stats?.completionsChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(stats?.completionsChange || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {stats?.completionsChange.toFixed(1)}%
+                  </div>
+                  <span>from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Courses
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Book className="h-4 w-4 text-primary" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stats?.totalCourses || '0'}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 text-green-600">
+                    <Plus className="h-3 w-3" />
+                    {stats?.coursesChange || 0}
+                  </div>
+                  <span>new this month</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* Charts and Analytics */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {!loading && (
+        <div className="grid gap-6 lg:grid-cols-3">
         {/* Revenue Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -284,7 +323,13 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <Line options={chartOptions} data={chartData.revenue} />
+              {revenueData.labels.length > 0 ? (
+                <Line options={chartOptions} data={chartData.revenue} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No revenue data available
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -299,108 +344,129 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <Doughnut 
-                data={chartData.courseDistribution}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                      labels: {
-                        usePointStyle: true,
-                        padding: 20,
+              {courseDistribution.labels.length > 0 ? (
+                <Doughnut 
+                  data={chartData.courseDistribution}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                        labels: {
+                          usePointStyle: true,
+                          padding: 20,
+                        },
                       },
                     },
-                  },
-                }}
-              />
+                  }}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No courses available
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Recent Activity and Top Courses */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
-              Latest user interactions on your platform
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
-                    {activity.avatar}
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm">
-                      <span className="font-medium">{activity.user}</span>{' '}
-                      {activity.action}{' '}
-                      <span className="font-medium">{activity.course}</span>
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {activity.time}
-                      </span>
-                    </div>
-                  </div>
-                  <Badge variant={
-                    activity.type === 'completion' ? 'default' :
-                    activity.type === 'purchase' ? 'secondary' :
-                    'outline'
-                  }>
-                    {activity.type}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top Courses */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Performing Courses</CardTitle>
-            <CardDescription>
-              Your most successful courses this month
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topCourses.map((course, index) => (
-                <div key={course.name} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">{course.name}</p>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {course.students} students
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3" />
-                          {course.rating}
-                        </span>
+      {!loading && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                Latest user interactions on your platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                        {activity.avatar}
                       </div>
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm">
+                          <span className="font-medium">{activity.user}</span>{' '}
+                          {activity.action}{' '}
+                          <span className="font-medium">{activity.course}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {activity.time}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge variant={
+                        activity.type === 'completion' ? 'default' :
+                        activity.type === 'purchase' ? 'secondary' :
+                        'outline'
+                      }>
+                        {activity.type}
+                      </Badge>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{course.revenue}</p>
-                      <p className="text-xs text-muted-foreground">revenue</p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No recent activity
                   </div>
-                  <Progress value={(course.students / 1500) * 100} className="h-2" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Top Courses */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Performing Courses</CardTitle>
+              <CardDescription>
+                Your most successful courses this month
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topCourses.length > 0 ? (
+                  topCourses.map((course, index) => (
+                    <div key={course.name} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{course.name}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {course.students} students
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Star className="h-3 w-3" />
+                              {course.rating}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{course.revenue}</p>
+                          <p className="text-xs text-muted-foreground">revenue</p>
+                        </div>
+                      </div>
+                      <Progress value={(course.students / Math.max(...topCourses.map(c => c.students), 1)) * 100} className="h-2" />
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No course data available
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <Card>

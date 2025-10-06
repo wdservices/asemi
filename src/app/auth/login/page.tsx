@@ -72,13 +72,15 @@ function LoginPageInner() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
-      <CardHeader className="space-y-1 text-center">
-        <div className="flex justify-center mb-4">
+    <Card className="w-full max-w-md shadow-2xl border-2 border-primary/20 backdrop-blur-sm bg-card/95">
+      <CardHeader className="space-y-1 text-center pb-8">
+        <div className="flex justify-center mb-6 animate-in zoom-in duration-500">
           <Logo />
         </div>
-        <CardTitle className="text-2xl">Welcome Back</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent animate-in fade-in slide-in-from-top-4 duration-700">
+          Welcome Back
+        </CardTitle>
+        <CardDescription className="text-base animate-in fade-in slide-in-from-top-4 duration-700 delay-150">
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
@@ -90,9 +92,14 @@ function LoginPageInner() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-sm font-semibold">Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="m@example.com" {...field} />
+                    <Input 
+                      type="email" 
+                      placeholder="m@example.com" 
+                      className="h-11 border-2 border-primary/20 focus:border-primary transition-all" 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -103,14 +110,19 @@ function LoginPageInner() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-sm font-semibold">Password</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                      <Input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="••••••••" 
+                        className="h-11 border-2 border-primary/20 focus:border-primary transition-all pr-10" 
+                        {...field} 
+                      />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-primary transition-colors"
                         aria-label={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -122,12 +134,21 @@ function LoginPageInner() {
               )}
             />
              <div className="flex items-center justify-end text-sm">
-                <Link href="/auth/forgot-password" className="font-medium text-primary hover:underline">
+                <Link href="/auth/forgot-password" className="font-medium text-primary hover:text-accent transition-colors">
                     Forgot password?
                 </Link>
              </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+            <Button 
+              type="submit" 
+              className="w-full h-11 bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300" 
+              disabled={form.formState.isSubmitting}
+            >
+              {form.formState.isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                  Logging in...
+                </span>
+              ) : 'Login'}
             </Button>
           </form>
         </Form>

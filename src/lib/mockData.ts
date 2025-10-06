@@ -202,23 +202,46 @@ export const getCourseBySlug = async (slug: string): Promise<Course | null> => {
 
 export const addCourse = async (courseData: CourseFormData): Promise<Course | null> => {
     try {
-        const newCourseData = {
-            ...courseData,
-            slug: `${courseData.title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-            isPublished: true, // Courses are published by default
-            modules: courseData.modules.map((m, mIndex) => ({
+        // Ensure safe defaults and normalized fields
+        const now = new Date().toISOString();
+        const fallbackImage = '/course-fallback.webp';
+
+        const normalizedPricing = (() => {
+            if (courseData.pricing && typeof courseData.pricing === 'object') return courseData.pricing;
+            const price = (courseData as any).price as number | undefined;
+            return {
+                type: price && price > 0 ? 'payment' : 'free',
+                amount: price || undefined,
+            } as any;
+        })();
+
+        const modules = Array.isArray(courseData.modules)
+            ? courseData.modules.map((m, mIndex) => ({
                 id: `m${Date.now()}-${mIndex}`,
                 title: m.title,
-                lessons: m.lessons.map((l, lIndex) => ({
+                lessons: (m.lessons || []).map((l, lIndex) => ({
                     id: `l${Date.now()}-${mIndex}-${lIndex}`,
                     ...l,
-                }))
+                })),
             }))
-        };
-        const docRef = await addDoc(collection(db, "courses"), newCourseData);
-        return { id: docRef.id, ...newCourseData };
+            : [];
+
+        const newCourseData = {
+            ...courseData,
+            pricing: normalizedPricing,
+            // Guarantee images are set (Firestore rejects undefined)
+            imageUrl: courseData.imageUrl ?? fallbackImage,
+            slug: `${courseData.title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+            isPublished: true, // default publish
+            createdAt: now,
+            updatedAt: now,
+            modules,
+        } as any;
+
+        const docRef = await addDoc(collection(db, 'courses'), newCourseData);
+        return { id: docRef.id, ...newCourseData } as Course;
     } catch (error) {
-        console.error("Error adding course: ", error);
+        console.error('Error adding course: ', error);
         return null;
     }
 };

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MoreHorizontal, Edit, Trash2, ShieldCheck, UserCog } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, ShieldCheck, UserCog, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
@@ -22,15 +22,28 @@ async function getAllUsers(): Promise<UserProfile[]> {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchUsers = async () => {
-        const userList = await getAllUsers();
-        setUsers(userList);
+        setLoading(true);
+        try {
+          const userList = await getAllUsers();
+          setUsers(userList);
+        } catch (error) {
+          console.error('Error fetching users:', error);
+          toast({ 
+            title: "Error", 
+            description: "Failed to load users. Please try again.", 
+            variant: "destructive" 
+          });
+        } finally {
+          setLoading(false);
+        }
     }
     fetchUsers();
-  }, []);
+  }, [toast]);
 
   const handleRoleChange = (userId: string, currentRole: boolean | undefined) => {
     // Placeholder for role change functionality
@@ -51,28 +64,40 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Manage Users</h1>
-        {/* <Button>Add New User</Button> // If manual user addition is needed */}
+        <div className="text-sm text-muted-foreground">
+          Total Users: {users.length}
+        </div>
       </div>
 
-      <Card className="shadow-sm">
-         <CardHeader>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <Card className="shadow-sm">
+          <CardHeader>
             <CardTitle>All Users</CardTitle>
             <CardDescription>View and manage platform users, their roles, and course enrollments.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead className="hidden w-[80px] sm:table-cell">Avatar</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="hidden md:table-cell">Role</TableHead>
-                <TableHead className="hidden md:table-cell">Courses Enrolled</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {users.map((user) => (
+          </CardHeader>
+          <CardContent>
+            {users.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No users found in the database.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="hidden w-[80px] sm:table-cell">Avatar</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Role</TableHead>
+                    <TableHead className="hidden md:table-cell">Courses Enrolled</TableHead>
+                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
                 <TableRow key={user.id}>
                     <TableCell className="hidden sm:table-cell">
                     <Avatar className="h-10 w-10">
@@ -117,13 +142,12 @@ export default function AdminUsersPage() {
                     </DropdownMenu>
                     </TableCell>
                 </TableRow>
-                ))}
-            </TableBody>
-            </Table>
-        </CardContent>
-      </Card>
-      {users.length === 0 && (
-        <p className="text-center text-muted-foreground py-4">No users found.</p>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
