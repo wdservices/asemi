@@ -67,15 +67,26 @@ export function CourseCard({ course, onEnrollSuccess }: CourseCardProps) {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = async (reference: string) => {
+  const handlePaymentSuccess = async (reference: string, actualAmount?: number) => {
     try {
       setIsEnrolling(true);
+      
+      console.log('💰 handlePaymentSuccess called');
+      console.log('  - reference:', reference);
+      console.log('  - actualAmount received:', actualAmount);
+      console.log('  - course.pricing?.amount:', course.pricing?.amount);
+      console.log('  - course.price:', course.price);
+      
+      // Use the actual amount paid, falling back to course pricing
+      const amount = actualAmount || course.pricing?.amount || course.price || 0;
+      
+      console.log('  - Final amount to save:', amount);
       
       // Save payment record to Firestore
       const paymentData = {
         userId: user?.uid || '',
         courseId: course.id,
-        amount: course.pricing?.amount || course.price || 0,
+        amount: amount,
         currency: 'NGN',
         reference: reference,
         status: 'success' as const,

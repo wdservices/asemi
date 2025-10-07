@@ -17,7 +17,7 @@ interface PaystackPaymentProps {
   fallbackPrice?: number;
   userEmail: string;
   userId: string;
-  onSuccess: (reference: string) => void;
+  onSuccess: (reference: string, amount?: number) => void;
   onClose?: () => void;
 }
 
@@ -46,34 +46,50 @@ export default function PaystackPayment({
   const { toast } = useToast();
 
   const getPaymentAmount = (): number => {
+    console.log('🔍 getPaymentAmount called');
+    console.log('  - pricing:', pricing);
+    console.log('  - donationAmount:', donationAmount);
+    console.log('  - fallbackPrice:', fallbackPrice);
+    
     if (!pricing || typeof pricing !== 'object') {
+      console.log('  - No pricing object, using fallback:', fallbackPrice || 0);
       return fallbackPrice || 0;
     }
     
-    if (pricing.type === 'free') return 0;
+    if (pricing.type === 'free') {
+      console.log('  - Free course, returning 0');
+      return 0;
+    }
+    
     if (pricing.type === 'donation') {
       const amount = parseFloat(donationAmount);
-      return isNaN(amount) ? 0 : amount;
+      const result = isNaN(amount) ? 0 : amount;
+      console.log('  - Donation type, parsed amount:', result);
+      return result;
     }
+    
     if (pricing.type === 'payment' && pricing.amount && typeof pricing.amount === 'number') {
+      console.log('  - Payment type, using pricing.amount:', pricing.amount);
       return pricing.amount;
     }
+    
+    console.log('  - Fallback to:', fallbackPrice || 0);
     return fallbackPrice || 0;
   };
 
-  // Define callback function outside of setup to ensure it's a proper function reference
   const handlePaystackCallback = (response: any) => {
     console.log('Payment successful:', response);
     
+    const actualAmount = getPaymentAmount();
     const paymentData = {
       reference: response.reference,
       courseId,
-      amount: getPaymentAmount(),
+      amount: actualAmount,
       pricingType: pricing.type,
       userId
     };
     
-    console.log('Sending payment verification request:', paymentData);
+    console.log('Sending payment verification request with amount:', actualAmount, paymentData);
     
     // Verify payment on backend
     fetch('/api/verify-payment', {
@@ -104,7 +120,8 @@ export default function PaystackPayment({
         });
         
         // Call onSuccess which will handle the enrollment state update
-        onSuccess(response.reference);
+        // Pass the actual amount that was paid
+        onSuccess(response.reference, actualAmount);
       } else {
         console.error('Payment verification failed:', data);
         toast({
@@ -142,7 +159,8 @@ export default function PaystackPayment({
         // For free courses, we can directly call the success callback
         // In a real app, you might still want to register the enrollment
         const freeReference = `free_${courseId}_${Date.now()}`;
-        onSuccess(freeReference);
+        console.log('Free course enrollment with reference:', freeReference);
+        onSuccess(freeReference, 0);
         toast({
           title: "Enrollment Successful",
           description: "You have been enrolled in this free course!",
