@@ -52,9 +52,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 enrolledCourses: [],
                 purchasedToolIds: []
             };
-            profile = await updateDbUserProfile(firebaseUser.uid, newUserProfileData);
+            profile = await updateDbUserProfile(firebaseUser.uid, newUserProfileData) || null;
         } else if (profile.isAdmin !== isAdminUser) {
-            profile = await updateDbUserProfile(firebaseUser.uid, { ...profile, isAdmin: isAdminUser });
+            profile = await updateDbUserProfile(firebaseUser.uid, { ...profile, isAdmin: isAdminUser }) || null;
         }
 
         // Create extended user object with profile
@@ -109,12 +109,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, pass: string) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-    // After successful sign-in, onAuthStateChanged will trigger.
-    // However, to ensure the redirect logic gets the latest admin status immediately,
-    // we can fetch the profile here and return the status.
-    const profile = await getUserProfile(userCredential.user.uid);
-    return { isAdmin: profile?.isAdmin || false };
+    try {
+      // Trim whitespace and validate inputs
+      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedPassword = pass.trim();
+      
+      if (!trimmedEmail || !trimmedPassword) {
+        throw new Error('Email and password are required');
+      }
+      
+      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
+      // After successful sign-in, onAuthStateChanged will trigger.
+      // However, to ensure the redirect logic gets the latest admin status immediately,
+      // we can fetch the profile here and return the status.
+      const profile = await getUserProfile(userCredential.user.uid);
+      return { isAdmin: profile?.isAdmin || false };
+    } catch (error: any) {
+      console.error('Login error details:', error);
+      
+      // Enhance error messages for better user experience
+      if (error.code === 'auth/invalid-credential') {
+        throw new Error('Invalid email or password. Please check your credentials and try again.');
+      } else if (error.code === 'auth/user-not-found') {
+        throw new Error('No account found with this email address.');
+      } else if (error.code === 'auth/wrong-password') {
+        throw new Error('Incorrect password. Please try again.');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address.');
+      } else if (error.code === 'auth/user-disabled') {
+        throw new Error('This account has been disabled. Please contact support.');
+      } else if (error.code === 'auth/too-many-requests') {
+        throw new Error('Too many failed login attempts. Please try again later.');
+      } else if (error.code === 'auth/network-request-failed') {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      }
+      
+      // Re-throw the original error if it's not a Firebase auth error
+      throw error;
+    }
   };
 
   const logout = () => {

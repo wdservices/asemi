@@ -59,10 +59,10 @@ function LoginPageInner() {
 
     } catch (error: any) {
       console.error("Login error:", error);
-      let description = "An unexpected error occurred. Please try again.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        description = "Invalid email or password. Please check your credentials and try again.";
-      }
+      
+      // Use the error message from our enhanced auth hook, or provide a fallback
+      const description = error.message || "An unexpected error occurred. Please try again.";
+      
       toast({
         title: "Login Failed",
         description: description,

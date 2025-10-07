@@ -41,7 +41,7 @@ export default function PaystackPayment({
   onSuccess,
   onClose
 }: PaystackPaymentProps) {
-  const [donationAmount, setDonationAmount] = useState<string>('1000');
+  const [donationAmount, setDonationAmount] = useState<string>('100');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -65,30 +65,48 @@ export default function PaystackPayment({
   const handlePaystackCallback = (response: any) => {
     console.log('Payment successful:', response);
     
+    const paymentData = {
+      reference: response.reference,
+      courseId,
+      amount: getPaymentAmount(),
+      pricingType: pricing.type,
+      userId
+    };
+    
+    console.log('Sending payment verification request:', paymentData);
+    
     // Verify payment on backend
     fetch('/api/verify-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        reference: response.reference,
-        courseId,
-        amount: getPaymentAmount(),
-        pricingType: pricing.type,
-        userId
-      })
+      body: JSON.stringify(paymentData)
     })
-    .then(res => res.json())
+    .then(res => {
+      console.log('Raw response status:', res.status);
+      console.log('Raw response ok:', res.ok);
+      if (!res.ok) {
+        console.error('Response not ok:', res.status, res.statusText);
+      }
+      return res.json();
+    })
     .then(data => {
+      console.log('Payment verification response:', data);
+      
       if (data.status === 'success' && data.data?.enrolled) {
         // Payment verified and user enrolled successfully
+        const successMessage = data.data.developmentMode 
+          ? `Development mode: You have been enrolled in ${courseTitle}!`
+          : `You have been enrolled in ${courseTitle}!`;
+          
         toast({
           title: "Payment Successful",
-          description: `You have been enrolled in ${courseTitle}!`,
+          description: successMessage,
         });
         
         // Call onSuccess which will handle the enrollment state update
         onSuccess(response.reference);
       } else {
+        console.error('Payment verification failed:', data);
         toast({
           title: "Payment Verification Failed",
           description: data.message || "Please contact support for assistance.",
@@ -252,8 +270,8 @@ export default function PaystackPayment({
                 id="donationAmount"
                 type="number"
                 step="1"
-                min="1000"
-                placeholder="1000"
+                min="100"
+                placeholder="100"
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
                 className="mt-1"
@@ -264,7 +282,7 @@ export default function PaystackPayment({
                 </p>
               )}
               <p className="text-sm text-muted-foreground mt-1">
-                Enter amount in Nigerian Naira (minimum ₦1,000)
+                Enter amount in Nigerian Naira (minimum ₦100)
               </p>
             </div>
           </div>
@@ -319,7 +337,7 @@ export default function PaystackPayment({
     }
     if (pricing.type === 'donation') {
       const amount = parseFloat(donationAmount);
-      return isNaN(amount) || amount < 1000;
+      return isNaN(amount) || amount < 100;
     }
     return false;
   };

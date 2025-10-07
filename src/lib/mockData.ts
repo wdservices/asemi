@@ -497,3 +497,25 @@ export const verifyUserPaymentForCourse = async (userId: string, courseId: strin
         return false;
     }
 };
+
+export const getUserByEmail = async (email: string): Promise<UserProfile | null> => {
+    try {
+        const q = query(collection(db, 'users'), where('email', '==', email));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            console.log(`No user found with email: ${email}`);
+            return null;
+        }
+        
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data() as UserProfile;
+        return {
+            ...userData,
+            id: userDoc.id
+        };
+    } catch (error) {
+        console.error('Error fetching user by email:', error);
+        return null;
+    }
+};

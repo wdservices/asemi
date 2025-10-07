@@ -2,28 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Payment verification endpoint called');
+    console.log('Simple verify-payment endpoint called');
     
     const body = await request.json();
     console.log('Received payment data:', body);
     
     const { reference, courseId, amount, pricingType, userId } = body;
 
-    if (!reference) {
+    if (!reference || !courseId || !userId) {
       return NextResponse.json(
-        { status: 'error', message: 'Payment reference is required' },
+        { status: 'error', message: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    if (!userId || !courseId) {
-      return NextResponse.json(
-        { status: 'error', message: 'User ID and Course ID are required' },
-        { status: 400 }
-      );
-    }
-
-    // For development: Auto-approve all payments
+    // For now, just auto-approve everything in development
     console.log('Auto-approving payment for development');
     
     return NextResponse.json({
@@ -40,13 +33,13 @@ export async function POST(request: NextRequest) {
         developmentMode: true
       },
     });
-
+    
   } catch (error) {
-    console.error('Payment verification error:', error);
+    console.error('Simple payment verification error:', error);
     return NextResponse.json(
       { 
         status: 'error', 
-        message: 'Internal server error during payment verification',
+        message: 'Internal server error',
         error: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
@@ -56,7 +49,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   return NextResponse.json(
-    { message: 'Payment verification endpoint is active' },
+    { message: 'Simple payment verification endpoint is active' },
     { status: 200 }
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,18 +9,34 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function ManualEnrollPage() {
-  const [userId, setUserId] = useState('');
+  const [email, setEmail] = useState('');
   const [courseId, setCourseId] = useState('');
-  const [adminKey, setAdminKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [courses, setCourses] = useState([]);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
+  // Load available courses on component mount
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const response = await fetch('/api/admin/enroll-user');
+        const data = await response.json();
+        if (data.status === 'success') {
+          setCourses(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to load courses:', error);
+      }
+    };
+    loadCourses();
+  }, []);
+
   const handleEnroll = async () => {
-    if (!userId || !courseId || !adminKey) {
+    if (!email || !courseId) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in all fields',
+        description: 'Please fill in email and select a course',
         variant: 'destructive'
       });
       return;
@@ -28,10 +44,10 @@ export default function ManualEnrollPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/manual-enroll', {
+      const response = await fetch('/api/admin/enroll-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, courseId, adminKey })
+        body: JSON.stringify({ email, courseId })
       });
 
       const data = await response.json();
@@ -39,9 +55,9 @@ export default function ManualEnrollPage() {
       if (data.status === 'success') {
         toast({
           title: 'Success',
-          description: 'User enrolled successfully!'
+          description: `User ${email} enrolled successfully!`
         });
-        setUserId('');
+        setEmail('');
         setCourseId('');
       } else {
         toast({
@@ -80,42 +96,36 @@ export default function ManualEnrollPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="userId">User ID (Firebase UID)</Label>
+            <Label htmlFor="email">User Email</Label>
             <Input
-              id="userId"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="e.g., uXvdtusVltrpiehZI84a"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g., mitch@communionme.com"
             />
             <p className="text-sm text-muted-foreground mt-1">
-              Find this in Firestore under the users collection
+              Enter the email address of the user who paid
             </p>
           </div>
 
           <div>
-            <Label htmlFor="courseId">Course ID</Label>
-            <Input
+            <Label htmlFor="courseId">Course</Label>
+            <select
               id="courseId"
               value={courseId}
               onChange={(e) => setCourseId(e.target.value)}
-              placeholder="e.g., qp7aX8AICbo4ZV1kOPO5"
-            />
+              className="w-full p-2 border border-input rounded-md bg-background"
+            >
+              <option value="">Select a course...</option>
+              {courses.map((course: any) => (
+                <option key={course.id} value={course.id}>
+                  {course.title} ({course.pricing?.type || 'free'})
+                </option>
+              ))}
+            </select>
             <p className="text-sm text-muted-foreground mt-1">
-              Find this in Firestore under the courses collection
-            </p>
-          </div>
-
-          <div>
-            <Label htmlFor="adminKey">Admin Secret Key</Label>
-            <Input
-              id="adminKey"
-              type="password"
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              placeholder="Enter admin secret key"
-            />
-            <p className="text-sm text-muted-foreground mt-1">
-              This is set in your environment variables
+              Select the course the user should be enrolled in
             </p>
           </div>
 
@@ -128,11 +138,14 @@ export default function ManualEnrollPage() {
           </Button>
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
-            <h3 className="font-semibold mb-2">Quick Reference:</h3>
+            <h3 className="font-semibold mb-2">Users to Enroll:</h3>
             <ul className="text-sm space-y-1">
-              <li><strong>Gospel's User ID:</strong> uXvdtusVltrpiehZI84a</li>
-              <li><strong>Learn AI Course ID:</strong> qp7aX8AICbo4ZV1kOPO5</li>
+              <li><strong>User 1:</strong> mitch@communionme.com</li>
+              <li><strong>User 2:</strong> innocentodo41@gmail.com</li>
             </ul>
+            <p className="text-xs text-muted-foreground mt-2">
+              These users made payments but didn't get access due to verification issues.
+            </p>
           </div>
         </CardContent>
       </Card>
