@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/layout/Logo';
-import { LayoutDashboard, Users, BarChart2, Settings, LogOut, Book, ShoppingBag, TrendingUp, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, BarChart2, Settings, LogOut, Book, ShoppingBag, TrendingUp, FileText, UserPlus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from "@/lib/utils";
@@ -62,7 +62,12 @@ const AdminSidebar = () => {
                     title: "Users",
                     href: "/admin/users",
                     icon: Users,
-                    active: isActive('/admin/users')
+                    active: isActive('/admin/users'),
+                    subItems: [
+                        { title: "All Users", href: "/admin/users" },
+                        { title: "Manual Enrollment", href: "/admin/manual-enroll" },
+                        { title: "Enroll Specific Users", href: "/admin/enroll-specific" }
+                    ]
                 },
                 {
                     title: "Analytics",
@@ -223,7 +228,12 @@ export const MobileAdminSidebarContent = () => {
                     title: "Users",
                     href: "/admin/users",
                     icon: Users,
-                    active: isActive('/admin/users')
+                    active: isActive('/admin/users'),
+                    subItems: [
+                        { title: "All Users", href: "/admin/users" },
+                        { title: "Manual Enrollment", href: "/admin/manual-enroll" },
+                        { title: "Enroll Specific Users", href: "/admin/enroll-specific" }
+                    ]
                 },
                 {
                     title: "Analytics",

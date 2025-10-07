@@ -7,10 +7,22 @@ import type { Course, UserProfile, AITool, CourseFormData, Lesson } from './type
 
 export const getAllCourses = async (): Promise<Course[]> => {
     try {
+        console.log('Firestore: Fetching courses collection...');
         const coursesCol = collection(db, 'courses');
         const courseSnapshot = await getDocs(coursesCol);
+        
+        console.log('Firestore: Course snapshot size:', courseSnapshot.size);
+        console.log('Firestore: Course snapshot empty:', courseSnapshot.empty);
+        
+        if (courseSnapshot.empty) {
+            console.log('Firestore: No courses found in collection');
+            return [];
+        }
+        
         const coursesList = courseSnapshot.docs.map(doc => {
             const data = doc.data();
+            console.log('Firestore: Processing course document:', doc.id, data);
+            
             // Ensure pricing field exists and is properly formatted
             if (!data.pricing || typeof data.pricing !== 'object') {
                 data.pricing = {
@@ -31,14 +43,19 @@ export const getAllCourses = async (): Promise<Course[]> => {
                 }));
             }
             
-            return {
+            const course = {
                 id: doc.id,
                 ...data
             } as Course;
+            
+            console.log('Firestore: Processed course:', course);
+            return course;
         });
+        
+        console.log('Firestore: Final courses list:', coursesList);
         return coursesList;
     } catch (error) {
-        console.error("Error fetching courses: ", error);
+        console.error("Firestore: Error fetching courses: ", error);
         return [];
     }
 };

@@ -5,6 +5,10 @@ import type { PaymentRecord } from './mockData';
 export interface DashboardStats {
   totalRevenue: number;
   revenueChange: number;
+  donationRevenue: number;
+  donationChange: number;
+  paymentRevenue: number;
+  paymentChange: number;
   activeUsers: number;
   usersChange: number;
   courseCompletions: number;
@@ -58,16 +62,22 @@ export const getRevenueStats = async (): Promise<{ total: number; change: number
     const paymentsRef = collection(db, 'payments');
     const paymentsSnapshot = await getDocs(paymentsRef);
     
+    console.log(`Found ${paymentsSnapshot.docs.length} payment documents`);
+    
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
     let currentMonthRevenue = 0;
     let lastMonthRevenue = 0;
+    let totalRevenue = 0;
     
     paymentsSnapshot.docs.forEach(doc => {
       const data = doc.data() as PaymentRecord;
+      console.log('Payment record:', data);
+      
       if (data.status === 'success' && data.amount) {
+        totalRevenue += data.amount;
         const paymentDate = data.paidAt ? new Date(data.paidAt) : null;
         
         if (paymentDate) {
@@ -86,10 +96,104 @@ export const getRevenueStats = async (): Promise<{ total: number; change: number
       }
     });
     
+    console.log(`Total revenue: ${totalRevenue}, Current month: ${currentMonthRevenue}, Last month: ${lastMonthRevenue}`);
+    
     const change = calculatePercentageChange(currentMonthRevenue, lastMonthRevenue);
-    return { total: currentMonthRevenue, change };
+    return { total: totalRevenue, change }; // Return total revenue instead of just current month
   } catch (error) {
     console.error('Error fetching revenue stats:', error);
+    return { total: 0, change: 0 };
+  }
+};
+
+// Get donation revenue specifically
+export const getDonationRevenueStats = async (): Promise<{ total: number; change: number }> => {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    const paymentsSnapshot = await getDocs(paymentsRef);
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    let currentMonthRevenue = 0;
+    let lastMonthRevenue = 0;
+    let totalDonationRevenue = 0;
+    
+    paymentsSnapshot.docs.forEach(doc => {
+      const data = doc.data() as PaymentRecord;
+      if (data.status === 'success' && data.amount && data.pricingType === 'donation') {
+        totalDonationRevenue += data.amount;
+        const paymentDate = data.paidAt ? new Date(data.paidAt) : null;
+        
+        if (paymentDate) {
+          const paymentMonth = paymentDate.getMonth();
+          const paymentYear = paymentDate.getFullYear();
+          
+          if (paymentYear === currentYear && paymentMonth === currentMonth) {
+            currentMonthRevenue += data.amount;
+          } else if (
+            (paymentYear === currentYear && paymentMonth === currentMonth - 1) ||
+            (currentMonth === 0 && paymentYear === currentYear - 1 && paymentMonth === 11)
+          ) {
+            lastMonthRevenue += data.amount;
+          }
+        }
+      }
+    });
+    
+    console.log(`Total donation revenue: ${totalDonationRevenue}`);
+    
+    const change = calculatePercentageChange(currentMonthRevenue, lastMonthRevenue);
+    return { total: totalDonationRevenue, change };
+  } catch (error) {
+    console.error('Error fetching donation revenue stats:', error);
+    return { total: 0, change: 0 };
+  }
+};
+
+// Get payment revenue specifically (excluding donations)
+export const getPaymentRevenueStats = async (): Promise<{ total: number; change: number }> => {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    const paymentsSnapshot = await getDocs(paymentsRef);
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    let currentMonthRevenue = 0;
+    let lastMonthRevenue = 0;
+    let totalPaymentRevenue = 0;
+    
+    paymentsSnapshot.docs.forEach(doc => {
+      const data = doc.data() as PaymentRecord;
+      if (data.status === 'success' && data.amount && data.pricingType === 'payment') {
+        totalPaymentRevenue += data.amount;
+        const paymentDate = data.paidAt ? new Date(data.paidAt) : null;
+        
+        if (paymentDate) {
+          const paymentMonth = paymentDate.getMonth();
+          const paymentYear = paymentDate.getFullYear();
+          
+          if (paymentYear === currentYear && paymentMonth === currentMonth) {
+            currentMonthRevenue += data.amount;
+          } else if (
+            (paymentYear === currentYear && paymentMonth === currentMonth - 1) ||
+            (currentMonth === 0 && paymentYear === currentYear - 1 && paymentMonth === 11)
+          ) {
+            lastMonthRevenue += data.amount;
+          }
+        }
+      }
+    });
+    
+    console.log(`Total payment revenue: ${totalPaymentRevenue}`);
+    
+    const change = calculatePercentageChange(currentMonthRevenue, lastMonthRevenue);
+    return { total: totalPaymentRevenue, change };
+  } catch (error) {
+    console.error('Error fetching payment revenue stats:', error);
     return { total: 0, change: 0 };
   }
 };
@@ -400,8 +504,10 @@ export const getCourseDistribution = async (): Promise<CourseDistribution> => {
 
 // Get all dashboard stats
 export const getDashboardStats = async (): Promise<DashboardStats> => {
-  const [revenue, users, completions, courses] = await Promise.all([
+  const [revenue, donationRevenue, paymentRevenue, users, completions, courses] = await Promise.all([
     getRevenueStats(),
+    getDonationRevenueStats(),
+    getPaymentRevenueStats(),
     getUserStats(),
     getCourseCompletionStats(),
     getCourseStats()
@@ -410,6 +516,10 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   return {
     totalRevenue: revenue.total,
     revenueChange: revenue.change,
+    donationRevenue: donationRevenue.total,
+    donationChange: donationRevenue.change,
+    paymentRevenue: paymentRevenue.total,
+    paymentChange: paymentRevenue.change,
     activeUsers: users.total,
     usersChange: users.change,
     courseCompletions: completions.total,

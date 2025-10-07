@@ -1,0 +1,50 @@
+// Example Firestore Security Rules for Admin Operations
+// Add these rules to your Firestore console under "Rules"
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - allow admins to read/write/delete
+    match /users/{userId} {
+      // Allow users to read/write their own data
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow admins to read/write/delete any user
+      allow read, write, delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Courses collection - allow admins to manage
+    match /courses/{courseId} {
+      // Allow anyone to read courses
+      allow read: if true;
+      
+      // Allow admins to create/update/delete courses
+      allow write, delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Payments collection - allow admins to read
+    match /payments/{paymentId} {
+      // Allow users to read their own payments
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Allow admins to read all payments
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      
+      // Allow creating payments (for payment processing)
+      allow create: if request.auth != null;
+    }
+  }
+}
+
+// Instructions:
+// 1. Go to Firebase Console > Firestore Database > Rules
+// 2. Replace the existing rules with the above rules
+// 3. Click "Publish" to apply the changes
+// 4. Make sure your admin user has isAdmin: true in their user document

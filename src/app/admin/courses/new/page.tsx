@@ -20,9 +20,15 @@ import PricingSelector from '@/components/admin/PricingSelector';
 
 const lessonSchema = z.object({
   title: z.string().min(1, "Lesson title is required."),
+  description: z.string().optional(),
   contentType: z.enum(['video', 'text', 'pdf', 'quiz']),
   content: z.string().min(1, "Content (URL or text) is required."),
   duration: z.string().optional(),
+  downloadableResources: z.array(z.object({
+    name: z.string().min(1, "Resource name is required."),
+    url: z.string().url("Must be a valid URL."),
+    fileType: z.string().optional(),
+  })).optional(),
 });
 
 const moduleSchema = z.object({
@@ -52,7 +58,16 @@ export default function NewCoursePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const emptyLesson = { title: '', contentType: 'video', content: '', duration: '', isPreviewable: false, lessonOrder: 0 };
+  const emptyLesson = { 
+    title: '', 
+    description: '',
+    contentType: 'video', 
+    content: '', 
+    duration: '', 
+    downloadableResources: [],
+    isPreviewable: false, 
+    lessonOrder: 0 
+  };
   const emptyModule = { title: '', moduleOrder: 0, lessons: [emptyLesson] };
   const emptyCourse: CourseFormData = {
     title: '',
@@ -155,7 +170,7 @@ export default function NewCoursePage() {
                 <FormField control={form.control} name={`modules.${mIndex}.title`} render={({ field }) => (<FormItem><FormLabel>Module Title</FormLabel><FormControl><Input placeholder="e.g., Getting Started" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <Separator className="my-4" />
                 <h5 className="text-md font-medium">Lessons</h5>
-                <LessonsFieldArray mIndex={mIndex} control={form.control} />
+                <LessonsFieldArray mIndex={mIndex} control={form.control} form={form} />
               </Card>
             ))}
             <Button type="button" variant="outline" onClick={() => appendModule({ title: "", lessons: [{ title: "", contentType: "video", content: "", duration: "" }] })}>
@@ -173,7 +188,7 @@ export default function NewCoursePage() {
   );
 }
 
-function LessonsFieldArray({ mIndex, control }: { mIndex: number, control: any }) {
+function LessonsFieldArray({ mIndex, control, form }: { mIndex: number, control: any, form: any }) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `modules.${mIndex}.lessons`,
@@ -187,15 +202,117 @@ function LessonsFieldArray({ mIndex, control }: { mIndex: number, control: any }
             <h6 className="text-sm font-semibold">Lesson {lIndex + 1}</h6>
             <Button type="button" variant="ghost" size="icon" onClick={() => remove(lIndex)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></Button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.title`} render={({ field }) => (<FormItem><FormLabel>Lesson Title</FormLabel><FormControl><Input placeholder="e.g., What is React?" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.duration`} render={({ field }) => (<FormItem><FormLabel>Duration</FormLabel><FormControl><Input placeholder="e.g., 10:45" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.contentType`} render={({ field }) => (<FormItem><FormLabel>Content Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="video">Video</SelectItem><SelectItem value="text">Text</SelectItem><SelectItem value="pdf">PDF</SelectItem><SelectItem value="quiz">Quiz</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-            <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.content`} render={({ field }) => (<FormItem><FormLabel>Content URL / Text</FormLabel><FormControl><Input placeholder="https://youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.title`} render={({ field }) => (<FormItem><FormLabel>Lesson Title</FormLabel><FormControl><Input placeholder="e.g., What is React?" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.duration`} render={({ field }) => (<FormItem><FormLabel>Duration</FormLabel><FormControl><Input placeholder="e.g., 10:45" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+            
+            <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.description`} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Topic Description</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Describe what students will learn in this lesson..." 
+                    className="min-h-[80px]"
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.contentType`} render={({ field }) => (<FormItem><FormLabel>Content Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="video">Video</SelectItem><SelectItem value="text">Text</SelectItem><SelectItem value="pdf">PDF</SelectItem><SelectItem value="quiz">Quiz</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+              <FormField control={control} name={`modules.${mIndex}.lessons.${lIndex}.content`} render={({ field }) => (<FormItem><FormLabel>Content URL / Text</FormLabel><FormControl><Input placeholder="https://youtube.com/watch?v=..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <FormLabel className="text-sm font-medium">Resources & Links</FormLabel>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const currentResources = form.getValues(`modules.${mIndex}.lessons.${lIndex}.downloadableResources`) || [];
+                    form.setValue(`modules.${mIndex}.lessons.${lIndex}.downloadableResources`, [
+                      ...currentResources,
+                      { name: '', url: '', fileType: '' }
+                    ]);
+                  }}
+                >
+                  <PlusCircle className="mr-1 h-3 w-3" /> Add Resource
+                </Button>
+              </div>
+              
+              {(form.watch(`modules.${mIndex}.lessons.${lIndex}.downloadableResources`) || []).map((resource: any, rIndex: number) => (
+                <div key={rIndex} className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 border rounded-lg bg-muted/20">
+                  <FormField 
+                    control={control} 
+                    name={`modules.${mIndex}.lessons.${lIndex}.downloadableResources.${rIndex}.name`} 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input placeholder="Resource name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                  <FormField 
+                    control={control} 
+                    name={`modules.${mIndex}.lessons.${lIndex}.downloadableResources.${rIndex}.url`} 
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input placeholder="https://example.com/file.pdf" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} 
+                  />
+                  <div className="flex gap-2">
+                    <FormField 
+                      control={control} 
+                      name={`modules.${mIndex}.lessons.${lIndex}.downloadableResources.${rIndex}.fileType`} 
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl>
+                            <Input placeholder="PDF, ZIP, etc." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} 
+                    />
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => {
+                        const currentResources = form.getValues(`modules.${mIndex}.lessons.${lIndex}.downloadableResources`) || [];
+                        const updatedResources = currentResources.filter((_: any, index: number) => index !== rIndex);
+                        form.setValue(`modules.${mIndex}.lessons.${lIndex}.downloadableResources`, updatedResources);
+                      }}
+                      className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       ))}
-      <Button type="button" variant="outline" size="sm" onClick={() => append({ title: "", contentType: "video", content: "", duration: "" })}>
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ 
+        title: "", 
+        description: "",
+        contentType: "video", 
+        content: "", 
+        duration: "",
+        downloadableResources: []
+      })}>
         <PlusCircle className="mr-2 h-4 w-4" /> Add Lesson
       </Button>
     </div>

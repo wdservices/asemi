@@ -44,6 +44,7 @@ export interface CourseModule {
 export interface Lesson {
   id: string;
   title:string;
+  description?: string; // Topic description for the lesson
   contentType: 'video' | 'text' | 'pdf' | 'quiz';
   content: string; // URL for video/pdf, markdown for text, or JSON for quiz
   duration?: string; // e.g., "10:35"

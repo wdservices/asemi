@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 
 import { BookOpen, BarChart, EyeOff, CheckCircle, DollarSign, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { updateUserProfile, getUserProfile, enrollUserInCourse } from '@/lib/mockData';
+import { updateUserProfile, getUserProfile, enrollUserInCourse, createPaymentRecord } from '@/lib/mockData';
 import { useState, useEffect } from 'react';
 import { cn, getCoursePriceDisplay } from '@/lib/utils';
 import { convertGoogleDriveUrl, getFallbackImageUrl } from '@/lib/imageUtils';
@@ -70,6 +70,26 @@ export function CourseCard({ course, onEnrollSuccess }: CourseCardProps) {
   const handlePaymentSuccess = async (reference: string) => {
     try {
       setIsEnrolling(true);
+      
+      // Save payment record to Firestore
+      const paymentData = {
+        userId: user?.uid || '',
+        courseId: course.id,
+        amount: course.pricing?.amount || course.price || 0,
+        currency: 'NGN',
+        reference: reference,
+        status: 'success' as const,
+        pricingType: course.pricing?.type || 'payment',
+        customerEmail: user?.email || '',
+        paidAt: new Date().toISOString()
+      };
+      
+      console.log('Saving payment record:', paymentData);
+      const paymentSaved = await createPaymentRecord(paymentData);
+      
+      if (!paymentSaved) {
+        console.error('Failed to save payment record');
+      }
       
       // Use the enrollUserInCourse function to properly enroll the user
       const success = await enrollUserInCourse(user?.uid || '', course.id);

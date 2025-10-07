@@ -23,7 +23,9 @@ import {
   Calendar,
   Clock,
   Star,
-  Loader2
+  Loader2,
+  Heart,
+  CreditCard
 } from 'lucide-react';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
@@ -166,17 +168,18 @@ export default function AdminDashboardPage() {
     <div className="space-y-8 p-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back! Here's what's happening with your platform today.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" asChild>
-            <Link href="/admin/analytics">
+        <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/admin/users">
               <Eye className="mr-2 h-4 w-4" />
-              View Analytics
+              View Users
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/enroll-specific">
+              <Users className="mr-2 h-4 w-4" />
+              Manual Enroll
             </Link>
           </Button>
           <Button asChild>
@@ -184,6 +187,36 @@ export default function AdminDashboardPage() {
               <Plus className="mr-2 h-4 w-4" />
               Add Course
             </Link>
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/admin/create-sample-data', { method: 'POST' });
+                const data = await response.json();
+                console.log('Sample data creation:', data);
+              } catch (error) {
+                console.error('Error creating sample data:', error);
+              }
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Sample Data
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/admin/test-payment', { method: 'POST' });
+                const data = await response.json();
+                console.log('Test payment creation:', data);
+              } catch (error) {
+                console.error('Error creating test payment:', error);
+              }
+            }}
+          >
+            <DollarSign className="mr-2 h-4 w-4" />
+            Test Payment
           </Button>
         </div>
       </div>
@@ -196,7 +229,7 @@ export default function AdminDashboardPage() {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
             <Card className="relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -220,6 +253,64 @@ export default function AdminDashboardPage() {
                       <ArrowDownRight className="h-3 w-3" />
                     )}
                     {stats?.revenueChange.toFixed(1)}%
+                  </div>
+                  <span>from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Donation Revenue
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-pink-100 flex items-center justify-center">
+                  <Heart className="h-4 w-4 text-pink-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₦{stats?.donationRevenue.toLocaleString() || '0'}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className={`flex items-center gap-1 ${
+                    (stats?.donationChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(stats?.donationChange || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {stats?.donationChange.toFixed(1)}%
+                  </div>
+                  <span>from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="relative overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Payment Revenue
+                </CardTitle>
+                <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                  <CreditCard className="h-4 w-4 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₦{stats?.paymentRevenue.toLocaleString() || '0'}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className={`flex items-center gap-1 ${
+                    (stats?.paymentChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(stats?.paymentChange || 0) >= 0 ? (
+                      <ArrowUpRight className="h-3 w-3" />
+                    ) : (
+                      <ArrowDownRight className="h-3 w-3" />
+                    )}
+                    {stats?.paymentChange.toFixed(1)}%
                   </div>
                   <span>from last month</span>
                 </div>

@@ -63,22 +63,30 @@ export async function POST(request: NextRequest) {
 // GET endpoint to list available courses
 export async function GET(request: NextRequest) {
   try {
+    console.log('API: Fetching courses from Firestore...');
     const courses = await getAllCourses();
+    console.log('API: Raw courses from Firestore:', courses);
+    console.log('API: Number of courses found:', courses.length);
+    
+    const mappedCourses = courses.map(course => ({
+      id: course.id,
+      title: course.title,
+      slug: course.slug,
+      price: course.price,
+      pricing: course.pricing
+    }));
+    
+    console.log('API: Mapped courses for response:', mappedCourses);
+    
     return NextResponse.json({
       status: 'success',
       message: 'Available courses',
-      data: courses.map(course => ({
-        id: course.id,
-        title: course.title,
-        slug: course.slug,
-        price: course.price,
-        pricing: course.pricing
-      }))
+      data: mappedCourses
     });
   } catch (error) {
-    console.error('Error fetching courses:', error);
+    console.error('API: Error fetching courses:', error);
     return NextResponse.json(
-      { status: 'error', message: 'Failed to fetch courses' },
+      { status: 'error', message: 'Failed to fetch courses', error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

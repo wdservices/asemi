@@ -9,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { Course, CourseModule, Lesson as LessonType } from '@/lib/types';
-import { getCourseBySlug, enrollUserInCourse, getUserProfile } from '@/lib/mockData'; // Using slug as ID for fetching, added enrollUserInCourse
+import { getCourseBySlug, enrollUserInCourse, getUserProfile, createPaymentRecord } from '@/lib/mockData'; // Using slug as ID for fetching, added enrollUserInCourse
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -95,13 +95,30 @@ export default function CourseDetailPage() {
   const handlePaymentSuccess = async (reference: string) => {
     if (course && user) {
         try {
-            // Fetch the latest user profile to get updated enrollment status
-            const latestProfile = await getUserProfile(user.uid);
+            // Save payment record to Firestore
+            const paymentData = {
+                userId: user.uid,
+                courseId: course.id,
+                amount: course.pricing?.amount || course.price || 0,
+                currency: 'NGN',
+                reference: reference,
+                status: 'success' as const,
+                pricingType: course.pricing?.type || 'payment',
+                customerEmail: user.email || '',
+                paidAt: new Date().toISOString()
+            };
             
-            if (latestProfile && latestProfile.enrolledCourses?.includes(course.id)) {
-                // Update the local user state with the latest profile
-                updateUserProfile({ enrolledCourses: latestProfile.enrolledCourses });
-                
+            console.log('Saving payment record:', paymentData);
+            const paymentSaved = await createPaymentRecord(paymentData);
+            
+            if (!paymentSaved) {
+                console.error('Failed to save payment record');
+            }
+            
+            // Enroll user in course
+            const enrollmentSuccess = await enrollUserInCourse(user.uid, course.id);
+            
+            if (enrollmentSuccess) {
                 toast({ 
                     title: "Enrollment Successful", 
                     description: `You now have access to ${course.title}!`, 
