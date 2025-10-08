@@ -52,6 +52,7 @@ import {
   type RevenueData,
   type CourseDistribution
 } from '@/lib/dashboardData';
+import AdminSettings from '@/components/admin/AdminSettings';
 
 ChartJS.register(
   CategoryScale,
@@ -558,6 +559,9 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
       )}
+
+      {/* Admin Settings */}
+      <AdminSettings />
 
       {/* Quick Actions */}
       <Card>
