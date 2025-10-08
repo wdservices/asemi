@@ -41,7 +41,7 @@ export default function PaystackPayment({
   onSuccess,
   onClose
 }: PaystackPaymentProps) {
-  const [donationAmount, setDonationAmount] = useState<string>('100');
+  const [donationAmount, setDonationAmount] = useState<string>('1500');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -288,8 +288,8 @@ export default function PaystackPayment({
                 id="donationAmount"
                 type="number"
                 step="1"
-                min="100"
-                placeholder="100"
+                min="1500"
+                placeholder="1500"
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
                 className="mt-1"
@@ -300,8 +300,24 @@ export default function PaystackPayment({
                 </p>
               )}
               <p className="text-sm text-muted-foreground mt-1">
-                Enter amount in Nigerian Naira (minimum ₦100)
+                Enter amount in Nigerian Naira (minimum ₦1,500)
               </p>
+              
+              {/* Quick donation buttons */}
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {[2000, 5000, 7000, 15000, 20000, 25000].map((amount) => (
+                  <Button
+                    key={amount}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDonationAmount(amount.toString())}
+                    className="text-xs"
+                  >
+                    ₦{amount.toLocaleString()}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
           {pricing.suggestedDonation && (
@@ -355,7 +371,7 @@ export default function PaystackPayment({
     }
     if (pricing.type === 'donation') {
       const amount = parseFloat(donationAmount);
-      return isNaN(amount) || amount < 100;
+      return isNaN(amount) || amount < 1500;
     }
     return false;
   };
