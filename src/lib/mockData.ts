@@ -536,3 +536,4 @@ export const getUserByEmail = async (email: string): Promise<UserProfile | null>
         return null;
     }
 };
+

@@ -91,3 +91,4 @@ export type CourseFormData = Omit<Course, 'id' | 'slug' | 'modules'> & {
     lessons: Array<Omit<Lesson, 'id' | 'isCompleted' | 'downloadableResources'>>;
   }>;
 };
+
