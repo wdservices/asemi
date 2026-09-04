@@ -1,0 +1,14 @@
+revoke execute on function public.has_role(uuid, public.app_role) from public, anon;
+revoke execute on function public.owns_company(uuid) from public, anon;
+revoke execute on function public.company_is_approved(uuid) from public, anon;
+revoke execute on function public.generate_batch(uuid, integer) from public, anon;
+revoke execute on function public.company_stats(uuid) from public, anon;
+revoke execute on function public.batch_stats(uuid) from public, anon;
+revoke execute on function public.platform_metrics() from public, anon;
+revoke execute on function public.admin_company_overview() from public, anon;
+revoke execute on function public.set_code_review(uuid, public.review_status) from public, anon;
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.protect_company_columns() from public, anon, authenticated;
+revoke execute on function public.random_code() from public, anon, authenticated;
+revoke execute on function public.verify_code(text, text, text, text, text) from public;
+revoke execute on function public.submit_report(text, text, text) from public;
