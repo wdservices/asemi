@@ -4,19 +4,38 @@ import { cn } from "@/lib/utils";
 
 export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
   return (
-    <Link to="/" className={cn("inline-flex items-center gap-2 font-display font-semibold text-foreground", className)}>
+    <Link
+      to="/"
+      className={cn(
+        "inline-flex items-center gap-2 font-display font-semibold text-foreground",
+        className,
+      )}
+    >
       <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
         <ShieldCheck className="size-4" />
       </span>
-      {!compact && <span className="text-lg tracking-tight">Sentinel</span>}
+      {!compact && <span className="text-lg tracking-tight">Asemi</span>}
     </Link>
   );
 }
 
-export function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="panel p-5">
-      <p className="eyebrow">{label}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="eyebrow">{label}</p>
+        {icon && <span className="text-muted-foreground">{icon}</span>}
+      </div>
       <p className="mt-2 font-display text-3xl font-semibold tracking-tight">{value}</p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
@@ -37,13 +56,26 @@ const statusStyles: Record<string, string> = {
 
 export function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", statusStyles[status] ?? "bg-muted text-muted-foreground")}>
+    <span
+      className={cn(
+        "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+        statusStyles[status] ?? "bg-muted text-muted-foreground",
+      )}
+    >
       {status.replace("_", " ")}
     </span>
   );
 }
 
-export function PageHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -55,7 +87,15 @@ export function PageHeader({ title, description, action }: { title: string; desc
   );
 }
 
-export function EmptyState({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="panel flex flex-col items-center justify-center px-6 py-16 text-center">
       <p className="font-display text-lg font-semibold">{title}</p>

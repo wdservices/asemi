@@ -8,9 +8,12 @@ import { normalizeCode } from "@/lib/auth";
 export const Route = createFileRoute("/verify")({
   head: () => ({
     meta: [
-      { title: "Verify a product — Sentinel" },
-      { name: "description", content: "Enter the code printed on your product to check whether it is genuine." },
-      { property: "og:title", content: "Verify a product — Sentinel" },
+      { title: "Verify a product — Asemi" },
+      {
+        name: "description",
+        content: "Enter the code printed on your product to check whether it is genuine.",
+      },
+      { property: "og:title", content: "Verify a product — Asemi" },
       { property: "og:description", content: "Check whether your product is genuine in seconds." },
     ],
   }),
@@ -46,7 +49,9 @@ function VerifyEntry() {
             className="h-14 text-center font-mono text-xl tracking-[0.3em]"
             aria-label="Verification code"
           />
-          <Button className="h-12 w-full" disabled={!ready}>Check code</Button>
+          <Button className="h-12 w-full" disabled={!ready}>
+            Check code
+          </Button>
         </form>
       </div>
     </main>

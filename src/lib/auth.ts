@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { fb as supabase, getMockSession } from "@/integrations/firebase/client";
+import type { Tables } from "@/integrations/firebase/types";
 
 export type Company = Tables<"companies">;
 
@@ -19,7 +19,10 @@ export function useIsAdmin() {
     queryKey: ["is-admin", session?.user.id],
     enabled: !!session,
     queryFn: async () => {
-      const { data } = await supabase.rpc("has_role", { _user_id: session!.user.id, _role: "admin" });
+      const { data } = await supabase.rpc("has_role", {
+        _user_id: session!.user.id,
+        _role: "admin",
+      });
       return !!data;
     },
   });
@@ -53,6 +56,52 @@ export function useSignOut() {
   };
 }
 
+export interface DemoUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "company" | "admin";
+}
+export const DEMO_USERS: DemoUser[] = [
+  {
+    id: "usr_company_demo_001",
+    name: "Demo Company User",
+    email: "company@asemi.demo",
+    role: "company",
+  },
+  { id: "usr_admin_demo_001", name: "Demo Admin", email: "admin@asemi.demo", role: "admin" },
+  {
+    id: "usr_pending_003",
+    name: "Demo Pending Company (Ivory Dental)",
+    email: "pending@asemi.demo",
+    role: "company",
+  },
+  {
+    id: "usr_needsinfo_004",
+    name: "Demo Needs-Info Company (Malomo Foods)",
+    email: "needsinfo@asemi.demo",
+    role: "company",
+  },
+];
+
+export function getSignedInUserId(): string | null {
+  return getMockSession()?.user.id ?? null;
+}
+
+export function useDemoSignIn() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  return async (userId: string) => {
+    const match = DEMO_USERS.find((u) => u.id === userId);
+    const roles = match?.role === "admin" ? ["admin"] : undefined;
+    await supabase.auth.signInAs(userId, match?.email, roles);
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await queryClient.invalidateQueries();
+    navigate({ to: "/dashboard", replace: true });
+  };
+}
+
 export const CATEGORIES = [
   "Personal care",
   "Oral care",
@@ -64,7 +113,10 @@ export const CATEGORIES = [
 ];
 
 export function normalizeCode(input: string) {
-  const raw = input.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+  const raw = input
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 12);
   return raw.replace(/(.{4})(?=.)/g, "$1-");
 }
 
