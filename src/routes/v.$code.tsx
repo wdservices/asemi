@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, AlertTriangle, Flag } from "lucide-react";
 import { toast } from "sonner";
-import { fb as supabase } from "@/integrations/firebase/client";
+import { asemiStore } from "@/lib/asemiStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,22 +23,23 @@ export const Route = createFileRoute("/v/$code")({
 });
 
 type Result = {
-  status: "genuine" | "genuine_repeated" | "invalid";
+  status: "genuine" | "soft_escalation" | "invalid";
   code?: string;
   scan_count?: number;
   product?: { name: string; category: string; description: string };
   company?: { name: string };
   batch?: { number: string; produced_at: string };
+  warningMessage?: string;
 };
 
 function browserToken() {
   const k = "sentinel_token";
-  let t = localStorage.getItem(k);
-  if (!t) {
+  let t = typeof window !== "undefined" ? localStorage.getItem(k) : null;
+  if (!t && typeof window !== "undefined") {
     t = crypto.randomUUID();
     localStorage.setItem(k, t);
   }
-  return t;
+  return t || "tok_anonymous";
 }
 
 function VerifyResult() {
@@ -49,17 +50,47 @@ function VerifyResult() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const fp = `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-      const { data, error } = await supabase.rpc("verify_code", {
-        _code: code,
-        _token: browserToken(),
-        _city: "",
-        _country: "",
-        _fingerprint: fp,
-      });
-      if (cancelled) return;
-      if (error) setError(true);
-      else setResult(data as Result);
+      try {
+        const fp =
+          typeof window !== "undefined"
+            ? `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+            : "browser_fp";
+        const res = await asemiStore.verifyCode({
+          codeString: code,
+          browserToken: browserToken(),
+          roughLocation: "Consumer Camera / Lagos, NG",
+          deviceFingerprint: fp,
+        });
+        if (cancelled) return;
+
+        if (res.status === "invalid") {
+          setResult({ status: "invalid", code });
+        } else {
+          setResult({
+            status: res.status,
+            code: res.code?.codeString || code,
+            scan_count: res.scanCount,
+            product: res.product
+              ? {
+                  name: res.product.name,
+                  category: res.product.category,
+                  description: res.product.description,
+                }
+              : undefined,
+            company: res.company ? { name: res.company.name } : undefined,
+            batch: res.batch
+              ? {
+                  number: res.batch.id.replace("batch_", "B-"),
+                  produced_at: res.batch.createdAt,
+                }
+              : undefined,
+            warningMessage: res.warningMessage,
+          });
+        }
+      } catch (err) {
+        console.error("Verification error:", err);
+        if (!cancelled) setError(true);
+      }
     })();
     return () => {
       cancelled = true;
@@ -67,7 +98,7 @@ function VerifyResult() {
   }, [code]);
 
   return (
-    <main className="ambient-bg flex min-h-screen flex-col items-center px-4 pb-16 pt-6">
+    <main className="ambient-bg flex min-h-screen flex-col items-center px-4 pb-16 pt-6 font-sans">
       <Logo compact className="self-start" />
       <div className="mt-6 w-full max-w-sm">
         {!result && !error && <Skeleton />}
@@ -90,11 +121,12 @@ function VerifyResult() {
           <>
             <Card
               tone={result.status === "genuine" ? "genuine" : "caution"}
-              title={result.status === "genuine" ? "Genuine product" : "Genuine — scanned before"}
+              title={result.status === "genuine" ? "Genuine product" : "Checked Several Times"}
               subtitle={
                 result.status === "genuine"
-                  ? `Verified by ${result.company?.name}.`
-                  : `This code has been checked ${result.scan_count} times. If you just bought this item sealed, it is likely fine — but be cautious.`
+                  ? `Verified by ${result.company?.name || "the manufacturer"}.`
+                  : result.warningMessage ||
+                    `This code has been checked ${result.scan_count} times. If something feels off, let us know.`
               }
               code={result.code as string}
             />
@@ -117,21 +149,33 @@ function VerifyResult() {
                 <div>
                   <dt className="text-muted-foreground">Produced</dt>
                   <dd className="font-medium">
-                    {new Date(result.batch!.produced_at).toLocaleDateString()}
+                    {result.batch?.produced_at
+                      ? new Date(result.batch.produced_at).toLocaleDateString()
+                      : "Recently"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Scans</dt>
+                  <dt className="text-muted-foreground">Total Scans</dt>
                   <dd className="font-medium">{result.scan_count}</dd>
                 </div>
               </dl>
             </div>
           </>
         )}
-        {(result || error) && <ReportForm code={normalizeCode(code)} />}
+        {(result || error) && (
+          <ReportForm
+            code={normalizeCode(code)}
+            companyName={result?.company?.name}
+            productName={result?.product?.name}
+          />
+        )}
         <p className="mt-8 text-center text-xs text-muted-foreground">
           <Link to="/verify" className="underline">
             Check another code
+          </Link>
+          <span className="mx-2">•</span>
+          <Link to="/" className="underline">
+            Return to Asemi Home
           </Link>
         </p>
       </div>
@@ -175,7 +219,14 @@ function Skeleton() {
   return <div className="h-56 animate-pulse rounded-3xl bg-muted" aria-busy="true" />;
 }
 
-function ReportForm({ code }: { code: string }) {
+function ReportForm({
+  code,
+  productName,
+}: {
+  code: string;
+  companyName?: string;
+  productName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
@@ -185,7 +236,7 @@ function ReportForm({ code }: { code: string }) {
   if (sent)
     return (
       <p className="mt-6 text-center text-sm text-genuine">
-        Thanks — your report was sent to the manufacturer.
+        Thanks — your report was sent to our security team and the brand manufacturer.
       </p>
     );
   if (!open)
@@ -200,17 +251,26 @@ function ReportForm({ code }: { code: string }) {
   return (
     <form
       className="animate-rise panel mt-6 space-y-3 p-5"
-      onSubmit={async (e) => {
+      onSubmit={(e) => {
         e.preventDefault();
         setBusy(true);
-        const { error } = await supabase.rpc("submit_report", {
-          _code: code,
-          _contact: contact,
-          _message: message,
-        });
-        setBusy(false);
-        if (error) toast.error(error.message);
-        else setSent(true);
+        try {
+          asemiStore.submitReport({
+            codeId: code,
+            codeString: code,
+            companyId: "comp_reported",
+            productName: productName || "Reported Item",
+            message,
+            contact,
+          });
+          setBusy(false);
+          setSent(true);
+          toast.success("Report submitted successfully");
+        } catch (err) {
+          console.error(err);
+          setBusy(false);
+          toast.error("Failed to submit report. Please try again.");
+        }
       }}
     >
       <p className="font-medium">Report this product</p>
