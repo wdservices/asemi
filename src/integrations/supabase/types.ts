@@ -16,27 +16,36 @@ export type Database = {
     Tables: {
       batches: {
         Row: {
+          amount_charged: number
           batch_number: string
           company_id: string
           created_at: string
+          currency: string
+          exported_at: string | null
           id: string
           product_id: string
           quantity: number
           status: string
         }
         Insert: {
+          amount_charged?: number
           batch_number: string
           company_id: string
           created_at?: string
+          currency?: string
+          exported_at?: string | null
           id?: string
           product_id: string
           quantity: number
           status?: string
         }
         Update: {
+          amount_charged?: number
           batch_number?: string
           company_id?: string
           created_at?: string
+          currency?: string
+          exported_at?: string | null
           id?: string
           product_id?: string
           quantity?: number
@@ -65,9 +74,11 @@ export type Database = {
           code_string: string
           company_id: string
           created_at: string
+          exported_at: string | null
           flagged: boolean
           id: string
           last_scanned_at: string | null
+          print_count: number
           product_id: string
           review_status: Database["public"]["Enums"]["review_status"]
           scan_count: number
@@ -77,9 +88,11 @@ export type Database = {
           code_string: string
           company_id: string
           created_at?: string
+          exported_at?: string | null
           flagged?: boolean
           id?: string
           last_scanned_at?: string | null
+          print_count?: number
           product_id: string
           review_status?: Database["public"]["Enums"]["review_status"]
           scan_count?: number
@@ -89,9 +102,11 @@ export type Database = {
           code_string?: string
           company_id?: string
           created_at?: string
+          exported_at?: string | null
           flagged?: boolean
           id?: string
           last_scanned_at?: string | null
+          print_count?: number
           product_id?: string
           review_status?: Database["public"]["Enums"]["review_status"]
           scan_count?: number
@@ -126,10 +141,13 @@ export type Database = {
           admin_note: string | null
           ai_confidence: number | null
           ai_flags: Json
+          approved_at: string | null
           category: string
+          country_code: string
           created_at: string
           document_url: string | null
           email: string
+          free_codes_used: number
           id: string
           logo_url: string | null
           name: string
@@ -139,6 +157,7 @@ export type Database = {
           registration_number: string
           status: Database["public"]["Enums"]["company_status"]
           subscription_plan: string
+          total_codes_generated: number
           updated_at: string
         }
         Insert: {
@@ -146,10 +165,13 @@ export type Database = {
           admin_note?: string | null
           ai_confidence?: number | null
           ai_flags?: Json
+          approved_at?: string | null
           category: string
+          country_code?: string
           created_at?: string
           document_url?: string | null
           email: string
+          free_codes_used?: number
           id?: string
           logo_url?: string | null
           name: string
@@ -159,6 +181,7 @@ export type Database = {
           registration_number: string
           status?: Database["public"]["Enums"]["company_status"]
           subscription_plan?: string
+          total_codes_generated?: number
           updated_at?: string
         }
         Update: {
@@ -166,10 +189,13 @@ export type Database = {
           admin_note?: string | null
           ai_confidence?: number | null
           ai_flags?: Json
+          approved_at?: string | null
           category?: string
+          country_code?: string
           created_at?: string
           document_url?: string | null
           email?: string
+          free_codes_used?: number
           id?: string
           logo_url?: string | null
           name?: string
@@ -179,9 +205,60 @@ export type Database = {
           registration_number?: string
           status?: Database["public"]["Enums"]["company_status"]
           subscription_plan?: string
+          total_codes_generated?: number
           updated_at?: string
         }
         Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount: number
+          codes_applied: number
+          company_id: string
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          kind: string
+          paid_at: string
+          reference: string | null
+          status: string
+        }
+        Insert: {
+          amount?: number
+          codes_applied?: number
+          company_id: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          paid_at?: string
+          reference?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          codes_applied?: number
+          company_id?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          kind?: string
+          paid_at?: string
+          reference?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -385,11 +462,56 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets: {
+        Row: {
+          company_id: string
+          created_at: string
+          credit_balance: number
+          currency: string
+          id: string
+          lifetime_spent: number
+          lifetime_topup: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          credit_balance?: number
+          currency?: string
+          id?: string
+          lifetime_spent?: number
+          lifetime_topup?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          credit_balance?: number
+          currency?: string
+          id?: string
+          lifetime_spent?: number
+          lifetime_topup?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_company: {
+        Args: { _company_id: string; _note?: string }
+        Returns: undefined
+      }
       admin_company_overview: {
         Args: never
         Returns: {
@@ -404,6 +526,18 @@ export type Database = {
           subscription_plan: string
         }[]
       }
+      admin_reject_company: {
+        Args: { _company_id: string; _note?: string }
+        Returns: undefined
+      }
+      admin_request_info: {
+        Args: { _company_id: string; _note?: string }
+        Returns: undefined
+      }
+      admin_review_report: {
+        Args: { _report_id: string; _reviewed: boolean }
+        Returns: undefined
+      }
       batch_stats: {
         Args: { _company_id: string }
         Returns: {
@@ -413,9 +547,17 @@ export type Database = {
           scanned_codes: number
         }[]
       }
+      calculate_price: {
+        Args: { _company_id: string; _quantity: number }
+        Returns: Json
+      }
       company_is_approved: { Args: { _company_id: string }; Returns: boolean }
       company_stats: { Args: { _company_id: string }; Returns: Json }
       generate_batch: {
+        Args: { _product_id: string; _quantity: number }
+        Returns: string
+      }
+      generate_batch_paid: {
         Args: { _product_id: string; _quantity: number }
         Returns: string
       }
@@ -426,6 +568,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_codes_exported: { Args: { _batch_id: string }; Returns: undefined }
       owns_company: { Args: { _company_id: string }; Returns: boolean }
       platform_metrics: { Args: never; Returns: Json }
       random_code: { Args: never; Returns: string }
@@ -438,6 +581,10 @@ export type Database = {
       }
       submit_report: {
         Args: { _code: string; _contact: string; _message: string }
+        Returns: undefined
+      }
+      topup_wallet: {
+        Args: { _amount: number; _company_id: string; _reference?: string }
         Returns: undefined
       }
       verify_code: {
