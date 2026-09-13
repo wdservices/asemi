@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asemi — Product Authentication</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --white:#ffffff; --offwhite:#fafaf8; --linen:#f5f0e8;
+    --cream1:#ede8df; --cream2:#e8e2d9; --card:#f0ece4;
+    --hover:#ede8df; --divider:#e0dbd2;
+    --gold:#c9a84c; --gold-deep:#b8962e;
+    --charcoal:#1a1a1e; --body:#2b2b32; --label:#6e6e7a; --secondary:#45454f;
+    --red:#c0392b; --amber:#d4830a; --green:#2e8b57;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--white); color:var(--body); font-family:'Inter',sans-serif;
+    font-size:16px; font-weight:400; line-height:1.6; cursor:none;
+  }
+  ::selection{background:var(--gold); color:var(--white);}
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit; cursor:none; border:none; background:none;}
+  input, textarea{font-family:'Inter',sans-serif; cursor:auto;}
+
+  /* grain overlay */
+  #grain{
+    position:fixed; inset:0; pointer-events:none; z-index:9998; opacity:0.035; mix-blend-mode:multiply;
+  }
+
+  /* custom cursor */
+  #cursor-dot{position:fixed; width:6px; height:6px; background:var(--charcoal); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); transition:opacity .2s;}
+  #cursor-ring{position:fixed; width:28px; height:28px; border-radius:50%; background:rgba(26,26,30,0.25); pointer-events:none; z-index:9999; transform:translate(-50%,-50%); transition:transform .15s ease-out, opacity .2s;}
+  @media (hover:none){ #cursor-dot,#cursor-ring{display:none;} body,button{cursor:auto;} }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 40px;}
+  @media (max-width:700px){.wrap{padding:0 22px;}}
+
+  h1,h2,h3,.serif{font-family:'Inter',sans-serif; font-weight:600; color:var(--charcoal); letter-spacing:-0.02em;}
+  .mono{font-family:'JetBrains Mono',monospace; letter-spacing:0.15em; font-size:10px; color:var(--label); text-transform:uppercase; font-weight:500;}
+  .mono.accent{color:var(--charcoal);}
+
+  .rule{width:28px; height:1px; background:var(--gold); display:inline-block; margin-right:10px; vertical-align:middle;}
+  .label-line{display:flex; align-items:center; gap:0; margin-bottom:18px;}
+
+  /* NAV */
+  nav{position:sticky; top:0; z-index:100; background:rgba(255,255,255,0.88); backdrop-filter:blur(10px); border-bottom:1px solid var(--divider);}
+  nav .wrap{display:flex; align-items:center; justify-content:space-between; height:78px;}
+  .logo{display:flex; align-items:center; gap:12px;}
+  .hex{width:26px; height:26px; background:var(--charcoal); clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); display:flex; align-items:center; justify-content:center;}
+  .hex span{color:var(--white); font-family:'Inter',sans-serif; font-size:14px; font-weight:700; font-style:normal;}
+  .logo-word{font-family:'Inter',sans-serif; font-size:21px; font-weight:700; color:var(--charcoal); letter-spacing:-0.01em;}
+  .navlinks{display:flex; gap:36px; align-items:center;}
+  .navlinks a{font-family:'JetBrains Mono',monospace; font-weight:500; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--label); position:relative; padding-bottom:4px; cursor:pointer;}
+  .navlinks a:hover{color:var(--charcoal);}
+  .navlinks a::after{content:'';position:absolute; left:0; bottom:0; width:100%; height:1px; background:var(--charcoal); transform:scaleX(0); transform-origin:left; transition:transform .3s ease;}
+  .navlinks a:hover::after{transform:scaleX(1);}
+  .navcta{display:flex; gap:14px;}
+  @media (max-width:860px){.navlinks{display:none;}}
+
+  .btn{display:inline-block; padding:14px 30px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; position:relative; overflow:hidden;}
+  .btn-fill{background:var(--charcoal); color:var(--linen);}
+  .btn-fill span{position:relative; z-index:2;}
+  .btn-fill::before{content:''; position:absolute; inset:0; background:var(--gold-deep); transform:translateY(101%); transition:transform .35s ease; z-index:1;}
+  .btn-fill:hover::before{transform:translateY(0);}
+  .btn-ghost{border:1px solid var(--charcoal); color:var(--charcoal); position:relative;}
+  .btn-ghost::after{content:'';position:absolute; left:0; bottom:-1px; width:100%; height:1px; background:var(--charcoal); transform:scaleX(0); transform-origin:left; transition:transform .3s;}
+  .btn-ghost:hover::after{transform:scaleX(1);}
+  .btn-sm{padding:10px 20px; font-size:12px;}
+
+  /* HERO */
+  header.hero{padding:120px 0 100px; border-bottom:1px solid var(--divider);}
+  .eyebrow{display:flex; align-items:center; margin-bottom:28px;}
+  .hero h1{font-size:clamp(44px,6.4vw,92px); line-height:1.02; font-weight:700; letter-spacing:-0.03em; max-width:920px;}
+  .hero h1 em{font-style:normal; color:var(--gold-deep);}
+  .hero-sub{display:grid; grid-template-columns:1.4fr 1fr; gap:60px; margin-top:48px; align-items:end;}
+  .hero-sub p{font-size:18px; color:var(--secondary); max-width:480px; line-height:1.8;}
+  .hero-actions{display:flex; gap:16px; margin-top:36px;}
+  .hero-stats{display:flex; flex-direction:column; gap:20px; border-left:1px solid var(--divider); padding-left:32px;}
+  .stat-num{font-family:'Inter',sans-serif; font-size:38px; font-weight:700; letter-spacing:-0.02em; color:var(--charcoal);}
+  .stat-label{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; color:var(--label); text-transform:uppercase; margin-top:2px;}
+  @media (max-width:800px){.hero-sub{grid-template-columns:1fr;} .hero-stats{border-left:none; padding-left:0; flex-direction:row; flex-wrap:wrap; gap:32px;}}
+
+  /* SECTIONS */
+  section{padding:100px 0; border-bottom:1px solid var(--divider);}
+  section.tinted{background:var(--offwhite);}
+  .section-head{max-width:640px; margin-bottom:64px;}
+  .section-head h2{font-size:clamp(30px,3.6vw,44px); line-height:1.1; font-weight:700; letter-spacing:-0.02em;}
+
+  .reveal{opacity:0; transform:translateY(24px); transition:opacity .65s ease, transform .65s ease;}
+  .reveal.in{opacity:1; transform:translateY(0);}
+
+  /* PROBLEM GRID */
+  .problem-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--divider); border:1px solid var(--divider);}
+  .problem-card{background:var(--white); padding:40px 32px;}
+  .problem-card .num{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; color:var(--gold-deep); margin-bottom:18px; display:block;}
+  .problem-card h3{font-family:'Inter',sans-serif; font-weight:600; font-size:18px; color:var(--charcoal); margin-bottom:12px;}
+  .problem-card p{font-size:14.5px; color:var(--secondary); line-height:1.75;}
+  @media (max-width:800px){.problem-grid{grid-template-columns:1fr;}}
+
+  /* HOW IT WORKS */
+  .flow{display:grid; grid-template-columns:repeat(4,1fr); gap:0; position:relative;}
+  .flow-step{padding:0 24px 0 0; position:relative;}
+  .flow-step:not(:last-child)::after{content:''; position:absolute; top:11px; right:0; width:24px; height:1px; background:var(--divider);}
+  .flow-step .idx{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--gold-deep); letter-spacing:0.1em; margin-bottom:20px; display:block;}
+  .flow-step h3{font-family:'Inter',sans-serif; font-size:17px; font-weight:600; color:var(--charcoal); margin-bottom:10px;}
+  .flow-step p{font-size:14px; color:var(--secondary); line-height:1.7;}
+  @media (max-width:800px){.flow{grid-template-columns:1fr; gap:40px;} .flow-step:not(:last-child)::after{display:none;}}
+
+  /* PRICING */
+  .pricing-table{border:1px solid var(--divider);}
+  .price-row{display:grid; grid-template-columns:1.4fr 1fr 1fr; border-bottom:1px solid var(--divider);}
+  .price-row:last-child{border-bottom:none;}
+  .price-row.head{background:var(--card);}
+  .price-row div{padding:22px 28px; font-size:14px;}
+  .price-row.head div{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--label);}
+  .price-row .band{font-family:'Inter',sans-serif; font-size:20px; color:var(--charcoal);}
+  .price-row .rate{font-family:'JetBrains Mono',monospace; color:var(--gold-deep); font-size:15px;}
+  .price-note{margin-top:20px; font-size:13.5px; color:var(--secondary); display:flex; gap:10px; align-items:flex-start;}
+
+  footer{padding:64px 0 40px;}
+  .foot-grid{display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:32px;}
+  .foot-grid .mono{font-size:11px;}
+  .foot-bottom{margin-top:60px; padding-top:24px; border-top:1px solid var(--divider); display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--label); letter-spacing:0.08em;}
+
+  /* AUTH */
+  .auth-screen{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:60px 24px; background:var(--offwhite);}
+  .auth-card{width:100%; max-width:440px; background:var(--white); border:1px solid var(--divider); padding:52px 44px;}
+  .auth-card h2{font-size:32px; margin-bottom:8px;}
+  .auth-card .sub{font-size:14px; color:var(--secondary); margin-bottom:36px;}
+  .field{margin-bottom:20px;}
+  .field label{display:block; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--label); margin-bottom:8px;}
+  .field input, .field select{width:100%; padding:13px 14px; border:1px solid var(--divider); background:var(--white); font-size:14.5px; color:var(--charcoal); outline:none; transition:border-color .2s;}
+  .field input:focus, .field select:focus{border-color:var(--gold-deep);}
+  .upload-box{border:1px dashed var(--divider); padding:24px; text-align:center; font-size:13px; color:var(--label); cursor:pointer; transition:border-color .2s, background .2s;}
+  .upload-box:hover{border-color:var(--gold-deep); background:var(--card);}
+  .upload-box.filled{border-style:solid; border-color:var(--green); color:var(--green); background:rgba(46,139,87,0.06);}
+  .auth-toggle{display:flex; gap:0; margin-bottom:32px; border:1px solid var(--divider);}
+  .auth-toggle button{flex:1; padding:12px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--label); transition:background .2s,color .2s;}
+  .auth-toggle button.active{background:var(--charcoal); color:var(--linen);}
+  .auth-foot{margin-top:24px; text-align:center; font-size:13px; color:var(--secondary);}
+  .auth-foot a{color:var(--gold-deep); border-bottom:1px solid var(--gold-deep);}
+
+  /* DASHBOARD */
+  .app{display:none; min-height:100vh;}
+  .app.active{display:flex;}
+  .sidebar{width:248px; background:var(--offwhite); border-right:1px solid var(--divider); padding:32px 24px; display:flex; flex-direction:column; flex-shrink:0;}
+  .sidebar .logo{margin-bottom:48px;}
+  .sidenav{display:flex; flex-direction:column; gap:4px;}
+  .sidenav button{text-align:left; padding:11px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--label); border-left:2px solid transparent; transition:all .2s;}
+  .sidenav button:hover{color:var(--charcoal); background:var(--cream1);}
+  .sidenav button.active{color:var(--charcoal); border-left-color:var(--gold); background:var(--cream1);}
+  .sidebar-foot{margin-top:auto; padding-top:24px; border-top:1px solid var(--divider);}
+  .company-pill{font-size:13px; color:var(--charcoal); font-weight:600;}
+  .company-pill + div{font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--label); margin-top:4px;}
+  .logout{margin-top:14px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; color:var(--label); text-transform:uppercase;}
+  .logout:hover{color:var(--red);}
+
+  .main{flex:1; padding:48px 56px; max-width:1100px;}
+  @media (max-width:900px){.sidebar{display:none;} .main{padding:32px 24px;}}
+  .page{display:none;}
+  .page.active{display:block;}
+  .page-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:8px;}
+  .page-head h1{font-size:36px;}
+  .page-sub{font-size:14px; color:var(--secondary); margin-bottom:44px;}
+
+  .status-banner{border:1px solid var(--amber); background:rgba(212,131,10,0.07); padding:18px 24px; display:flex; gap:14px; align-items:center; margin-bottom:40px;}
+  .status-dot{width:8px; height:8px; border-radius:50%; background:var(--amber); flex-shrink:0;}
+  .status-banner p{font-size:13.5px; color:var(--body);}
+  .status-banner strong{color:var(--charcoal);}
+
+  .metric-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--divider); border:1px solid var(--divider); margin-bottom:56px;}
+  .metric{background:var(--white); padding:26px 24px;}
+  .metric .mono{margin-bottom:14px;}
+  .metric .val{font-family:'Inter',sans-serif; font-size:34px; color:var(--charcoal);}
+  @media (max-width:800px){.metric-grid{grid-template-columns:repeat(2,1fr);}}
+
+  .panel{border:1px solid var(--divider); background:var(--white); margin-bottom:32px;}
+  .panel-head{padding:20px 28px; border-bottom:1px solid var(--divider); display:flex; justify-content:space-between; align-items:center;}
+  .panel-head h3{font-family:'Inter',sans-serif; font-size:16px; font-weight:600; color:var(--charcoal);}
+  .panel-body{padding:28px;}
+
+  table{width:100%; border-collapse:collapse;}
+  th{text-align:left; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--label); padding:10px 14px; border-bottom:1px solid var(--divider);}
+  td{padding:14px 14px; font-size:13.5px; color:var(--body); border-bottom:1px solid var(--divider);}
+  tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block; padding:3px 10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.05em;}
+  .tag.green{color:var(--green); background:rgba(46,139,87,0.1); border:1px solid rgba(46,139,87,0.3);}
+  .tag.amber{color:var(--amber); background:rgba(212,131,10,0.1); border:1px solid rgba(212,131,10,0.3);}
+  .tag.grey{color:var(--label); background:var(--cream1); border:1px solid var(--divider);}
+
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  .form-grid .full{grid-column:1/-1;}
+  @media (max-width:700px){.form-grid{grid-template-columns:1fr;}}
+
+  .batch-calc{display:grid; grid-template-columns:1fr 1fr; gap:40px;}
+  @media (max-width:800px){.batch-calc{grid-template-columns:1fr;}}
+  .qty-input{display:flex; align-items:center; gap:12px; margin-bottom:24px;}
+  .qty-input input{width:160px; padding:13px 14px; border:1px solid var(--divider); font-size:20px; font-family:'Inter',sans-serif; color:var(--charcoal); outline:none;}
+  .qty-input input:focus{border-color:var(--gold-deep);}
+  .breakdown{background:var(--card); border:1px solid var(--divider); padding:24px;}
+  .bd-row{display:flex; justify-content:space-between; font-size:13.5px; padding:8px 0; border-bottom:1px solid var(--cream2); color:var(--secondary);}
+  .bd-row.free{color:var(--green);}
+  .bd-row.total{border-bottom:none; border-top:1px solid var(--charcoal); margin-top:6px; padding-top:14px; font-family:'JetBrains Mono',monospace; font-size:15px; color:var(--charcoal); font-weight:500;}
+  .bd-row span:last-child{font-family:'JetBrains Mono',monospace;}
+
+  .empty{text-align:center; padding:60px 20px; color:var(--label);}
+  .empty .serif{font-size:22px; color:var(--charcoal); margin-bottom:10px; display:block;}
+  .empty p{font-size:13.5px; margin-bottom:24px;}
+
+  .site-page{display:none;}
+  .site-page.active{display:block;}
+  .subpage-hero{padding:80px 0 64px; border-bottom:1px solid var(--divider);}
+  .subpage-hero h1{font-size:clamp(42px,5.5vw,68px); line-height:1.02; font-weight:400; max-width:760px;}
+  .subpage-hero p{font-size:16px; color:var(--secondary); max-width:560px; margin-top:20px; line-height:1.8;}
+  .contact-grid{display:grid; grid-template-columns:1fr 1fr; gap:60px;}
+  @media (max-width:800px){.contact-grid{grid-template-columns:1fr;}}
+  .contact-item{display:flex; gap:18px; padding:24px 0; border-bottom:1px solid var(--divider);}
+  .contact-item:first-child{padding-top:0;}
+  .contact-item .ci-label{font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold-deep); font-weight:500; width:100px; flex-shrink:0; padding-top:2px;}
+  .contact-item .ci-val{font-size:16px; color:var(--charcoal); font-weight:500;}
+  .contact-item .ci-sub{font-size:13px; color:var(--secondary); margin-top:4px;}
+  .contact-form .field textarea{width:100%; padding:13px 14px; border:1px solid var(--divider); background:var(--white); font-size:14.5px; color:var(--charcoal); outline:none; font-family:'Inter',sans-serif; resize:vertical; min-height:120px;}
+  .contact-form .field textarea:focus{border-color:var(--gold-deep);}
+
+  .combobox{position:relative;}
+  .combobox input{width:100%; padding:13px 14px; border:1px solid var(--divider); background:var(--white); font-size:14.5px; color:var(--charcoal); outline:none; transition:border-color .2s;}
+  .combobox input:focus{border-color:var(--gold-deep);}
+  .combobox-list{display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; max-height:220px; overflow-y:auto; background:var(--white); border:1px solid var(--divider); z-index:50; box-shadow:0 8px 24px rgba(26,26,30,0.08);}
+  .combobox-list.open{display:block;}
+  .combobox-item{padding:11px 14px; font-size:13.5px; color:var(--body); cursor:pointer; display:flex; justify-content:space-between; align-items:center;}
+  .combobox-item:hover{background:var(--card);}
+  .combobox-item .cc{font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--label);}
+  .combobox-empty{padding:14px; font-size:13px; color:var(--label);}
+</style>
+</head>
+<body>
+
+<svg id="grain" width="100%" height="100%">
+  <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter>
+  <rect width="100%" height="100%" filter="url(#noise)"/>
+</svg>
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- ============ MARKETING SITE ============ -->
+<div id="site">
+
+<nav>
+  <div class="wrap">
+    <div class="logo" onclick="showSitePage('home')" style="cursor:pointer;">
+      <div class="hex"><span>a</span></div>
+      <div class="logo-word">Asemi</div>
+    </div>
+    <div class="navlinks">
+      <a onclick="showSitePage('home')">Home</a>
+      <a onclick="goHomeSection('problem')">The Problem</a>
+      <a onclick="goHomeSection('how')">How It Works</a>
+      <a onclick="showSitePage('pricing')">Pricing</a>
+      <a onclick="showSitePage('contact')">Contact</a>
+    </div>
+    <div class="navcta">
+      <button class="btn btn-ghost btn-sm" onclick="showAuth('login')"><span>Log In</span></button>
+      <button class="btn btn-fill btn-sm" onclick="showAuth('signup')"><span>Register Company</span></button>
+    </div>
+  </div>
+</nav>
+
+<div class="site-page active" id="site-page-home">
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="rule"></span><span class="mono">Product Authentication, Made Simple</span></div>
+    <h1>Prove it's <em>real</em>,<br>before they buy it.</h1>
+    <div class="hero-sub">
+      <div>
+        <p>Every product you make gets a unique code. Every customer can check it in seconds — no app, just their phone camera. Asemi gives manufacturers a way to fight counterfeits without asking customers to do anything new.</p>
+        <div class="hero-actions">
+          <button class="btn btn-fill" onclick="showAuth('signup')"><span>Register Your Company</span></button>
+          <button class="btn btn-ghost" onclick="goHomeSection('how')"><span>See How It Works</span></button>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div><div class="stat-num">$150</div><div class="stat-label">per code, from your 1st batch</div></div>
+        <div><div class="stat-num">20</div><div class="stat-label">free codes on registration</div></div>
+        <div><div class="stat-num">0</div><div class="stat-label">apps a customer needs to install</div></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="label-line"><span class="rule"></span><span class="mono">The Problem</span></div>
+      <h2>Counterfeiters copy the packaging. They can't copy the code.</h2>
+    </div>
+    <div class="problem-grid reveal">
+      <div class="problem-card">
+        <span class="num">i.</span>
+        <h3>Look-alike products are everywhere</h3>
+        <p>Fake soap, toothpaste, and household goods circulate across markets in packaging nearly identical to the original — and there's little a manufacturer can do at the point of sale.</p>
+      </div>
+      <div class="problem-card">
+        <span class="num">ii.</span>
+        <h3>Customers have no way to check</h3>
+        <p>Without a verification method, a buyer has to trust the label, the seller, or the price — none of which reliably tell them whether what's in their hand is genuine.</p>
+      </div>
+      <div class="problem-card">
+        <span class="num">iii.</span>
+        <h3>Trust erodes the brand, not just the sale</h3>
+        <p>Every fake bottle sold under a real brand's name damages that brand's reputation — even though the manufacturer never made or profited from it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="tinted">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="label-line"><span class="rule"></span><span class="mono">How It Works</span></div>
+      <h2>From production line to a customer's phone.</h2>
+    </div>
+    <div class="flow reveal">
+      <div class="flow-step">
+        <span class="idx">01</span>
+        <h3>Register &amp; verify</h3>
+        <p>Your company signs up and submits proof of ownership for your product line. We confirm you are who you say you are before anything goes live.</p>
+      </div>
+      <div class="flow-step">
+        <span class="idx">02</span>
+        <h3>List your product</h3>
+        <p>Add your product's details and images once — name, description, category — so every code links back to genuine information.</p>
+      </div>
+      <div class="flow-step">
+        <span class="idx">03</span>
+        <h3>Generate a batch</h3>
+        <p>Tell us how many units you produced. We generate that many unique codes as QR labels, ready to print and apply.</p>
+      </div>
+      <div class="flow-step">
+        <span class="idx">04</span>
+        <h3>Customers verify instantly</h3>
+        <p>A phone camera scan — or typing the code into a browser — shows the customer your product's real information, in seconds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="tinted">
+  <div class="wrap">
+    <div class="section-head reveal" style="margin-bottom:32px;">
+      <div class="label-line"><span class="rule"></span><span class="mono">Pricing</span></div>
+      <h2>Pay only for the codes you generate.</h2>
+    </div>
+    <div class="reveal">
+      <p style="font-size:16px; color:var(--secondary); max-width:520px; margin-bottom:28px; line-height:1.8;">Progressive, volume-based pricing — every company starts with 20 free codes, and rates drop automatically the more you produce.</p>
+      <button class="btn btn-fill" onclick="showSitePage('pricing')"><span>See Full Pricing</span></button>
+    </div>
+  </div>
+</section>
+
+</div>
+<!-- /site-page-home -->
+
+<div class="site-page" id="site-page-pricing">
+  <div class="subpage-hero">
+    <div class="wrap">
+      <div class="eyebrow"><span class="rule"></span><span class="mono">Pricing</span></div>
+      <h1>Pay only for the codes you generate.</h1>
+      <p>No subscriptions, no monthly minimums. Pricing is progressive, like a tax bracket — the rate drops automatically as your lifetime volume grows.</p>
+    </div>
+  </div>
+  <section>
+    <div class="wrap">
+      <div class="reveal in">
+        <div class="pricing-table">
+          <div class="price-row head"><div>Volume Band</div><div>Rate per Code</div><div>Example</div></div>
+          <div class="price-row"><div class="band">Codes 1 – 5,000</div><div class="rate">$150</div><div>1,000 codes = $150,000</div></div>
+          <div class="price-row"><div class="band">Codes 5,001 – 20,000</div><div class="rate">$120</div><div>10,000th code onward</div></div>
+          <div class="price-row"><div class="band">Codes 20,001 – 100,000</div><div class="rate">$100</div><div>Growing production runs</div></div>
+          <div class="price-row"><div class="band">Codes 100,001 – 500,000</div><div class="rate">$70</div><div>Large-scale manufacturing</div></div>
+          <div class="price-row"><div class="band">Codes 500,001 – 1,000,000</div><div class="rate">$50</div><div>Mass-market production</div></div>
+          <div class="price-row"><div class="band">Codes 1,000,001+</div><div class="rate">Let's talk</div><div>Custom volume pricing</div></div>
+        </div>
+        <p class="price-note"><span class="rule" style="margin-top:6px;"></span>Every company starts with 20 free codes, and generated codes never expire or go to waste — reprint them anytime from your dashboard. Producing beyond a million units? <a onclick="showSitePage('contact')" style="color:var(--gold-deep); border-bottom:1px solid var(--gold-deep); cursor:pointer;">Get in touch</a> for volume pricing built around your production scale.</p>
+      </div>
+    </div>
+  </section>
+  <section class="tinted">
+    <div class="wrap">
+      <div class="section-head reveal in" style="margin-bottom:32px;">
+        <div class="label-line"><span class="rule"></span><span class="mono">Included at every tier</span></div>
+        <h2 style="font-size:32px;">What every company gets, regardless of volume.</h2>
+      </div>
+      <div class="problem-grid reveal in">
+        <div class="problem-card">
+          <span class="num">i.</span>
+          <h3>No app for your customers</h3>
+          <p>Verification runs entirely in the browser — a native camera scan or a typed code, nothing to install.</p>
+        </div>
+        <div class="problem-card">
+          <span class="num">ii.</span>
+          <h3>Codes never expire</h3>
+          <p>Every code you pay for lives in your dashboard permanently, ready to re-export or reprint at no extra cost.</p>
+        </div>
+        <div class="problem-card">
+          <span class="num">iii.</span>
+          <h3>Verified business review</h3>
+          <p>Every company on Asemi is checked against its registration and ownership documents before going live.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="site-page" id="site-page-contact">
+  <div class="subpage-hero">
+    <div class="wrap">
+      <div class="eyebrow"><span class="rule"></span><span class="mono">Contact</span></div>
+      <h1>Let's talk about your production line.</h1>
+      <p>Questions about onboarding, volume pricing above 1,000,000 codes, or anything else — reach out and our team will get back to you.</p>
+    </div>
+  </div>
+  <section>
+    <div class="wrap contact-grid">
+      <div class="reveal in">
+        <div class="contact-item">
+          <div class="ci-label">Email</div>
+          <div><div class="ci-val">hello@asemi.app</div><div class="ci-sub">General enquiries &amp; support</div></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-label">Sales</div>
+          <div><div class="ci-val">sales@asemi.app</div><div class="ci-sub">Volume pricing &amp; enterprise onboarding</div></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-label">Phone</div>
+          <div><div class="ci-val">+1 (000) 000 0000</div><div class="ci-sub">Mon–Fri, 9am–5pm</div></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-label">Office</div>
+          <div><div class="ci-val">By appointment</div><div class="ci-sub">Remote-first team</div></div>
+        </div>
+      </div>
+      <div class="reveal in contact-form">
+        <div class="field"><label>Full Name</label><input type="text" placeholder="Your name"></div>
+        <div class="field"><label>Company</label><input type="text" placeholder="Your company"></div>
+        <div class="field"><label>Email</label><input type="email" placeholder="you@company.com"></div>
+        <div class="field"><label>Message</label><textarea placeholder="Tell us about your production volume and what you need…"></textarea></div>
+        <button class="btn btn-fill" onclick="alert('Thanks — we\'ll be in touch shortly.')"><span>Send Message</span></button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="logo"><div class="hex"><span>a</span></div><div class="logo-word">Asemi</div></div>
+      <div class="mono">Built for global manufacturers</div>
+      <div class="mono">Product Authentication Platform</div>
+    </div>
+    <div class="foot-bottom">
+      <span>&copy; 2026 ASEMI</span>
+      <span>PRODUCT AUTHENTICATION PLATFORM</span>
+    </div>
+  </div>
+</footer>
+
+</div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth" class="auth-screen" style="display:none;">
+  <div class="auth-card">
+    <div class="logo" style="margin-bottom:32px;"><div class="hex"><span>a</span></div><div class="logo-word">Asemi</div></div>
+    <div class="auth-toggle">
+      <button id="tab-login" class="active" onclick="switchAuthTab('login')">Log In</button>
+      <button id="tab-signup" onclick="switchAuthTab('signup')">Register Company</button>
+    </div>
+
+    <div id="form-login">
+      <h2>Welcome back</h2>
+      <div class="sub">Log in to manage your products and codes.</div>
+      <div class="field"><label>Email or Phone Number</label><input type="text" placeholder="you@company.com"></div>
+      <div class="field"><label>Password</label><input type="password" placeholder="••••••••"></div>
+      <button class="btn btn-fill" style="width:100%; text-align:center;" onclick="enterDashboard()"><span>Log In</span></button>
+      <div class="auth-foot">New here? <a onclick="switchAuthTab('signup')">Register your company</a></div>
+    </div>
+
+    <div id="form-signup" style="display:none;">
+      <h2>Register your company</h2>
+      <div class="sub">We'll verify your business before you can list products.</div>
+      <div class="field"><label>Company Name</label><input type="text" placeholder="e.g. Dove Care Products Ltd" id="reg-company"></div>
+      <div class="field">
+        <label>Country</label>
+        <div class="combobox" id="country-combobox">
+          <input type="text" id="country-search" placeholder="Search for your country…" autocomplete="off" oninput="filterCountries()" onfocus="filterCountries()" onblur="setTimeout(closeCountryList,150)">
+          <div class="combobox-list" id="country-list"></div>
+        </div>
+      </div>
+      <div class="field"><label>Phone Number</label><input type="text" placeholder="+234 800 000 0000"></div>
+      <div class="field"><label>Email Address</label><input type="email" placeholder="company@email.com"></div>
+      <div class="field"><label>CAC / Business Registration No.</label><input type="text" placeholder="RC 1234567"></div>
+      <div class="field">
+        <label>Proof of Product Ownership</label>
+        <div class="upload-box" id="upload-box" onclick="mockUpload()">
+          <div id="upload-text">Upload registration certificate or brand ownership document</div>
+        </div>
+      </div>
+      <button class="btn btn-fill" style="width:100%; text-align:center; margin-top:6px;" onclick="enterDashboard(true)"><span>Submit for Verification</span></button>
+      <div class="auth-foot">Already registered? <a onclick="switchAuthTab('login')">Log in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD APP ============ -->
+<div id="app" class="app">
+  <div class="sidebar">
+    <div class="logo"><div class="hex"><span>a</span></div><div class="logo-word">Asemi</div></div>
+    <div class="sidenav">
+      <button class="active" data-page="overview" onclick="showPage('overview')">Overview</button>
+      <button data-page="products" onclick="showPage('products')">Products</button>
+      <button data-page="batches" onclick="showPage('batches')">Generate Codes</button>
+      <button data-page="codebank" onclick="showPage('codebank')">Code Bank</button>
+      <button data-page="billing" onclick="showPage('billing')">Billing</button>
+      <button data-page="profile" onclick="showPage('profile')">Company Profile</button>
+    </div>
+    <div class="sidebar-foot">
+      <div class="company-pill" id="side-company-name">Dove Care Products Ltd</div>
+      <div>PENDING VERIFICATION</div>
+      <a class="logout" onclick="exitDashboard()">← Back to site</a>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="page-head"><h1>Overview</h1></div>
+      <div class="page-sub">A snapshot of your account.</div>
+
+      <div class="status-banner" id="pending-banner">
+        <div class="status-dot"></div>
+        <p><strong>Your account is pending verification.</strong> We're reviewing your registration documents. You'll be able to list products and generate codes once approved — usually within 1–2 business days.</p>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric"><div class="mono">Products Listed</div><div class="val">0</div></div>
+        <div class="metric"><div class="mono">Codes Generated</div><div class="val">0</div></div>
+        <div class="metric"><div class="mono">Free Codes Left</div><div class="val">20</div></div>
+        <div class="metric"><div class="mono">Scans This Month</div><div class="val">0</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Getting started</h3></div>
+        <div class="panel-body">
+          <table>
+            <tr><td style="width:32px;"><span class="tag amber">1</span></td><td>Submit your business documents for verification</td><td style="text-align:right;"><span class="tag amber">In review</span></td></tr>
+            <tr><td><span class="tag grey">2</span></td><td>List your first product</td><td style="text-align:right;"><span class="tag grey">Locked</span></td></tr>
+            <tr><td><span class="tag grey">3</span></td><td>Generate your first batch of codes</td><td style="text-align:right;"><span class="tag grey">Locked</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="page" id="page-products">
+      <div class="page-head"><h1>Products</h1></div>
+      <div class="page-sub">List the products you want to protect with verification codes.</div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Add a new product</h3></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field"><label>Product Name</label><input type="text" placeholder="e.g. Herbal Care Antiseptic Soap" id="prod-name"></div>
+            <div class="field"><label>Category</label><input type="text" placeholder="e.g. Personal Care"></div>
+            <div class="field full"><label>Description</label><input type="text" placeholder="Short description customers will see on the verification page"></div>
+            <div class="field full">
+              <label>Product Images</label>
+              <div class="upload-box" onclick="mockProductUpload(this)"><div>Upload front, back, and label images</div></div>
+            </div>
+          </div>
+          <button class="btn btn-fill" style="margin-top:10px;" onclick="addProduct()"><span>Add Product</span></button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Your products</h3></div>
+        <div class="panel-body" id="products-list">
+          <div class="empty"><span class="serif">No products yet</span><p>Products you list will appear here, ready for code generation.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BATCHES / PRICING CALCULATOR -->
+    <div class="page" id="page-batches">
+      <div class="page-head"><h1>Generate Codes</h1></div>
+      <div class="page-sub">Enter how many units you produced — pricing applies automatically by volume band.</div>
+
+      <div class="panel">
+        <div class="panel-body">
+          <div class="batch-calc">
+            <div>
+              <div class="field"><label>Product</label>
+                <select id="batch-product"><option>Select a product…</option></select>
+              </div>
+              <div class="qty-input">
+                <input type="number" id="batch-qty" value="1000" min="1" oninput="updateBreakdown()">
+                <span class="mono" style="font-size:11px;">codes</span>
+              </div>
+              <p style="font-size:13px; color:var(--secondary); line-height:1.7;">Codes are generated as QR labels with a text fallback. Every code you pay for stays in your Code Bank permanently — reprint anytime at no extra cost.</p>
+            </div>
+            <div>
+              <div class="breakdown" id="breakdown"></div>
+              <button class="btn btn-fill" id="generate-btn" style="width:100%; text-align:center; margin-top:18px;" onclick="generateBatch()"><span>Generate &amp; Pay</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODE BANK -->
+    <div class="page" id="page-codebank">
+      <div class="page-head"><h1>Code Bank</h1></div>
+      <div class="page-sub">Every code you've generated, ready to export or reprint anytime.</div>
+      <div class="panel">
+        <div class="panel-body" id="codebank-list">
+          <div class="empty"><span class="serif">No codes generated yet</span><p>Once you generate a batch, your codes will live here permanently.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div class="page" id="page-billing">
+      <div class="page-head"><h1>Billing</h1></div>
+      <div class="page-sub">Your pricing tier and usage.</div>
+      <div class="metric-grid">
+        <div class="metric"><div class="mono">Lifetime Codes</div><div class="val" id="bill-lifetime">0</div></div>
+        <div class="metric"><div class="mono">Free Codes Used</div><div class="val" id="bill-free">0<span style="font-size:16px;">/20</span></div></div>
+        <div class="metric"><div class="mono">Current Rate</div><div class="val" id="bill-rate">$150</div></div>
+        <div class="metric"><div class="mono">Total Spent</div><div class="val" id="bill-spent">$0</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Pricing bands</h3><span class="tag grey" id="bill-region-tag">USD</span></div>
+        <div class="panel-body">
+          <div class="pricing-table" style="border:1px solid var(--divider);" id="bill-pricing-table"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Transaction history</h3></div>
+        <div class="panel-body" id="transactions-list">
+          <div class="empty"><span class="serif">No transactions yet</span><p>Your batch payments will be listed here.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="page" id="page-profile">
+      <div class="page-head"><h1>Company Profile</h1></div>
+      <div class="page-sub">Your business information and verification documents.</div>
+      <div class="panel">
+        <div class="panel-head"><h3>Business details</h3><span class="tag amber">Pending Verification</span></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field"><label>Company Name</label><input type="text" id="profile-company-name" value="Dove Care Products Ltd"></div>
+            <div class="field"><label>Country</label><input type="text" id="profile-country" value="Not set" disabled style="background:var(--cream1); color:var(--secondary);"></div>
+            <div class="field"><label>Phone Number</label><input type="text" value="+234 800 000 0000"></div>
+            <div class="field"><label>Email</label><input type="email" value="company@email.com"></div>
+            <div class="field"><label>CAC Registration No.</label><input type="text" value="RC 1234567"></div>
+          </div>
+          <p style="font-size:12.5px; color:var(--label); margin-top:14px;">Country determines your pricing region and can't be changed after verification — contact support if this was set incorrectly.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Verification documents</h3></div>
+        <div class="panel-body">
+          <table>
+            <tr><td>CAC Certificate.pdf</td><td style="text-align:right;"><span class="tag amber">Under review</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ---- cursor ----
+  const dot = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  let rx=0, ry=0, mx=0, my=0;
+  window.addEventListener('mousemove', e=>{
+    mx=e.clientX; my=e.clientY;
+    dot.style.left=mx+'px'; dot.style.top=my+'px';
+  });
+  (function loop(){ rx += (mx-rx)*0.18; ry += (my-ry)*0.18; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(loop); })();
+
+  // ---- scroll reveal ----
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach((e,i)=>{ if(e.isIntersecting){ setTimeout(()=>e.target.classList.add('in'), i*100); io.unobserve(e.target); } });
+  }, {threshold:0.15});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // ---- auth screen ----
+  // ---- site page navigation ----
+  function showSitePage(name){
+    document.querySelectorAll('.site-page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('site-page-'+name).classList.add('active');
+    window.scrollTo({top:0, behavior:'instant'});
+  }
+  function goHomeSection(id){
+    showSitePage('home');
+    setTimeout(()=>{ document.getElementById(id).scrollIntoView({behavior:'smooth'}); }, 30);
+  }
+
+  function showAuth(tab){
+    document.getElementById('site').style.display='none';
+    document.getElementById('auth').style.display='flex';
+    switchAuthTab(tab);
+  }
+  function switchAuthTab(tab){
+    document.getElementById('tab-login').classList.toggle('active', tab==='login');
+    document.getElementById('tab-signup').classList.toggle('active', tab==='signup');
+    document.getElementById('form-login').style.display = tab==='login' ? 'block':'none';
+    document.getElementById('form-signup').style.display = tab==='signup' ? 'block':'none';
+  }
+  function mockUpload(){
+    document.getElementById('upload-box').classList.add('filled');
+    document.getElementById('upload-text').textContent = '✓ Document attached — CAC_Certificate.pdf';
+  }
+  function enterDashboard(fromSignup){
+    if(fromSignup && !selectedCountry){
+      alert('Please select your country — this sets your pricing region.');
+      return;
+    }
+    const name = document.getElementById('reg-company').value;
+    if(fromSignup && name){ document.getElementById('side-company-name').textContent = name; document.getElementById('profile-company-name').value = name; }
+    if(fromSignup && selectedCountry){
+      CURRENCY = regionFor(selectedCountry.code);
+      document.getElementById('profile-country').textContent = selectedCountry.name;
+    }
+    renderPricingTable();
+    document.getElementById('bill-rate').textContent = money(CURRENCY.tiers[0]);
+    document.getElementById('bill-spent').textContent = money(0);
+    updateBreakdown();
+    document.getElementById('auth').style.display='none';
+    document.getElementById('app').classList.add('active');
+  }
+  function exitDashboard(){
+    document.getElementById('app').classList.remove('active');
+    document.getElementById('site').style.display='block';
+  }
+
+  function renderPricingTable(){
+    const labels = ['Codes 1 – 5,000','Codes 5,001 – 20,000','Codes 20,001 – 100,000','Codes 100,001 – 500,000','Codes 500,001 – 1,000,000'];
+    let html = CURRENCY.tiers.map((rate,i)=>
+      `<div class="price-row"><div class="band">${labels[i]}</div><div class="rate">${money(rate)}</div><div></div></div>`
+    ).join('');
+    html += `<div class="price-row"><div class="band">Codes 1,000,001+</div><div class="rate">Let's talk</div><div></div></div>`;
+    document.getElementById('bill-pricing-table').innerHTML = html;
+    document.getElementById('bill-region-tag').textContent = CURRENCY.code;
+  }
+
+  // ---- dashboard nav ----
+  function showPage(name){
+    document.querySelectorAll('.sidenav button').forEach(b=>b.classList.toggle('active', b.dataset.page===name));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    if(name==='batches') updateBreakdown();
+  }
+
+  // ---- product mock ----
+  let products = [];
+  function mockProductUpload(el){ el.innerHTML = '<div style="color:var(--green);">✓ Images attached</div>'; el.classList.add('filled'); }
+  function addProduct(){
+    const nameEl = document.getElementById('prod-name');
+    const name = nameEl.value.trim();
+    if(!name) return;
+    products.push(name);
+    nameEl.value='';
+    renderProducts();
+  }
+  function renderProducts(){
+    const list = document.getElementById('products-list');
+    const select = document.getElementById('batch-product');
+    if(products.length===0){
+      list.innerHTML = '<div class="empty"><span class="serif">No products yet</span><p>Products you list will appear here, ready for code generation.</p></div>';
+    } else {
+      list.innerHTML = '<table><tr><th>Product</th><th>Codes Generated</th><th>Status</th></tr>' +
+        products.map(p=>`<tr><td>${p}</td><td>${codesByProduct[p]||0}</td><td><span class="tag grey">Ready</span></td></tr>`).join('') + '</table>';
+    }
+    select.innerHTML = '<option>Select a product…</option>' + products.map(p=>`<option>${p}</option>`).join('');
+    document.querySelector('#page-overview .val').textContent = products.length;
+  }
+
+  // ---- pricing engine ----
+  // ---- countries & region-locked pricing ----
+  const COUNTRIES = [
+    ["Afghanistan","AF"],
+    ["Albania","AL"],
+    ["Algeria","DZ"],
+    ["Andorra","AD"],
+    ["Angola","AO"],
+    ["Argentina","AR"],
+    ["Armenia","AM"],
+    ["Australia","AU"],
+    ["Austria","AT"],
+    ["Azerbaijan","AZ"],
+    ["Bahamas","BS"],
+    ["Bahrain","BH"],
+    ["Bangladesh","BD"],
+    ["Barbados","BB"],
+    ["Belarus","BY"],
+    ["Belgium","BE"],
+    ["Belize","BZ"],
+    ["Benin","BJ"],
+    ["Bhutan","BT"],
+    ["Bolivia","BO"],
+    ["Bosnia and Herzegovina","BA"],
+    ["Botswana","BW"],
+    ["Brazil","BR"],
+    ["Brunei","BN"],
+    ["Bulgaria","BG"],
+    ["Burkina Faso","BF"],
+    ["Burundi","BI"],
+    ["Cabo Verde","CV"],
+    ["Cambodia","KH"],
+    ["Cameroon","CM"],
+    ["Canada","CA"],
+    ["Central African Republic","CF"],
+    ["Chad","TD"],
+    ["Chile","CL"],
+    ["China","CN"],
+    ["Colombia","CO"],
+    ["Comoros","KM"],
+    ["Congo","CG"],
+    ["Costa Rica","CR"],
+    ["Croatia","HR"],
+    ["Cuba","CU"],
+    ["Cyprus","CY"],
+    ["Czechia","CZ"],
+    ["Denmark","DK"],
+    ["Djibouti","DJ"],
+    ["Dominica","DM"],
+    ["Dominican Republic","DO"],
+    ["DR Congo","CD"],
+    ["Ecuador","EC"],
+    ["Egypt","EG"],
+    ["El Salvador","SV"],
+    ["Equatorial Guinea","GQ"],
+    ["Eritrea","ER"],
+    ["Estonia","EE"],
+    ["Eswatini","SZ"],
+    ["Ethiopia","ET"],
+    ["Fiji","FJ"],
+    ["Finland","FI"],
+    ["France","FR"],
+    ["Gabon","GA"],
+    ["Gambia","GM"],
+    ["Georgia","GE"],
+    ["Germany","DE"],
+    ["Ghana","GH"],
+    ["Greece","GR"],
+    ["Grenada","GD"],
+    ["Guatemala","GT"],
+    ["Guinea","GN"],
+    ["Guinea-Bissau","GW"],
+    ["Guyana","GY"],
+    ["Haiti","HT"],
+    ["Honduras","HN"],
+    ["Hungary","HU"],
+    ["Iceland","IS"],
+    ["India","IN"],
+    ["Indonesia","ID"],
+    ["Iran","IR"],
+    ["Iraq","IQ"],
+    ["Ireland","IE"],
+    ["Israel","IL"],
+    ["Italy","IT"],
+    ["Ivory Coast","CI"],
+    ["Jamaica","JM"],
+    ["Japan","JP"],
+    ["Jordan","JO"],
+    ["Kazakhstan","KZ"],
+    ["Kenya","KE"],
+    ["Kiribati","KI"],
+    ["Kosovo","XK"],
+    ["Kuwait","KW"],
+    ["Kyrgyzstan","KG"],
+    ["Laos","LA"],
+    ["Latvia","LV"],
+    ["Lebanon","LB"],
+    ["Lesotho","LS"],
+    ["Liberia","LR"],
+    ["Libya","LY"],
+    ["Liechtenstein","LI"],
+    ["Lithuania","LT"],
+    ["Luxembourg","LU"],
+    ["Madagascar","MG"],
+    ["Malawi","MW"],
+    ["Malaysia","MY"],
+    ["Maldives","MV"],
+    ["Mali","ML"],
+    ["Malta","MT"],
+    ["Marshall Islands","MH"],
+    ["Mauritania","MR"],
+    ["Mauritius","MU"],
+    ["Mexico","MX"],
+    ["Micronesia","FM"],
+    ["Moldova","MD"],
+    ["Monaco","MC"],
+    ["Mongolia","MN"],
+    ["Montenegro","ME"],
+    ["Morocco","MA"],
+    ["Mozambique","MZ"],
+    ["Myanmar","MM"],
+    ["Namibia","NA"],
+    ["Nauru","NR"],
+    ["Nepal","NP"],
+    ["Netherlands","NL"],
+    ["New Zealand","NZ"],
+    ["Nicaragua","NI"],
+    ["Niger","NE"],
+    ["Nigeria","NG"],
+    ["North Korea","KP"],
+    ["North Macedonia","MK"],
+    ["Norway","NO"],
+    ["Oman","OM"],
+    ["Pakistan","PK"],
+    ["Palau","PW"],
+    ["Palestine","PS"],
+    ["Panama","PA"],
+    ["Papua New Guinea","PG"],
+    ["Paraguay","PY"],
+    ["Peru","PE"],
+    ["Philippines","PH"],
+    ["Poland","PL"],
+    ["Portugal","PT"],
+    ["Qatar","QA"],
+    ["Romania","RO"],
+    ["Russia","RU"],
+    ["Rwanda","RW"],
+    ["Saint Lucia","LC"],
+    ["Samoa","WS"],
+    ["San Marino","SM"],
+    ["Sao Tome and Principe","ST"],
+    ["Saudi Arabia","SA"],
+    ["Senegal","SN"],
+    ["Serbia","RS"],
+    ["Seychelles","SC"],
+    ["Sierra Leone","SL"],
+    ["Singapore","SG"],
+    ["Slovakia","SK"],
+    ["Slovenia","SI"],
+    ["Solomon Islands","SB"],
+    ["Somalia","SO"],
+    ["South Africa","ZA"],
+    ["South Korea","KR"],
+    ["South Sudan","SS"],
+    ["Spain","ES"],
+    ["Sri Lanka","LK"],
+    ["Sudan","SD"],
+    ["Suriname","SR"],
+    ["Sweden","SE"],
+    ["Switzerland","CH"],
+    ["Syria","SY"],
+    ["Taiwan","TW"],
+    ["Tajikistan","TJ"],
+    ["Tanzania","TZ"],
+    ["Thailand","TH"],
+    ["Timor-Leste","TL"],
+    ["Togo","TG"],
+    ["Tonga","TO"],
+    ["Trinidad and Tobago","TT"],
+    ["Tunisia","TN"],
+    ["Turkey","TR"],
+    ["Turkmenistan","TM"],
+    ["Tuvalu","TV"],
+    ["Uganda","UG"],
+    ["Ukraine","UA"],
+    ["United Arab Emirates","AE"],
+    ["United Kingdom","GB"],
+    ["United States","US"],
+    ["Uruguay","UY"],
+    ["Uzbekistan","UZ"],
+    ["Vanuatu","VU"],
+    ["Vatican City","VA"],
+    ["Venezuela","VE"],
+    ["Vietnam","VN"],
+    ["Yemen","YE"],
+    ["Zambia","ZM"],
+    ["Zimbabwe","ZW"]
+  ];
+
+  // Pricing is locked to the country a company registers under (taken from
+  // their verified business registration), not from IP/browsing location —
+  // this is what prevents VPNs or foreign currency cards from accessing a
+  // cheaper region's rates. Add more country-specific tables here as needed;
+  // anything not listed falls back to DEFAULT (USD).
+  const PRICING_REGIONS = {
+    NG: { code:'NGN', symbol:'\u20a6', tiers:[50, 40, 30, 20, 12] },
+    DEFAULT: { code:'USD', symbol:'$', tiers:[0.15, 0.12, 0.10, 0.07, 0.05] }
+  };
+  const TIER_CAPS = [5000, 20000, 100000, 500000, 1000000];
+
+  let selectedCountry = null; // {name, code} chosen at registration
+  let CURRENCY = PRICING_REGIONS.DEFAULT; // active region — locked in on signup
+
+  function regionFor(countryCode){
+    return PRICING_REGIONS[countryCode] || PRICING_REGIONS.DEFAULT;
+  }
+  function money(n){ return CURRENCY.symbol + (Number.isInteger(n) ? n.toLocaleString() : n.toFixed(2)); }
+
+  // ---- country search combobox ----
+  function filterCountries(){
+    const q = document.getElementById('country-search').value.trim().toLowerCase();
+    const list = document.getElementById('country-list');
+    const matches = q ? COUNTRIES.filter(c=>c[0].toLowerCase().includes(q)) : COUNTRIES;
+    if(matches.length===0){
+      list.innerHTML = '<div class="combobox-empty">No countries match — check the spelling</div>';
+    } else {
+      list.innerHTML = matches.slice(0,50).map(c=>
+        `<div class="combobox-item" onmousedown="selectCountry('${c[0].replace(/'/g,"\\'")}','${c[1]}')"><span>${c[0]}</span><span class="cc">${c[1]}</span></div>`
+      ).join('');
+    }
+    list.classList.add('open');
+  }
+  function closeCountryList(){ document.getElementById('country-list').classList.remove('open'); }
+  function selectCountry(name, code){
+    selectedCountry = {name, code};
+    document.getElementById('country-search').value = name;
+    closeCountryList();
+  }
+
+  let totalGenerated = 0;
+  let freeUsed = 0;
+  let totalSpent = 0;
+  let codesByProduct = {};
+  let batchNum = 0;
+
+  const CONTACT_SALES_THRESHOLD = 1000000;
+  function currentTiers(){
+    return TIER_CAPS.map((cap,i)=>({upTo:cap, rate:CURRENCY.tiers[i]}));
+  }
+
+  function calcPrice(qty){
+    let remaining = qty;
+    let free = Math.min(remaining, 20 - freeUsed);
+    remaining -= free;
+    let paidPosition = (totalGenerated - freeUsed); // paid codes so far
+    let price = 0;
+    let breakdown = [];
+    let pos = paidPosition;
+    let rem = remaining;
+    for(const tier of currentTiers()){
+      if(rem<=0) break;
+      const cap = tier.upTo - pos;
+      if(cap<=0) continue;
+      const inBracket = Math.min(rem, cap);
+      price += inBracket * tier.rate;
+      breakdown.push({qty:inBracket, rate:tier.rate});
+      rem -= inBracket;
+      pos += inBracket;
+    }
+    return {price, free, breakdown, overThreshold: (paidPosition + (qty - free)) > CONTACT_SALES_THRESHOLD};
+  }
+
+  function updateBreakdown(){
+    const qty = parseInt(document.getElementById('batch-qty').value) || 0;
+    const paidPositionEnd = (totalGenerated - freeUsed) + Math.max(0, qty - (20-freeUsed));
+    const box = document.getElementById('breakdown');
+    const genBtn = document.getElementById('generate-btn');
+
+    if(paidPositionEnd > CONTACT_SALES_THRESHOLD){
+      box.innerHTML = `<div style="text-align:center; padding:8px 4px;">
+        <div class="serif" style="font-size:19px; color:var(--charcoal); margin-bottom:8px;">Custom volume pricing</div>
+        <p style="font-size:13px; color:var(--secondary); line-height:1.7;">Requests above 1,000,000 lifetime codes are priced individually around your production scale. Reach out and our team will get back to you with a quote.</p>
+      </div>`;
+      genBtn.innerHTML = '<span>Request a Quote</span>';
+      genBtn.onclick = requestQuote;
+      return;
+    }
+    genBtn.innerHTML = '<span>Generate &amp; Pay</span>';
+    genBtn.onclick = generateBatch;
+
+    const {price, free, breakdown} = calcPrice(qty);
+    let html = '';
+    if(free>0) html += `<div class="bd-row free"><span>Free codes applied</span><span>${free}</span></div>`;
+    breakdown.forEach(b=>{
+      html += `<div class="bd-row"><span>${b.qty.toLocaleString()} codes @ ${money(b.rate)}</span><span>${money(b.qty*b.rate)}</span></div>`;
+    });
+    html += `<div class="bd-row total"><span>Total</span><span>${money(price)}</span></div>`;
+    box.innerHTML = html;
+  }
+
+  function requestQuote(){
+    alert('Thanks — a member of our team will reach out shortly to discuss custom pricing for your volume.');
+  }
+
+  function generateBatch(){
+    const productSelect = document.getElementById('batch-product');
+    const product = productSelect.value;
+    const qty = parseInt(document.getElementById('batch-qty').value) || 0;
+    if(!product || product.includes('Select') || qty<=0) return;
+    const {price, free} = calcPrice(qty);
+    freeUsed += free;
+    totalGenerated += qty;
+    totalSpent += price;
+    codesByProduct[product] = (codesByProduct[product]||0) + qty;
+    batchNum++;
+
+    // update overview metrics
+    document.querySelectorAll('#page-overview .metric .val')[1].textContent = totalGenerated.toLocaleString();
+    document.querySelectorAll('#page-overview .metric .val')[2].textContent = Math.max(0,20-freeUsed);
+
+    // billing
+    document.getElementById('bill-lifetime').textContent = totalGenerated.toLocaleString();
+    document.getElementById('bill-free').innerHTML = freeUsed + '<span style="font-size:16px;">/20</span>';
+    document.getElementById('bill-spent').textContent = money(totalSpent);
+    const paidSoFar = totalGenerated - freeUsed;
+    let currentRate;
+    if(paidSoFar > CONTACT_SALES_THRESHOLD) currentRate = "Let's talk";
+    else if(paidSoFar > 500000) currentRate = money(CURRENCY.tiers[4]);
+    else if(paidSoFar > 100000) currentRate = money(CURRENCY.tiers[3]);
+    else if(paidSoFar > 20000) currentRate = money(CURRENCY.tiers[2]);
+    else if(paidSoFar > 5000) currentRate = money(CURRENCY.tiers[1]);
+    else currentRate = money(CURRENCY.tiers[0]);
+    document.getElementById('bill-rate').textContent = currentRate;
+
+    // code bank
+    const cb = document.getElementById('codebank-list');
+    if(cb.querySelector('.empty')) cb.innerHTML = '<table><tr><th>Batch</th><th>Product</th><th>Quantity</th><th>Amount</th><th></th></tr></table>';
+    cb.querySelector('table').innerHTML += `<tr><td>#${batchNum}</td><td>${product}</td><td>${qty.toLocaleString()}</td><td>${money(price)}</td><td style="text-align:right;"><span class="tag green">Export</span></td></tr>`;
+
+    // transactions
+    const tx = document.getElementById('transactions-list');
+    if(tx.querySelector('.empty')) tx.innerHTML = '<table><tr><th>Batch</th><th>Codes</th><th>Amount</th></tr></table>';
+    tx.querySelector('table').innerHTML += `<tr><td>Batch #${batchNum} — ${product}</td><td>${qty.toLocaleString()}</td><td>${money(price)}</td></tr>`;
+
+    renderProducts();
+    updateBreakdown();
+    alert(`Batch generated: ${qty.toLocaleString()} codes for ${product} — ${money(price)} charged.`);
+  }
+
+  updateBreakdown();
+</script>
+
+</body>
+</html>
