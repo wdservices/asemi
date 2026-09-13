@@ -6,6 +6,45 @@ let mockSession: {
   user: { id: string; email?: string; app_metadata?: { roles?: string[] } };
 } | null = null;
 
+if (typeof window !== "undefined") {
+  try {
+    const saved = localStorage.getItem("asemi_mock_session");
+    if (saved) {
+      mockSession = JSON.parse(saved);
+    }
+  } catch (_e) {
+    // Ignore storage read error
+  }
+}
+
+const authListeners = new Set<(event: string, session: any) => void>();
+
+function saveSession(session: typeof mockSession) {
+  mockSession = session;
+  if (typeof window !== "undefined") {
+    try {
+      if (session) {
+        localStorage.setItem("asemi_mock_session", JSON.stringify(session));
+      } else {
+        localStorage.removeItem("asemi_mock_session");
+      }
+    } catch (_e) {
+      // Ignore storage write error
+    }
+  }
+}
+
+function notifyAuth(event: string) {
+  const session = mockSession ? { user: mockSession.user } : null;
+  authListeners.forEach((cb) => {
+    try {
+      cb(event, session);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
 const storage = {
   from(bucket: string) {
     return {
@@ -28,27 +67,44 @@ const auth = {
     data: { session: mockSession ? { user: mockSession.user } : null },
     error: null,
   }),
+  getUser: async () => ({
+    data: { user: mockSession ? mockSession.user : null },
+    error: null,
+  }),
   signInWithOAuth: async (_opts?: any) => {
-    mockSession = {
-      user: { id: "usr_company_demo_001", email: "company@asemi.demo" },
-    };
+    const user = { id: "usr_company_demo_001", email: "company@asemi.demo" };
+    saveSession({ user });
+    notifyAuth("SIGNED_IN");
     return { data: { user: mockSession?.user }, error: null };
   },
   signInAs: async (userId: string, email?: string, roles?: string[]) => {
     const user: any = { id: userId };
     if (email !== undefined) user.email = email;
     if (roles && roles.length > 0) user.app_metadata = { roles };
-    mockSession = { user };
+    saveSession({ user });
+    notifyAuth("SIGNED_IN");
     return { data: { user: mockSession?.user }, error: null };
   },
   signOut: async () => {
-    mockSession = null;
+    saveSession(null);
+    notifyAuth("SIGNED_OUT");
     return { error: null };
   },
   onAuthStateChange: (cb: any) => {
-    cb(mockSession ? { user: mockSession?.user } : null);
+    authListeners.add(cb);
+    try {
+      cb("INITIAL_SESSION", mockSession ? { user: mockSession.user } : null);
+    } catch (_e) {
+      // Ignore callback error
+    }
     return {
-      data: { subscription: { unsubscribe: () => {} } },
+      data: {
+        subscription: {
+          unsubscribe: () => {
+            authListeners.delete(cb);
+          },
+        },
+      },
     };
   },
 };
