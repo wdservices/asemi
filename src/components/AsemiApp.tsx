@@ -26,20 +26,120 @@ export function AsemiApp() {
     });
   }, []);
 
-  // Cursor following logic from prototype
+  // Smooth custom cursor physics loop & click tactile feedback from prototype
   useEffect(() => {
+    let rx = -100;
+    let ry = -100;
+    let mx = -100;
+    let my = -100;
+    let animId: number;
+
     const onMouseMove = (e: MouseEvent) => {
+      mx = e.clientX;
+      my = e.clientY;
       if (dotRef.current) {
-        dotRef.current.style.left = `${e.clientX}px`;
-        dotRef.current.style.top = `${e.clientY}px`;
+        dotRef.current.style.left = `${mx}px`;
+        dotRef.current.style.top = `${my}px`;
+        dotRef.current.style.opacity = "1";
       }
       if (ringRef.current) {
-        ringRef.current.style.left = `${e.clientX}px`;
-        ringRef.current.style.top = `${e.clientY}px`;
+        ringRef.current.style.opacity = "1";
       }
     };
-    window.addEventListener("mousemove", onMouseMove);
-    return () => window.removeEventListener("mousemove", onMouseMove);
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (ringRef.current) {
+        ringRef.current.classList.add("cursor-clicking");
+      }
+      // Create expanding click ripple wave at cursor position
+      const ripple = document.createElement("div");
+      ripple.className = "cursor-click-ripple";
+      ripple.style.left = `${e.clientX}px`;
+      ripple.style.top = `${e.clientY}px`;
+      document.body.appendChild(ripple);
+      setTimeout(() => {
+        ripple.remove();
+      }, 520);
+    };
+
+    const onMouseUp = () => {
+      if (ringRef.current) {
+        ringRef.current.classList.remove("cursor-clicking");
+      }
+    };
+
+    // Smooth hover detection for buttons, links and interactive items
+    const onMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const interactive = target.closest(
+        "button, a, input, select, textarea, [role='button'], .btn, .clickable, tr, [data-interactive='true']",
+      );
+      if (interactive && ringRef.current) {
+        ringRef.current.classList.add("cursor-hover");
+      }
+    };
+
+    const onMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const interactive = target.closest(
+        "button, a, input, select, textarea, [role='button'], .btn, .clickable, tr, [data-interactive='true']",
+      );
+      if (interactive && ringRef.current) {
+        ringRef.current.classList.remove("cursor-hover");
+      }
+    };
+
+    // Tactile button click ripple on any button in the app
+    const onButtonClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const btn = target.closest("button, .btn, [role='button']") as HTMLElement | null;
+      if (btn && !btn.hasAttribute("disabled")) {
+        const rect = btn.getBoundingClientRect();
+        const ripple = document.createElement("span");
+        ripple.className = "btn-click-ripple";
+        const size = Math.max(rect.width, rect.height) * 1.5;
+        ripple.style.width = `${size}px`;
+        ripple.style.height = `${size}px`;
+        ripple.style.left = `${e.clientX - rect.left}px`;
+        ripple.style.top = `${e.clientY - rect.top}px`;
+        btn.appendChild(ripple);
+        setTimeout(() => {
+          ripple.remove();
+        }, 600);
+      }
+    };
+
+    // Continuous lerp loop from authoritative prototype: rx += (mx-rx)*0.18; ry += (my-ry)*0.18;
+    function loop() {
+      rx += (mx - rx) * 0.18;
+      ry += (my - ry) * 0.18;
+      if (ringRef.current) {
+        ringRef.current.style.left = `${rx}px`;
+        ringRef.current.style.top = `${ry}px`;
+      }
+      animId = requestAnimationFrame(loop);
+    }
+
+    animId = requestAnimationFrame(loop);
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("mouseover", onMouseOver, { passive: true });
+    window.addEventListener("mouseout", onMouseOut, { passive: true });
+    window.addEventListener("click", onButtonClick, { capture: true });
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("mouseover", onMouseOver);
+      window.removeEventListener("mouseout", onMouseOut);
+      window.removeEventListener("click", onButtonClick, { capture: true });
+    };
   }, []);
 
   const activeCompany =
@@ -60,40 +160,18 @@ export function AsemiApp() {
 
   return (
     <div className="asemi-app-root bg-[#fafaf8] text-[#2b2b32] font-sans min-h-screen relative selection:bg-[#c9a84c] selection:text-white">
-      {/* Global CSS variables & subtle styling matching authoritative reference */}
-      <style>{`
-        .asemi-app-root {
-          --gold: #c9a84c;
-          --gold-deep: #b8962e;
-          --charcoal: #1a1a1e;
-          --linen: #f5f0e8;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        #cursor-dot {
-          position: fixed;
-          width: 5px;
-          height: 5px;
-          background: #1a1a1e;
-          border-radius: 50%;
-          pointer-events: none;
-          z-index: 99999;
-          transform: translate(-50%, -50%);
-        }
-        #cursor-ring {
-          position: fixed;
-          width: 26px;
-          height: 26px;
-          border-radius: 50%;
-          border: 1px solid rgba(26,26,30,0.25);
-          pointer-events: none;
-          z-index: 99999;
-          transform: translate(-50%, -50%);
-          transition: width 0.15s ease, height 0.15s ease;
-        }
-        @media (hover: none) {
-          #cursor-dot, #cursor-ring { display: none; }
-        }
-      `}</style>
+      {/* Grain texture overlay matching prototype */}
+      <svg id="grain" width="100%" height="100%" aria-hidden="true">
+        <filter id="noise">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.9"
+            numOctaves="2"
+            stitchTiles="stitch"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noise)" />
+      </svg>
 
       {/* Luxury cursor */}
       <div ref={dotRef} id="cursor-dot" />
@@ -118,14 +196,22 @@ export function AsemiApp() {
           initialCode={verifierInitialCode}
           onBackToApp={() => setIsVerifierOpen(false)}
         />
-      ) : storeState.currentUserRole === "ADMIN" ? (
-        <AdminDashboard />
+      ) : inDashboard && storeState.currentUserRole === "ADMIN" ? (
+        <AdminDashboard
+          onSignOut={() => {
+            asemiStore.setRole("COMPANY_USER");
+            setInDashboard(false);
+          }}
+        />
       ) : inDashboard ? (
         <CompanyDashboard
           company={activeCompany}
           onOpenVerifierWithCode={(code) => {
             setVerifierInitialCode(code);
             setIsVerifierOpen(true);
+          }}
+          onSignOut={() => {
+            setInDashboard(false);
           }}
         />
       ) : (

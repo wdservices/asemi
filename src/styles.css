@@ -56,8 +56,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-display: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    "Inter", "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --ease-registry: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-stamp: stamp 520ms var(--ease-registry) both;
   --animate-rise: rise 480ms var(--ease-registry) both;
@@ -142,21 +144,41 @@
 }
 
 @layer base {
-  * {
+  *,
+  ::before,
+  ::after {
     border-color: var(--color-border);
   }
-  html {
-    font-family: var(--font-sans);
-  }
+  html,
   body {
+    font-family: var(--font-sans);
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  input,
+  button,
+  select,
+  textarea,
+  optgroup {
+    font-family: inherit;
+  }
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono,
+  [data-mono="true"] {
+    font-family: var(--font-mono) !important;
   }
   h1,
   h2,
   h3,
-  h4 {
+  h4,
+  h5,
+  h6,
+  .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
@@ -234,5 +256,264 @@
   }
   body {
     background: white;
+  }
+}
+
+/* ==========================================================================
+   Asemi Authoritative Prototype Styles: Cursor, Buttons & Motion
+   ========================================================================== */
+
+:root {
+  --white: #ffffff;
+  --offwhite: #fafaf8;
+  --linen: #f5f0e8;
+  --cream1: #ede8df;
+  --cream2: #e8e2d9;
+  --card: #f0ece4;
+  --hover: #ede8df;
+  --divider: #e0dbd2;
+  --gold: #c9a84c;
+  --gold-deep: #b8962e;
+  --charcoal: #1a1a1e;
+  --body: #2b2b32;
+  --label: #6e6e7a;
+  --secondary: #45454f;
+  --red: #c0392b;
+  --amber: #d4830a;
+  --green: #2e8b57;
+}
+
+/* Custom Cursor System */
+#cursor-dot {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: var(--charcoal);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.15s ease;
+  will-change: left, top, transform;
+}
+
+#cursor-ring {
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(26, 26, 30, 0.22);
+  border: 1px solid rgba(26, 26, 30, 0.28);
+  pointer-events: none;
+  z-index: 99998;
+  transform: translate(-50%, -50%);
+  transition:
+    transform 0.18s cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 0.22s ease,
+    border-color 0.22s ease,
+    opacity 0.2s ease;
+  will-change: left, top, transform;
+}
+
+/* Cursor states on hover and active click */
+#cursor-ring.cursor-hover {
+  transform: translate(-50%, -50%) scale(1.52);
+  background: rgba(201, 168, 76, 0.22);
+  border-color: rgba(184, 150, 46, 0.75);
+}
+
+#cursor-ring.cursor-clicking {
+  transform: translate(-50%, -50%) scale(0.72);
+  background: rgba(184, 150, 46, 0.5);
+  border-color: #b8962e;
+}
+
+/* Cursor click ripple wave */
+.cursor-click-ripple {
+  position: fixed;
+  pointer-events: none;
+  z-index: 99997;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gold);
+  transform: translate(-50%, -50%) scale(0.3);
+  animation: cursorRippleWave 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cursorRippleWave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0.9;
+    border-color: var(--gold);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.4);
+    opacity: 0;
+    border-color: var(--gold-deep);
+  }
+}
+
+@media (hover: none) {
+  #cursor-dot,
+  #cursor-ring,
+  .cursor-click-ripple {
+    display: none !important;
+  }
+  body,
+  button,
+  a {
+    cursor: auto !important;
+  }
+}
+
+/* Grain overlay matching prototype */
+#grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+}
+
+/* Universal Button Click & Tactile Motion */
+button,
+.btn,
+[role="button"],
+a[role="button"] {
+  transition:
+    transform 0.14s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.16s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+  user-select: none;
+}
+
+/* Tactile button press compression */
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.965);
+}
+
+/* Authoritative Prototype Button Classes: .btn, .btn-fill, .btn-ghost */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 28px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: -0.01em;
+}
+
+.btn-sm {
+  padding: 9px 18px;
+  font-size: 12px;
+}
+
+.btn-xs {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+/* .btn-fill: Sliding Gold Curtain from bottom on hover + tactile click */
+.btn-fill {
+  background: var(--charcoal);
+  color: var(--linen);
+  border: 1px solid var(--charcoal);
+}
+
+.btn-fill span,
+.btn-fill > * {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-fill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--gold-deep);
+  transform: translateY(101%);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 1;
+}
+
+.btn-fill:hover::before {
+  transform: translateY(0);
+}
+
+.btn-fill:active::before {
+  background: #a38224;
+}
+
+/* .btn-ghost: Animated Underline Expanding from left */
+.btn-ghost {
+  border: 1px solid var(--charcoal);
+  color: var(--charcoal);
+  background: transparent;
+  position: relative;
+}
+
+.btn-ghost span,
+.btn-ghost > * {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-ghost::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 2px;
+  background: var(--gold-deep);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 1;
+}
+
+.btn-ghost:hover::after {
+  transform: scaleX(1);
+}
+
+.btn-ghost:active {
+  background: rgba(26, 26, 30, 0.04);
+}
+
+/* Button Ripple Effect */
+.btn-ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-click-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(201, 168, 76, 0.4);
+  transform: translate(-50%, -50%) scale(0);
+  animation: btnRipple 0.55s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes btnRipple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3.5);
+    opacity: 0;
   }
 }

@@ -109,17 +109,11 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={onOpenLoginModal}
-              className="text-xs font-mono text-[#1a1a1e] hover:text-[#b8962e] px-3 py-2"
-            >
-              Sign In
+            <button onClick={onOpenLoginModal} className="btn btn-ghost btn-sm">
+              <span>Sign In</span>
             </button>
-            <button
-              onClick={onOpenRegisterModal}
-              className="bg-[#1a1a1e] hover:bg-[#b8962e] text-white px-4 py-2 text-xs font-mono font-bold transition-colors"
-            >
-              Register Brand
+            <button onClick={onOpenRegisterModal} className="btn btn-fill btn-sm">
+              <span>Register Brand</span>
             </button>
           </div>
         </div>
@@ -145,19 +139,13 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                onClick={onOpenRegisterModal}
-                className="bg-[#1a1a1e] hover:bg-[#b8962e] text-white px-7 py-3.5 text-xs font-mono font-bold transition-colors flex items-center gap-2"
-              >
+              <button onClick={onOpenRegisterModal} className="btn btn-fill">
                 <span>Register Manufacturer Account</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 ml-2" />
               </button>
 
-              <button
-                onClick={onOpenVerifier}
-                className="border border-[#cfc9be] hover:bg-white text-[#1a1a1e] px-6 py-3.5 text-xs font-mono font-bold transition-colors flex items-center gap-2"
-              >
-                <QrCode className="w-4 h-4 text-[#c9a84c]" />
+              <button onClick={onOpenVerifier} className="btn btn-ghost">
+                <QrCode className="w-4 h-4 text-[#c9a84c] mr-2" />
                 <span>Test Consumer Scanner</span>
               </button>
             </div>
@@ -408,11 +396,8 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
                   {estimate.perUnit} / unit
                 </div>
 
-                <button
-                  onClick={onOpenRegisterModal}
-                  className="w-full mt-4 bg-[#1a1a1e] hover:bg-[#b8962e] text-white py-2.5 text-xs font-mono font-bold transition-colors"
-                >
-                  Start With 20 Free Codes
+                <button onClick={onOpenRegisterModal} className="btn btn-fill w-full mt-4">
+                  <span>Start With 20 Free Codes</span>
                 </button>
               </div>
             </div>

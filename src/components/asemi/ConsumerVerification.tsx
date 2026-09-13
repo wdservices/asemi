@@ -56,29 +56,32 @@ export const ConsumerVerification: React.FC<ConsumerVerificationProps> = ({
     return tok;
   };
 
-  const handleVerify = useCallback(async (codeToTest?: string) => {
-    const target = codeToTest || inputCode;
-    if (!target.trim()) return;
+  const handleVerify = useCallback(
+    async (codeToTest?: string) => {
+      const target = codeToTest || inputCode;
+      if (!target.trim()) return;
 
-    setVerifying(true);
-    setReportSubmitted(false);
+      setVerifying(true);
+      setReportSubmitted(false);
 
-    try {
-      // Simulate scan latency
-      await new Promise((r) => setTimeout(r, 400));
-      const res = await asemiStore.verifyCode({
-        codeString: target,
-        browserToken: getBrowserToken(),
-        roughLocation: "Consumer Scanner / Lagos, NG",
-        deviceFingerprint: typeof navigator !== "undefined" ? navigator.userAgent : "Device",
-      });
-      setVerifiedResult(res);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setVerifying(false);
-    }
-  }, [inputCode]);
+      try {
+        // Simulate scan latency
+        await new Promise((r) => setTimeout(r, 400));
+        const res = await asemiStore.verifyCode({
+          codeString: target,
+          browserToken: getBrowserToken(),
+          roughLocation: "Consumer Scanner / Lagos, NG",
+          deviceFingerprint: typeof navigator !== "undefined" ? navigator.userAgent : "Device",
+        });
+        setVerifiedResult(res);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setVerifying(false);
+      }
+    },
+    [inputCode],
+  );
 
   // Run initial verification on mount
   useEffect(() => {
@@ -159,9 +162,9 @@ export const ConsumerVerification: React.FC<ConsumerVerificationProps> = ({
             <button
               onClick={() => handleVerify()}
               disabled={verifying}
-              className="bg-[#1a1a1e] text-white px-6 py-3 font-semibold text-sm hover:bg-[#b8962e] transition-colors disabled:opacity-50"
+              className="btn btn-fill px-6 py-3 font-semibold text-sm disabled:opacity-50"
             >
-              {verifying ? "Checking Registry…" : "Verify Authenticity"}
+              <span>{verifying ? "Checking Registry…" : "Verify Authenticity"}</span>
             </button>
           </div>
 

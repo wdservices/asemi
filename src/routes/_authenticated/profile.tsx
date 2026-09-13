@@ -126,7 +126,6 @@ function ProfilePage() {
         }
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload: Record<string, any> = {
         name,
         registration_number: registrationNumber,
@@ -140,7 +139,7 @@ function ProfilePage() {
 
       const { error } = await supabase
         .from("companies")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         .update(payload as any)
         .eq("id", companyId);
       if (error) throw error;

@@ -156,10 +156,10 @@ function ApprovalsContent() {
           : dialogState.mode === "reject"
             ? "admin_reject_company"
             : "admin_request_info";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const args: any = { _company_id: dialogState.company.id };
       if (dialogState.note) args._note = dialogState.note;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const { error } = await (supabase.rpc as any)(rpc, args);
       if (error) throw error;
       toast.success(

@@ -29,16 +29,19 @@ import {
   ArrowRight,
   ShieldAlert,
   HelpCircle,
+  LogOut,
 } from "lucide-react";
 
 interface CompanyDashboardProps {
   company: Company;
   onOpenVerifierWithCode?: (code: string) => void;
+  onSignOut?: () => void;
 }
 
 export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   company,
   onOpenVerifierWithCode,
+  onSignOut,
 }) => {
   const [activeTab, setActiveTab] = useState<
     "overview" | "products" | "generate" | "codes" | "billing" | "profile"
@@ -246,11 +249,21 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveTab("generate")}
-              className="bg-[#1a1a1e] hover:bg-[#b8962e] text-white px-4 py-2 text-xs font-mono font-semibold transition-colors flex items-center gap-2"
+              className="btn btn-fill btn-sm flex items-center gap-2"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Generate Codes</span>
             </button>
+            {onSignOut && (
+              <button
+                id="btn-company-signout"
+                onClick={onSignOut}
+                className="btn btn-ghost btn-sm flex items-center gap-1.5 border border-[#e2ded5] bg-white hover:bg-[#ede8df]"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -694,14 +707,16 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                   type="button"
                   disabled={company.status === "PENDING" && priceQuote.totalAmount > 0}
                   onClick={() => setShowPaymentModal(true)}
-                  className="w-full bg-[#1a1a1e] hover:bg-[#b8962e] text-white py-3.5 font-mono font-bold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="btn btn-fill w-full py-3.5 font-mono font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {company.status === "PENDING" && priceQuote.totalAmount > 0
-                    ? "Pending Account Approval — Locked"
-                    : `Proceed to Checkout (${priceQuote.currencySymbol}${priceQuote.totalAmount.toLocaleString(
-                        undefined,
-                        { minimumFractionDigits: 2 },
-                      )})`}
+                  <span>
+                    {company.status === "PENDING" && priceQuote.totalAmount > 0
+                      ? "Pending Account Approval — Locked"
+                      : `Proceed to Checkout (${priceQuote.currencySymbol}${priceQuote.totalAmount.toLocaleString(
+                          undefined,
+                          { minimumFractionDigits: 2 },
+                        )})`}
+                  </span>
                 </button>
               )}
             </div>

@@ -17,9 +17,14 @@ import {
   MapPin,
   Smartphone,
   ExternalLink,
+  LogOut,
 } from "lucide-react";
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onSignOut?: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => {
   const [activeTab, setActiveTab] = useState<
     "queue" | "companies" | "oversight" | "fraud" | "reports" | "metrics"
   >("queue");
@@ -138,6 +143,16 @@ export const AdminDashboard: React.FC = () => {
                   {flaggedCodeStrings.length !== 1 ? "s" : ""}
                 </span>
               </span>
+            )}
+            {onSignOut && (
+              <button
+                id="btn-admin-signout"
+                onClick={onSignOut}
+                className="btn btn-ghost btn-sm text-xs font-mono flex items-center gap-1.5 ml-2 border border-[#e2ded5] bg-white hover:bg-[#ede8df]"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
             )}
           </div>
         </div>

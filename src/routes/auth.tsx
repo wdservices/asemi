@@ -1,23 +1,29 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/firebase/client";
-import { DEMO_USERS, useDemoSignIn, type DemoUser } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { fb as supabase } from "@/integrations/firebase/client";
+import { asemiStore } from "@/lib/asemiStore";
 import { Logo } from "@/components/brand";
+import { AuthCard } from "@/components/asemi/AuthCard";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>): { mode?: "login" | "register" } => {
+    return {
+      mode: search.mode === "register" ? "register" : "login",
+    };
+  },
   head: () => ({
     meta: [
-      { title: "Sign in — Asemi" },
+      { title: "Manufacturer Portal — Asemi" },
       {
         name: "description",
-        content: "Sign in or create a manufacturer account to issue verification codes.",
+        content:
+          "Sign in or register your enterprise brand on the Asemi product authentication registry.",
       },
-      { property: "og:title", content: "Sign in — Asemi" },
+      { property: "og:title", content: "Manufacturer Portal — Asemi" },
       {
         property: "og:description",
-        content: "Manufacturer access to the Asemi product authentication platform.",
+        content: "Enterprise manufacturer access to the Asemi product authentication platform.",
       },
     ],
   }),
@@ -26,106 +32,46 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const demoSignIn = useDemoSignIn();
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const u0 = DEMO_USERS[0]!;
-  const u1 = DEMO_USERS[1]!;
-  const u2 = DEMO_USERS[2]!;
-  const u3 = DEMO_USERS[3]!;
+  const search = Route.useSearch();
+  const initialMode = search.mode || "login";
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+      if (data.session) {
+        navigate({ to: "/dashboard", replace: true });
+      }
     })();
   }, [navigate]);
 
-  async function signIn(user: DemoUser) {
-    setBusy(user.id);
-    try {
-      await demoSignIn(user.id);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sign in failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   return (
-    <main className="ambient-bg flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="frost w-full max-w-lg rounded-2xl p-8">
-        <Logo />
-        <h1 className="mt-6 font-display text-2xl font-semibold tracking-tight">Demo sign in</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Firebase auth will be wired later. For now, pick a seeded persona to jump into the
-          dashboard.
-        </p>
-
-        <div className="mt-6 space-y-3">
-          <Button
-            variant="outline"
-            className="w-full justify-start !text-left"
-            disabled={busy !== null}
-            onClick={() => signIn(u0)}
+    <main className="ambient-bg min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-xl flex flex-col items-center">
+        {/* Navigation & Branding Header */}
+        <div className="w-full flex items-center justify-between mb-6 px-1">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 font-mono text-xs text-[#78716c] hover:text-[#1a1a1e] transition-colors"
           >
-            <div className="flex flex-col items-start gap-0.5 pr-4">
-              <span className="text-sm font-semibold">{u0.name}</span>
-              <span className="text-xs text-muted-foreground">
-                Signed in as approved manufacturer — all company screens work
-              </span>
-            </div>
-            {busy === u0.id ? "…" : "→"}
-          </Button>
-
-          <Button
-            variant="outline"
-            className="w-full justify-start !text-left"
-            disabled={busy !== null}
-            onClick={() => signIn(u2)}
-          >
-            <div className="flex flex-col items-start gap-0.5 pr-4">
-              <span className="text-sm font-semibold">{u2.name}</span>
-              <span className="text-xs text-muted-foreground">
-                Company with status "pending" — exercises the approval UI and onboarding blocker
-              </span>
-            </div>
-            {busy === u2.id ? "…" : "→"}
-          </Button>
-
-          <Button
-            variant="outline"
-            className="w-full justify-start !text-left"
-            disabled={busy !== null}
-            onClick={() => signIn(u3)}
-          >
-            <div className="flex flex-col items-start gap-0.5 pr-4">
-              <span className="text-sm font-semibold">{u3.name}</span>
-              <span className="text-xs text-muted-foreground">
-                Company with status "needs info" with an admin note already set
-              </span>
-            </div>
-            {busy === u3.id ? "…" : "→"}
-          </Button>
-
-          <Button
-            className="w-full justify-start !text-left"
-            disabled={busy !== null}
-            onClick={() => signIn(u1)}
-          >
-            <div className="flex flex-col items-start gap-0.5 pr-4">
-              <span className="text-sm font-semibold">{u1.name}</span>
-              <span className="text-xs text-muted-foreground">
-                Platform admin — approvals, companies, fraud, reports
-              </span>
-            </div>
-            {busy === u1.id ? "…" : "→"}
-          </Button>
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Registry</span>
+          </Link>
+          <Logo />
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Running in offline demo mode with seeded in-memory data. Real Firebase auth coming soon.
-        </p>
+        {/* Unified Authentication Card (Same UI for Login and Register) */}
+        <AuthCard
+          initialMode={initialMode}
+          onSuccess={() => {
+            const role = asemiStore.getState().currentUserRole;
+            if (role === "ADMIN") {
+              navigate({ to: "/admin" });
+            } else {
+              navigate({ to: "/dashboard" });
+            }
+          }}
+          isModal={false}
+        />
       </div>
     </main>
   );

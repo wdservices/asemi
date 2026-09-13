@@ -72,7 +72,7 @@ function BillingPage() {
         .eq("company_id", companyId!)
         .maybeSingle();
       if (error) throw error;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       return ((data as any) ?? {
         credit_balance: 0,
         lifetime_topup: 0,
@@ -126,7 +126,6 @@ function BillingPage() {
     setTopupBusy(true);
     try {
       if (isAdmin) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (supabase.rpc as any)("topup_wallet", {
           _company_id: companyId!,
           _amount: amount,
@@ -154,7 +153,7 @@ function BillingPage() {
   const plan = (company as any)?.subscription_plan ?? "Starter";
   const planLimit = (company as any)?.plan_code_limit ?? 50000;
   const mtdUsed = monthToDateUsed.data ?? 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const freeUsed = (company as any)?.free_codes_used ?? 0;
   const freeRemain = Math.max(0, 20 - freeUsed);
 

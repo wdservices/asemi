@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Link, Outlet, createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
 import { fb as supabase } from "@/integrations/firebase/client";
 import {

@@ -178,7 +178,6 @@ function RequestBatchTab() {
       setGenerating(true);
       const interval = setInterval(() => setProgress((p) => Math.min(p + 8, 92)), 350);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase.rpc as any)("generate_batch_paid", {
           _product_id: vars.productId,
           _quantity: vars.qty,
@@ -203,7 +202,6 @@ function RequestBatchTab() {
         .eq("batch_number", batchNum)
         .maybeSingle();
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const b = batchData as any;
       setResult({
         batch_id: b?.id ?? "",
@@ -891,7 +889,6 @@ async function exportQrSheetForBatch(batchId: string, batchNumber: string) {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.rpc as any)("mark_codes_exported", { _batch_id: batchId });
     } catch {
       /* non-critical: print_count / exported_at are best-effort */

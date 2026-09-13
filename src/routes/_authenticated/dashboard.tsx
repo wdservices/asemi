@@ -307,11 +307,10 @@ function DashboardOverview() {
               </thead>
               <tbody className="divide-y">
                 {recentBatches.data?.length ? (
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   recentBatches.data.map((b: any) => (
                     <tr key={b.id}>
                       <td className="px-4 py-3 font-mono text-xs">{b.batch_number}</td>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {}
                       <td className="px-4 py-3">{(b.products as any)?.name}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {b.quantity.toLocaleString()}
