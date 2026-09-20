@@ -1,0 +1,6 @@
+{
+  "name": "Asemi — Product Authentication",
+  "description": "Product authentication and tag verification registry system",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
