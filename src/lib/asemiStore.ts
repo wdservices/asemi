@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { getCountryByCode } from "./countries";
 
 export const COUNTRIES: [string, string][] = [
   ["Nigeria", "NG"],
@@ -70,6 +71,7 @@ export interface Company {
   phone: string;
   countryCode: string; // ISO 3166-1 alpha-2, e.g. "NG", "US" — LOCKS pricing region
   registrationNumber: string; // CAC number or local equivalent
+  industry?: string;
   status: CompanyStatus;
   verificationDocUrl?: string;
   aiReviewScore?: number; // 0 - 100 confidence score
@@ -96,6 +98,14 @@ export interface Product {
   description: string;
   images: string[];
   createdAt: string;
+  // Product-Specific Authenticity & Regulatory Documents
+  regulatoryNumber?: string; // e.g. NAFDAC Reg No, FDA NDC, CE, SONCAP
+  regulatoryDocName?: string;
+  regulatoryDocUrl?: string;
+  certificateOfAnalysisName?: string;
+  certificateOfAnalysisUrl?: string;
+  packagingSpecName?: string;
+  packagingSpecUrl?: string;
 }
 
 export interface Batch {
@@ -107,6 +117,11 @@ export interface Batch {
   amountCharged: number;
   currency: string;
   createdAt: string;
+  lotNumber?: string;
+  mfgDate?: string;
+  expiryDate?: string;
+  coaDocName?: string;
+  coaDocUrl?: string;
 }
 
 export interface Code {
@@ -175,7 +190,19 @@ export const CONTACT_SALES_THRESHOLD = 1_000_000;
 export const FREE_CODES = 20;
 
 export function regionFor(countryCode: string) {
-  return PRICING_REGIONS[countryCode] ?? PRICING_REGIONS.DEFAULT;
+  if (PRICING_REGIONS[countryCode]) {
+    return PRICING_REGIONS[countryCode];
+  }
+  const country = getCountryByCode(countryCode);
+  if (country) {
+    const base = country.ratePerCode;
+    return {
+      currency: country.currency,
+      symbol: country.currencySymbol,
+      tiers: [base * 4.2, base * 3.3, base * 2.5, base * 1.6, base],
+    };
+  }
+  return PRICING_REGIONS.DEFAULT;
 }
 
 export interface PriceBreakdownItem {
@@ -294,6 +321,7 @@ const INITIAL_COMPANIES: Company[] = [
     phone: "+234 803 123 4567",
     countryCode: "NG",
     registrationNumber: "RC-1492048",
+    industry: "Soaps, Detergents & Cleaning",
     status: "APPROVED",
     verificationDocUrl:
       "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80",
@@ -328,6 +356,7 @@ const INITIAL_COMPANIES: Company[] = [
     phone: "+1 415 890 2341",
     countryCode: "US",
     registrationNumber: "DE-LLC-892104",
+    industry: "Pharmaceuticals & Healthcare",
     status: "APPROVED",
     verificationDocUrl:
       "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80",
@@ -429,6 +458,13 @@ const INITIAL_PRODUCTS: Product[] = [
     images: [
       "https://images.unsplash.com/photo-1608248597359-e9392e2195f1?auto=format&fit=crop&w=600&q=80",
     ],
+    regulatoryNumber: "NAFDAC Reg: 02-8419",
+    regulatoryDocName: "NAFDAC_Certificate_Shea_Butter.pdf",
+    regulatoryDocUrl:
+      "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80",
+    certificateOfAnalysisName: "CoA_Batch_04882_LabReport.pdf",
+    certificateOfAnalysisUrl:
+      "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80",
     createdAt: "2026-06-12T10:00:00Z",
   },
   {
@@ -440,6 +476,8 @@ const INITIAL_PRODUCTS: Product[] = [
     images: [
       "https://images.unsplash.com/photo-1607006314644-8d48a1d7f1d4?auto=format&fit=crop&w=600&q=80",
     ],
+    regulatoryNumber: "NAFDAC Reg: 02-9931",
+    regulatoryDocName: "NAFDAC_Soap_Manufacturing_Clearance.pdf",
     createdAt: "2026-06-15T12:00:00Z",
   },
   {
@@ -451,6 +489,9 @@ const INITIAL_PRODUCTS: Product[] = [
     images: [
       "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80",
     ],
+    regulatoryNumber: "FDA NDC: 68192-441-02",
+    regulatoryDocName: "US_FDA_Supplement_NDI_Filing.pdf",
+    certificateOfAnalysisName: "Eurofins_Triple_EPA_DHA_CoA.pdf",
     createdAt: "2026-07-05T09:00:00Z",
   },
   {
@@ -460,6 +501,8 @@ const INITIAL_PRODUCTS: Product[] = [
     category: "Agriculture",
     description: "Drought-tolerant certified disease-free high-yield sorghum planting seeds.",
     images: [],
+    regulatoryNumber: "NASC Seed Cert: NASC/2026/S-841",
+    regulatoryDocName: "National_Agricultural_Seed_Council_Cert.pdf",
     createdAt: "2026-09-12T17:00:00Z",
   },
 ];
@@ -473,6 +516,10 @@ const INITIAL_BATCHES: Batch[] = [
     quantity: 5000,
     amountCharged: 249000, // (5000 - 20) * 50
     currency: "NGN",
+    lotNumber: "LOT-2026-SH42",
+    mfgDate: "2026-06-15",
+    expiryDate: "2028-06-15",
+    coaDocName: "CoA_Release_Batch101.pdf",
     createdAt: "2026-06-16T14:00:00Z",
   },
   {
@@ -483,6 +530,9 @@ const INITIAL_BATCHES: Batch[] = [
     quantity: 7500,
     amountCharged: 300000,
     currency: "NGN",
+    lotNumber: "LOT-2026-SOAP8",
+    mfgDate: "2026-07-28",
+    expiryDate: "2029-07-28",
     createdAt: "2026-08-01T11:30:00Z",
   },
   {
@@ -493,6 +543,10 @@ const INITIAL_BATCHES: Batch[] = [
     quantity: 6000,
     amountCharged: 870, // USD
     currency: "USD",
+    lotNumber: "LOT-2026-OM99",
+    mfgDate: "2026-07-01",
+    expiryDate: "2028-07-01",
+    coaDocName: "Eurofins_Batch_103_CoA.pdf",
     createdAt: "2026-07-10T16:00:00Z",
   },
 ];
@@ -806,6 +860,7 @@ class AsemiStore {
     phone: string;
     countryCode: string;
     registrationNumber: string;
+    industry?: string;
     docFile?: File | null;
   }): Promise<Company> {
     const id = `comp_${Date.now().toString(36)}`;
@@ -846,6 +901,7 @@ class AsemiStore {
       phone: params.phone,
       countryCode: params.countryCode,
       registrationNumber: params.registrationNumber,
+      industry: params.industry,
       status: "PENDING", // Never auto-approved!
       verificationDocUrl: params.docFile
         ? URL.createObjectURL(params.docFile)
@@ -907,7 +963,19 @@ class AsemiStore {
 
   public addProduct(
     companyId: string,
-    data: { name: string; category: string; description: string; imageUrl?: string },
+    data: {
+      name: string;
+      category: string;
+      description: string;
+      imageUrl?: string;
+      regulatoryNumber?: string;
+      regulatoryDocName?: string;
+      regulatoryDocUrl?: string;
+      certificateOfAnalysisName?: string;
+      certificateOfAnalysisUrl?: string;
+      packagingSpecName?: string;
+      packagingSpecUrl?: string;
+    },
   ): Product {
     const newProduct: Product = {
       id: `prod_${Date.now().toString(36)}`,
@@ -916,12 +984,38 @@ class AsemiStore {
       category: data.category || "General",
       description: data.description || "",
       images: data.imageUrl ? [data.imageUrl] : [],
+      regulatoryNumber: data.regulatoryNumber,
+      regulatoryDocName: data.regulatoryDocName,
+      regulatoryDocUrl: data.regulatoryDocUrl,
+      certificateOfAnalysisName: data.certificateOfAnalysisName,
+      certificateOfAnalysisUrl: data.certificateOfAnalysisUrl,
+      packagingSpecName: data.packagingSpecName,
+      packagingSpecUrl: data.packagingSpecUrl,
       createdAt: new Date().toISOString(),
     };
     this.state.products = [newProduct, ...this.state.products];
     this.saveState();
     this.notify();
     return newProduct;
+  }
+
+  public createProduct(
+    companyId: string,
+    data: {
+      name: string;
+      category: string;
+      description: string;
+      imageUrl?: string;
+      regulatoryNumber?: string;
+      regulatoryDocName?: string;
+      regulatoryDocUrl?: string;
+      certificateOfAnalysisName?: string;
+      certificateOfAnalysisUrl?: string;
+      packagingSpecName?: string;
+      packagingSpecUrl?: string;
+    },
+  ): Product {
+    return this.addProduct(companyId, data);
   }
 
   public getCompanyProducts(companyId: string): Product[] {
@@ -932,13 +1026,47 @@ class AsemiStore {
   // 4b. Code Generation & Batches Engine
   // -----------------------------------------------------------
 
-  public async generateBatch(params: {
-    companyId: string;
-    productId: string;
-    quantity: number;
-    paymentProvider: "stripe" | "paystack" | "flutterwave";
-    onProgress?: (pct: number) => void;
-  }): Promise<{ batch: Batch; generatedCodes: Code[] }> {
+  public async generateBatch(
+    paramsOrCompanyId:
+      | string
+      | {
+          companyId: string;
+          productId: string;
+          quantity: number;
+          paymentProvider: "stripe" | "paystack" | "flutterwave";
+          lotNumber?: string;
+          mfgDate?: string;
+          expiryDate?: string;
+          coaDocName?: string;
+          coaDocUrl?: string;
+          onProgress?: (pct: number) => void;
+        },
+    productIdArg?: string,
+    quantityArg?: number,
+    paymentProviderArg?: "stripe" | "paystack" | "flutterwave",
+    extraArgs?: {
+      lotNumber?: string;
+      mfgDate?: string;
+      expiryDate?: string;
+      coaDocName?: string;
+      coaDocUrl?: string;
+    },
+  ): Promise<{ batch: Batch; generatedCodes: Code[] }> {
+    const params =
+      typeof paramsOrCompanyId === "string"
+        ? {
+            companyId: paramsOrCompanyId,
+            productId: productIdArg!,
+            quantity: quantityArg!,
+            paymentProvider: paymentProviderArg || ("stripe" as const),
+            lotNumber: extraArgs?.lotNumber,
+            mfgDate: extraArgs?.mfgDate,
+            expiryDate: extraArgs?.expiryDate,
+            coaDocName: extraArgs?.coaDocName,
+            coaDocUrl: extraArgs?.coaDocUrl,
+          }
+        : paramsOrCompanyId;
+
     const company = this.state.companies.find((c) => c.id === params.companyId);
     if (!company) throw new Error("Company not found");
 
@@ -964,6 +1092,13 @@ class AsemiStore {
       quantity: params.quantity,
       amountCharged: calculation.price,
       currency: calculation.currency,
+      lotNumber:
+        params.lotNumber ||
+        `LOT-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      mfgDate: params.mfgDate || new Date().toISOString().split("T")[0],
+      expiryDate: params.expiryDate,
+      coaDocName: params.coaDocName || product.certificateOfAnalysisName,
+      coaDocUrl: params.coaDocUrl || product.certificateOfAnalysisUrl,
       createdAt: new Date().toISOString(),
     };
 

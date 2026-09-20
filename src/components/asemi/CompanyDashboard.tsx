@@ -9,6 +9,7 @@ import {
   calculatePrice,
   generateQrDataUrl,
 } from "@/lib/asemiStore";
+import { PRODUCT_CATEGORIES } from "@/lib/categories";
 import {
   Building2,
   Package,
@@ -30,6 +31,10 @@ import {
   ShieldAlert,
   HelpCircle,
   LogOut,
+  FileCheck,
+  FileText,
+  Upload,
+  ShieldCheck,
 } from "lucide-react";
 
 interface CompanyDashboardProps {
@@ -52,13 +57,23 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   // Products
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProductName, setNewProductName] = useState("");
-  const [newProductCategory, setNewProductCategory] = useState("Skincare");
+  const [newProductCategory, setNewProductCategory] = useState("Food & Edibles");
+  const [newProductCustomCategory, setNewProductCustomCategory] = useState("");
   const [newProductDescription, setNewProductDescription] = useState("");
   const [newProductImageUrl, setNewProductImageUrl] = useState("");
+  const [newProductRegNumber, setNewProductRegNumber] = useState("");
+  const [newProductRegDocName, setNewProductRegDocName] = useState("");
+  const [newProductCoaDocName, setNewProductCoaDocName] = useState("");
 
-  // Code Generation Form
+  // Code Generation Form & Batch Traceability
   const [genProductId, setGenProductId] = useState("");
   const [genQuantity, setGenQuantity] = useState<number>(1000);
+  const [genLotNumber, setGenLotNumber] = useState(
+    `LOT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+  );
+  const [genMfgDate, setGenMfgDate] = useState(new Date().toISOString().split("T")[0]);
+  const [genExpiryDate, setGenExpiryDate] = useState("2028-12-31");
+  const [genBatchCoaDocName, setGenBatchCoaDocName] = useState("");
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentProvider, setPaymentProvider] = useState<"paystack" | "flutterwave" | "stripe">(
@@ -67,6 +82,15 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer" | "ussd">("card");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Document Inspection Viewer Modal
+  const [docPreviewModal, setDocPreviewModal] = useState<{
+    title: string;
+    docName: string;
+    type: "regulatory" | "coa" | "company";
+    productName?: string;
+    certNumber?: string;
+  } | null>(null);
 
   // Code Bank State
   const [codeSearchQuery, setCodeSearchQuery] = useState("");
@@ -111,27 +135,48 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
     return matchesQuery && matchesProduct;
   });
 
-  // Handle product creation
+  // Handle product creation with regulatory & lab documents
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProductName.trim()) return;
 
+    if (newProductCategory === "Other" && !newProductCustomCategory.trim()) {
+      alert("Please specify your custom product category.");
+      return;
+    }
+
+    const effectiveCategory =
+      newProductCategory === "Other" ? newProductCustomCategory.trim() : newProductCategory;
+
     asemiStore.createProduct(company.id, {
       name: newProductName,
-      category: newProductCategory,
+      category: effectiveCategory,
       description: newProductDescription,
       imageUrl:
         newProductImageUrl ||
         "https://images.unsplash.com/photo-1608248597359-e9392e2195f1?auto=format&fit=crop&w=600&q=80",
+      regulatoryNumber: newProductRegNumber.trim() || undefined,
+      regulatoryDocName: newProductRegDocName.trim() || undefined,
+      regulatoryDocUrl: newProductRegDocName
+        ? "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80"
+        : undefined,
+      certificateOfAnalysisName: newProductCoaDocName.trim() || undefined,
+      certificateOfAnalysisUrl: newProductCoaDocName
+        ? "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80"
+        : undefined,
     });
 
     setShowAddProductModal(false);
     setNewProductName("");
     setNewProductDescription("");
     setNewProductImageUrl("");
+    setNewProductRegNumber("");
+    setNewProductRegDocName("");
+    setNewProductCoaDocName("");
+    setNewProductCustomCategory("");
   };
 
-  // Handle batch generation execution
+  // Handle batch generation execution with batch traceability & CoA
   const handleExecutePaymentAndGenerate = async () => {
     if (!genProductId) {
       alert("Please select a product.");
@@ -144,12 +189,12 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
       // Simulate payment gateway latency
       await new Promise((r) => setTimeout(r, 1200));
 
-      const batch = asemiStore.generateBatch(
-        company.id,
-        genProductId,
-        genQuantity,
-        paymentProvider,
-      );
+      await asemiStore.generateBatch(company.id, genProductId, genQuantity, paymentProvider, {
+        lotNumber: genLotNumber.trim(),
+        mfgDate: genMfgDate,
+        expiryDate: genExpiryDate,
+        coaDocName: genBatchCoaDocName.trim() || undefined,
+      });
 
       setPaymentProcessing(false);
       setPaymentSuccess(true);
@@ -538,10 +583,68 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
 
                     <div className="p-4 flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="font-bold text-base text-[#1a1a1e]">{p.name}</h3>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-bold text-base text-[#1a1a1e]">{p.name}</h3>
+                        </div>
                         <p className="text-xs text-[#78716c] mt-1 line-clamp-2">
                           {p.description || "No description provided."}
                         </p>
+
+                        {/* Product Authenticity Documents Bar */}
+                        <div className="mt-3 pt-3 border-t border-[#f0ece4] space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-[#6e6e7a]">Reg / Approval:</span>
+                            <span className="font-bold text-[#1a1a1e] bg-[#f5f0e8] px-1.5 py-0.5 rounded text-[10px]">
+                              {p.regulatoryNumber || "Self-Declared / Pending"}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {p.regulatoryDocName && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDocPreviewModal({
+                                    title: "Regulatory Approval Certificate",
+                                    docName: p.regulatoryDocName!,
+                                    type: "regulatory",
+                                    productName: p.name,
+                                    certNumber: p.regulatoryNumber,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-mono bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0] hover:bg-[#dcfce7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                              >
+                                <FileCheck className="w-3 h-3 text-[#16a34a]" />
+                                <span>Reg Cert</span>
+                              </button>
+                            )}
+
+                            {p.certificateOfAnalysisName && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDocPreviewModal({
+                                    title: "Certificate of Analysis (Lab Release)",
+                                    docName: p.certificateOfAnalysisName!,
+                                    type: "coa",
+                                    productName: p.name,
+                                    certNumber: p.regulatoryNumber,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] font-mono bg-[#eff6ff] text-[#1e40af] border border-[#bfdbfe] hover:bg-[#dbeafe] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                              >
+                                <FileText className="w-3 h-3 text-[#2563eb]" />
+                                <span>Lab CoA</span>
+                              </button>
+                            )}
+
+                            {!p.regulatoryDocName && !p.certificateOfAnalysisName && (
+                              <span className="text-[10px] font-mono text-[#9ca3af] italic">
+                                No lab documents attached
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-[#f0ece4] flex items-center justify-between text-xs font-mono text-[#78716c]">
@@ -551,7 +654,7 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                             setGenProductId(p.id);
                             setActiveTab("generate");
                           }}
-                          className="text-[#1a1a1e] font-semibold hover:text-[#b8962e]"
+                          className="text-[#1a1a1e] font-semibold hover:text-[#b8962e] cursor-pointer"
                         >
                           Generate codes →
                         </button>
@@ -650,6 +753,104 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                   >
                     1,000,000+ (Enterprise Quote)
                   </button>
+                </div>
+              </div>
+
+              {/* Batch Lot Traceability & Lab Release Documents */}
+              <div className="bg-[#fafaf8] border border-[#e2ded5] p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#e2ded5] pb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#2e8b57]" />
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#1a1a1e]">
+                      Batch Traceability & Quality Control (QC)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#6e6e7a] bg-[#f0ece4] px-2 py-0.5 rounded">
+                    Product Integrity
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label
+                      htmlFor="gen-lot-number"
+                      className="block text-xs font-mono text-[#6e6e7a] mb-1"
+                    >
+                      Lot / Batch Number *
+                    </label>
+                    <input
+                      id="gen-lot-number"
+                      type="text"
+                      required
+                      value={genLotNumber}
+                      onChange={(e) => setGenLotNumber(e.target.value)}
+                      className="w-full border border-[#cfc9be] p-2 text-xs font-mono bg-white focus:outline-none focus:border-[#1a1a1e]"
+                      placeholder="e.g. LOT-2026-SH01"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="gen-mfg-date"
+                      className="block text-xs font-mono text-[#6e6e7a] mb-1"
+                    >
+                      Manufacturing Date
+                    </label>
+                    <input
+                      id="gen-mfg-date"
+                      type="date"
+                      value={genMfgDate}
+                      onChange={(e) => setGenMfgDate(e.target.value)}
+                      className="w-full border border-[#cfc9be] p-2 text-xs font-mono bg-white focus:outline-none focus:border-[#1a1a1e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="gen-exp-date"
+                      className="block text-xs font-mono text-[#6e6e7a] mb-1"
+                    >
+                      Expiry Date
+                    </label>
+                    <input
+                      id="gen-exp-date"
+                      type="date"
+                      value={genExpiryDate}
+                      onChange={(e) => setGenExpiryDate(e.target.value)}
+                      className="w-full border border-[#cfc9be] p-2 text-xs font-mono bg-white focus:outline-none focus:border-[#1a1a1e]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="gen-batch-coa"
+                    className="block text-xs font-mono text-[#6e6e7a] mb-1"
+                  >
+                    Batch Certificate of Analysis (CoA) Release
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="gen-batch-coa"
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setGenBatchCoaDocName(file.name);
+                      }}
+                      className="w-full border border-[#cfc9be] p-1.5 text-xs font-mono bg-white focus:outline-none"
+                    />
+                  </div>
+                  {genBatchCoaDocName ? (
+                    <p className="text-[10px] font-mono text-[#2e8b57] mt-1">
+                      ✓ Lab Release attached: {genBatchCoaDocName}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-mono text-[#78716c] mt-1">
+                      If left blank, this batch will inherit the primary Certificate of Analysis
+                      attached to the product.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -987,7 +1188,7 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                 </div>
                 <div>
                   <span className="text-[#78716c] text-[10px] uppercase block">
-                    Registration / CAC Number
+                    Business Reg / Tax ID
                   </span>
                   <strong className="text-sm text-[#1a1a1e]">{company.registrationNumber}</strong>
                 </div>
@@ -1066,7 +1267,7 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                 <div>
                   <label
                     htmlFor="product-name"
-                    className="block font-mono text-[11px] text-[#6e6e7a] uppercase mb-1"
+                    className="block font-mono text-xs text-[#6e6e7a] mb-1"
                   >
                     Product Name *
                   </label>
@@ -1082,31 +1283,64 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="product-category"
-                    className="block font-mono text-[11px] text-[#6e6e7a] uppercase mb-1"
-                  >
-                    Category
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label
+                      htmlFor="product-category"
+                      className="block font-mono text-xs text-[#6e6e7a]"
+                    >
+                      Product Category *
+                    </label>
+                    <span className="text-[11px] text-[#8e8e93]">
+                      Classifies packaging & regulatory rules
+                    </span>
+                  </div>
                   <select
                     id="product-category"
                     value={newProductCategory}
                     onChange={(e) => setNewProductCategory(e.target.value)}
-                    className="w-full border border-[#cfc9be] p-2.5 bg-white font-mono"
+                    className="w-full border border-[#cfc9be] p-2.5 bg-white font-sans text-xs focus:outline-none focus:border-[#1a1a1e] cursor-pointer"
                   >
-                    <option value="Skincare">Skincare & Cosmetics</option>
-                    <option value="Pharmaceuticals">Pharmaceuticals & Health</option>
-                    <option value="Food & Beverages">Food & Packaged Goods</option>
-                    <option value="Luxury Goods">Luxury Goods & Fashion</option>
-                    <option value="Electronics">Electronics & Hardware</option>
-                    <option value="Automotive">Automotive Spare Parts</option>
+                    {PRODUCT_CATEGORIES.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {newProductCategory === "Other" && (
+                  <div className="p-3 bg-[#fafaf8] border border-[#e2ded5] space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor="new-product-custom-category"
+                        className="block font-mono text-xs text-[#1a1a1e] font-semibold"
+                      >
+                        Specify Custom Product Category *
+                      </label>
+                      <span className="text-[10px] font-mono text-[#b86d14] bg-[#fff8e6] px-1.5 py-0.5 rounded">
+                        Custom Classification
+                      </span>
+                    </div>
+                    <input
+                      id="new-product-custom-category"
+                      required
+                      type="text"
+                      placeholder="e.g. Artisanal Black Soap, Specialty Cleaning Compound, Craft Cider, Pet Care"
+                      value={newProductCustomCategory}
+                      onChange={(e) => setNewProductCustomCategory(e.target.value)}
+                      className="w-full border border-[#cfc9be] p-2 text-xs font-sans bg-white focus:outline-none focus:border-[#1a1a1e]"
+                    />
+                    <p className="text-[11px] text-[#6e6e7a]">
+                      Consumers and verification scans will show this exact category when scanning
+                      your products.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label
                     htmlFor="product-description"
-                    className="block font-mono text-[11px] text-[#6e6e7a] uppercase mb-1"
+                    className="block font-mono text-xs text-[#6e6e7a] mb-1"
                   >
                     Description
                   </label>
@@ -1120,10 +1354,89 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                   />
                 </div>
 
+                {/* Product Authenticity Documents */}
+                <div className="p-3 bg-[#fafaf8] border border-[#e2ded5] space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#1a1a1e]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#2e8b57]" />
+                    <span>Product Authenticity & Lab Documents</span>
+                  </div>
+                  <p className="text-[11px] text-[#6e6e7a]">
+                    Attach official laboratory and regulatory documentation to verify this product's
+                    safety formulation.
+                  </p>
+
+                  <div>
+                    <label
+                      htmlFor="product-reg-number"
+                      className="block font-mono text-[11px] text-[#6e6e7a] mb-1"
+                    >
+                      Regulatory Registration Number (Optional)
+                    </label>
+                    <input
+                      id="product-reg-number"
+                      type="text"
+                      placeholder="e.g. NAFDAC Reg: 04-2918 or FDA NDC: 68192-441-02"
+                      value={newProductRegNumber}
+                      onChange={(e) => setNewProductRegNumber(e.target.value)}
+                      className="w-full border border-[#cfc9be] p-2 text-xs focus:outline-none focus:border-[#1a1a1e] bg-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label
+                        htmlFor="product-reg-doc"
+                        className="block font-mono text-[11px] text-[#6e6e7a] mb-1"
+                      >
+                        Regulatory Certificate (PDF/JPG)
+                      </label>
+                      <input
+                        id="product-reg-doc"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setNewProductRegDocName(file.name);
+                        }}
+                        className="w-full border border-[#cfc9be] p-1.5 text-[11px] bg-white focus:outline-none"
+                      />
+                      {newProductRegDocName && (
+                        <p className="text-[10px] font-mono text-[#2e8b57] mt-0.5">
+                          ✓ {newProductRegDocName}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="product-coa-doc"
+                        className="block font-mono text-[11px] text-[#6e6e7a] mb-1"
+                      >
+                        Certificate of Analysis / CoA (PDF/JPG)
+                      </label>
+                      <input
+                        id="product-coa-doc"
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setNewProductCoaDocName(file.name);
+                        }}
+                        className="w-full border border-[#cfc9be] p-1.5 text-[11px] bg-white focus:outline-none"
+                      />
+                      {newProductCoaDocName && (
+                        <p className="text-[10px] font-mono text-[#2e8b57] mt-0.5">
+                          ✓ {newProductCoaDocName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label
                     htmlFor="product-image-url"
-                    className="block font-mono text-[11px] text-[#6e6e7a] uppercase mb-1"
+                    className="block font-mono text-xs text-[#6e6e7a] mb-1"
                   >
                     Product Photo URL (Optional)
                   </label>
@@ -1482,6 +1795,111 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                   className="w-full bg-[#1a1a1e] hover:bg-[#b8962e] text-white py-2.5 font-mono font-bold"
                 >
                   Submit Enterprise Inquiry
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* MODAL: DOCUMENT & CERTIFICATE INSPECTION VIEWER           */}
+        {/* ========================================================= */}
+        {docPreviewModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-[#1a1a1e] max-w-lg w-full p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-[#e2ded5] pb-3">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-[#2e8b57]" />
+                  <div>
+                    <h3 className="font-bold text-sm text-[#1a1a1e] uppercase font-mono">
+                      {docPreviewModal.title}
+                    </h3>
+                    <p className="text-[11px] font-mono text-[#6e6e7a]">
+                      Verified Authenticity Record
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDocPreviewModal(null)}
+                  className="text-gray-400 hover:text-black font-mono text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Certificate simulated seal & preview card */}
+              <div className="border border-[#e2ded5] p-5 bg-[#fafaf8] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-[#78716c]">
+                    Official Dossier Seal
+                  </span>
+                  <span className="bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0] text-[10px] font-mono font-bold px-2 py-0.5 rounded">
+                    CRYPTOGRAPHICALLY ANCHORED
+                  </span>
+                </div>
+
+                <div className="border-t border-[#f0ece4] pt-2 space-y-2 text-xs font-mono">
+                  {docPreviewModal.productName && (
+                    <div className="flex justify-between">
+                      <span className="text-[#6e6e7a]">Product:</span>
+                      <span className="font-bold text-[#1a1a1e]">
+                        {docPreviewModal.productName}
+                      </span>
+                    </div>
+                  )}
+
+                  {docPreviewModal.certNumber && (
+                    <div className="flex justify-between">
+                      <span className="text-[#6e6e7a]">Approval / Reg #:</span>
+                      <span className="font-bold text-[#1a1a1e]">{docPreviewModal.certNumber}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e7a]">Document File:</span>
+                    <span className="font-bold text-[#2563eb]">{docPreviewModal.docName}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e7a]">Document Type:</span>
+                    <span className="font-bold text-[#1a1a1e]">
+                      {docPreviewModal.type === "regulatory"
+                        ? "Government Regulatory Clearance"
+                        : docPreviewModal.type === "coa"
+                          ? "Laboratory Certificate of Analysis (HPLC/GC-MS)"
+                          : "Corporate Legal Entity Filing"}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e7a]">Issuer Jurisdiction:</span>
+                    <span className="font-bold text-[#1a1a1e]">{company.countryCode}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e7a]">Hash Digest (SHA-256):</span>
+                    <span className="font-mono text-[10px] text-[#78716c] truncate max-w-[200px]">
+                      e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#f0f8f3] border border-[#c6e5d2] p-3 text-[11px] text-[#144729] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#2e8b57] flex-shrink-0" />
+                  <span>
+                    This document directly authenticates the safety formula and batch composition
+                    for consumer and retail verification.
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDocPreviewModal(null)}
+                  className="bg-[#1a1a1e] hover:bg-[#b8962e] text-white px-5 py-2 font-mono text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close Viewer
                 </button>
               </div>
             </div>

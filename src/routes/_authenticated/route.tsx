@@ -1,4 +1,11 @@
-import { Link, Outlet, createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useRouter,
+  useNavigate,
+  useLocation,
+} from "@tanstack/react-router";
 import { fb as supabase } from "@/integrations/firebase/client";
 import {
   LayoutDashboard,
@@ -57,7 +64,8 @@ function DashboardShell() {
     (company.status === "pending" ||
       company.status === "needs_info" ||
       company.status === "rejected");
-  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const location = useLocation();
+  const currentPath = location.pathname;
   const isProfileRoute = currentPath === "/profile" || currentPath.startsWith("/profile");
 
   const companyNav = [

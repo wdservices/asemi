@@ -284,6 +284,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => 
                         <span>
                           Country: <strong>{comp.countryCode}</strong>
                         </span>
+                        {comp.industry && (
+                          <span>
+                            Industry: <strong className="text-[#1a1a1e]">{comp.industry}</strong>
+                          </span>
+                        )}
                         <span>
                           Email: <strong>{comp.email}</strong>
                         </span>
@@ -820,11 +825,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => 
 
               <div className="space-y-4 text-xs">
                 {/* Basic Details Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#fafaf8] p-3 border border-[#e2ded5] font-mono">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#fafaf8] p-3 border border-[#e2ded5] font-mono">
                   <div>
                     <span className="text-[#78716c] block text-[10px]">Registration No</span>
                     <span className="font-bold text-[#1a1a1e]">
                       {inspectingCompany.registrationNumber}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[#78716c] block text-[10px]">Primary Industry</span>
+                    <span className="font-semibold text-[#1a1a1e]">
+                      {inspectingCompany.industry || "General Manufacturing"}
                     </span>
                   </div>
                   <div>
@@ -877,7 +888,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => 
                 {inspectingCompany.verificationDocUrl && (
                   <div>
                     <span className="font-mono text-[11px] text-[#78716c] block mb-1">
-                      Uploaded Business Certificate / CAC Document:
+                      Uploaded Business Certificate / Registration Document:
                     </span>
                     <div className="border border-[#e2ded5] p-2 bg-[#f4f2ee] flex items-center justify-center">
                       <img
@@ -935,7 +946,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onSignOut }) => 
                     rows={2}
                     value={adminNoteInput}
                     onChange={(e) => setAdminNoteInput(e.target.value)}
-                    placeholder="e.g. CAC certificate cross-verified against corporate database. Approved."
+                    placeholder="e.g. Business certificate cross-verified against corporate database. Approved."
                     className="w-full border border-[#cfc9be] p-2 text-xs focus:outline-none focus:border-[#1a1a1e]"
                   />
                 </div>
