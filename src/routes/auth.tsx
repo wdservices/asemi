@@ -46,9 +46,9 @@ function AuthPage() {
 
   return (
     <main className="ambient-bg min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-xl flex flex-col items-center">
+      <div className="w-full max-w-2xl flex flex-col items-center">
         {/* Navigation & Branding Header */}
-        <div className="w-full flex items-center justify-between mb-6 px-1">
+        <div className="w-full flex items-center justify-between mb-6 px-1 relative z-20">
           <Link
             to="/"
             className="inline-flex items-center gap-1.5 font-mono text-xs text-[#78716c] hover:text-[#1a1a1e] transition-colors"

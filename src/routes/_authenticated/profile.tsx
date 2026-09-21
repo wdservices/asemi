@@ -479,6 +479,26 @@ function ProfilePage() {
               </p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Info className="size-4" /> Universal Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground leading-relaxed">
+              <p>
+                Product authentication and counterfeit defense is open to all brands. Official
+                business incorporation documents and tax IDs are strictly optional — small
+                businesses, artisanal makers, and independent brands can register and mint
+                verification tags immediately.
+              </p>
+              <p className="mt-2">
+                Regulatory certificates (such as FDA, CE, NAFDAC, or ISO) and Lab CoAs can be
+                added per product or batch inside your console.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

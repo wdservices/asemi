@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { asemiStore } from "@/lib/asemiStore";
 import {
   ShieldCheck,
@@ -99,6 +100,12 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             <a href="#pricing" className="hover:text-[#1a1a1e] transition-colors">
               Pricing
             </a>
+            <Link to="/faq" className="hover:text-[#1a1a1e] transition-colors">
+              FAQ
+            </Link>
+            <Link to="/docs" className="hover:text-[#1a1a1e] transition-colors">
+              Docs
+            </Link>
             <button
               onClick={onOpenVerifier}
               className="text-[#c9a84c] font-bold hover:text-[#b8962e] transition-colors flex items-center gap-1"
@@ -415,9 +422,18 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             <span className="font-bold text-[#1a1a1e]">Asemi Authentication Engine</span>
           </div>
 
-          <div>Official Product Security Infrastructure • Region-locked cryptographic ledger.</div>
+          <div className="hidden sm:block">Official Product Security Infrastructure • Region-locked cryptographic ledger.</div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
+            <Link to="/faq" className="hover:text-[#1a1a1e] underline">
+              FAQ
+            </Link>
+            <Link to="/docs" className="hover:text-[#1a1a1e] underline">
+              Documentation
+            </Link>
+            <Link to="/terms" className="hover:text-[#1a1a1e] underline">
+              Terms &amp; Conditions
+            </Link>
             <button onClick={onEnterDashboard} className="hover:text-[#1a1a1e] underline">
               Manufacturer Dashboard
             </button>

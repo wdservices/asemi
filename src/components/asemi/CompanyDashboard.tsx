@@ -35,6 +35,7 @@ import {
   FileText,
   Upload,
   ShieldCheck,
+  Info,
 } from "lucide-react";
 
 interface CompanyDashboardProps {
@@ -1241,6 +1242,21 @@ export const CompanyDashboard: React.FC<CompanyDashboardProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Universal Access Notice */}
+            <div className="bg-[#f0f8f3] border border-[#c6e5d2] p-5 text-sm text-[#144729] leading-relaxed">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-[#2e8b57] shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-[#1a1a1e]">Universal Access:</strong> Product
+                  authentication and counterfeit defense is open to all brands. Official business
+                  incorporation documents and tax IDs are strictly optional — small businesses,
+                  artisanal makers, and independent brands can register and mint verification tags
+                  immediately. Regulatory certificates (such as FDA, CE, NAFDAC, or ISO) and Lab
+                  CoAs can be added per product or batch inside this console.
+                </div>
+              </div>
             </div>
           </div>
         )}

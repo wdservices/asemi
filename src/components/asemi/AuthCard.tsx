@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import { asemiStore } from "@/lib/asemiStore";
 import { fb as supabase } from "@/integrations/firebase/client";
 import {
@@ -12,15 +13,18 @@ import {
   EyeOff,
   ArrowRight,
   ShieldCheck,
-  Globe2,
   Mail,
   Phone,
   Tag,
-  Info,
   Check,
+  X,
+  LogIn,
+  UserPlus,
+  Gift,
+  Zap,
+  Globe,
 } from "lucide-react";
-import { SORTED_COUNTRIES, getCountryByCode, CountryInfo } from "@/lib/countries";
-import { PRODUCT_CATEGORIES } from "@/lib/categories";
+import { getCountryByCode, CountryInfo } from "@/lib/countries";
 import { CountrySelectDropdown, IndustrySelectDropdown } from "./AuthDropdowns";
 
 export interface AuthCardProps {
@@ -30,10 +34,17 @@ export interface AuthCardProps {
   isModal?: boolean;
 }
 
+const labelCls =
+  "block text-[13px] font-semibold text-zinc-800 tracking-tight mb-2";
+const inputCls =
+  "w-full h-[52px] bg-zinc-50/70 hover:bg-zinc-50 focus:bg-white border border-zinc-200 hover:border-zinc-300 focus:border-zinc-950 focus:ring-4 focus:ring-[#c9a84c]/20 rounded-2xl pl-11 pr-4 text-[16px] text-zinc-950 placeholder:text-zinc-400 placeholder:text-[15px] outline-none transition-all duration-200 font-sans";
+const iconCls =
+  "w-[18px] h-[18px] text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none";
+
 export const AuthCard: React.FC<AuthCardProps> = ({
   initialMode = "login",
   onSuccess,
-  onClose: _onClose,
+  onClose,
   isModal = false,
 }) => {
   const [activeMode, setActiveMode] = useState<"login" | "register">(initialMode);
@@ -55,6 +66,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   const [selectedCountryCode, setSelectedCountryCode] = useState("NG");
   const [uploadedDocName, setUploadedDocName] = useState<string>("");
   const [docPreviewUrl, setDocPreviewUrl] = useState<string>("");
+  const [regAcceptedTerms, setRegAcceptedTerms] = useState(false);
 
   // Feedback & State
   const [submitting, setSubmitting] = useState(false);
@@ -179,6 +191,11 @@ export const AuthCard: React.FC<AuthCardProps> = ({
       return;
     }
 
+    if (!regAcceptedTerms) {
+      setErrorMessage("You must accept the Terms and Conditions to create an account.");
+      return;
+    }
+
     const effectiveIndustry = regCategory === "Other" ? regCustomCategory.trim() : regCategory;
 
     setSubmitting(true);
@@ -249,499 +266,519 @@ export const AuthCard: React.FC<AuthCardProps> = ({
     }
   };
 
+  const isRegister = activeMode === "register";
+
   return (
     <div
       id="asemi-auth-card"
-      className="bg-white border border-zinc-200/90 w-full max-w-xl shadow-2xl rounded-2xl overflow-hidden font-sans flex flex-col max-h-[min(92vh,780px)] transition-all duration-200"
+      className={`relative w-full bg-white rounded-[28px] border border-white/60 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.35)] overflow-hidden font-sans flex flex-col transition-all duration-300 ${
+        isRegister ? "max-w-2xl" : "max-w-md"
+      } max-h-[min(92vh,820px)]`}
     >
-      {/* Compact Top Security Banner */}
-      <div className="shrink-0 bg-zinc-950 text-white px-5 py-3 flex items-center justify-between border-b border-zinc-800">
-        <div className="flex items-center gap-2 text-xs font-semibold tracking-wide">
-          <ShieldCheck className="w-4 h-4 text-[#c9a84c]" />
-          <span>Asemi Authentication Gateway</span>
+      {/* Gold hairline */}
+      <div className="h-[3px] shrink-0 bg-gradient-to-r from-[#8f7530] via-[#e8cf8a] to-[#8f7530]" />
+
+      {/* Header — brand left, ledger + close right (no overlap) */}
+      <div className="shrink-0 flex items-center justify-between gap-3 px-6 sm:px-8 pt-5 pb-4 bg-gradient-to-b from-zinc-50 to-white border-b border-zinc-100">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-zinc-950 grid place-items-center shadow-lg shadow-zinc-950/20 shrink-0">
+            <span className="text-white font-bold text-lg leading-none">a</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-zinc-950 tracking-tight leading-tight truncate">
+              Asemi Gateway
+            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+              Secure access
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-[#c9a84c] font-medium bg-zinc-900 px-2.5 py-0.5 rounded-full border border-zinc-800">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>256-Bit Ledger</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-[#8f7530] bg-[#faf5e6] px-3 py-1.5 rounded-full border border-[#e8dcc0]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="whitespace-nowrap">256-Bit Ledger</span>
+          </div>
+          {isModal && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="w-9 h-9 grid place-items-center rounded-full bg-zinc-100 hover:bg-zinc-950 text-zinc-500 hover:text-white transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 flex flex-col justify-between">
-        <div>
-          {/* Header Title & Subtitle */}
-          <div className="mb-4 text-center">
-            <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">
-              {activeMode === "login" ? "Manufacturer Sign In" : "Register Enterprise Brand"}
-            </h2>
-            <p className="mt-1 text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
-              {activeMode === "login"
-                ? "Access your packaging dashboard or regulatory inspection console."
-                : "Register your legal manufacturing entity to mint cryptographic verification tags."}
-            </p>
+      <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-7">
+        {/* Title */}
+        <div className="mb-5 text-center">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950 text-white font-mono text-[10px] uppercase tracking-[0.16em] mb-3">
+            <ShieldCheck className="w-3 h-3 text-[#c9a84c]" />
+            <span>{isRegister ? "Manufacturer onboarding" : "Manufacturer portal"}</span>
           </div>
-
-          {/* Symmetrical Mode Tabs */}
-          <div
-            id="auth-mode-tabs"
-            className="grid grid-cols-2 p-1 mb-4 bg-zinc-100 rounded-xl border border-zinc-200/80"
-          >
-            <button
-              id="tab-btn-signin"
-              type="button"
-              onClick={() => {
-                setActiveMode("login");
-                setErrorMessage("");
-              }}
-              className={`py-2 px-3 text-center text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer ${
-                activeMode === "login"
-                  ? "bg-white text-zinc-950 shadow-xs font-bold"
-                  : "text-zinc-500 hover:text-zinc-900"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              id="tab-btn-register"
-              type="button"
-              onClick={() => {
-                setActiveMode("register");
-                setErrorMessage("");
-              }}
-              className={`py-2 px-3 text-center text-xs sm:text-sm font-semibold rounded-lg transition-all cursor-pointer ${
-                activeMode === "register"
-                  ? "bg-white text-zinc-950 shadow-xs font-bold"
-                  : "text-zinc-500 hover:text-zinc-900"
-              }`}
-            >
-              Register Brand
-            </button>
-          </div>
-
-          {/* Error Banner */}
-          {errorMessage && (
-            <div
-              id="auth-error-banner"
-              className="mb-3 p-2.5 bg-[#fef2f2] border border-[#fecaca] text-[#991b1b] text-xs flex items-start gap-2 rounded-lg animate-fadeIn"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#dc2626]" />
-              <span className="leading-snug">{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Success Banner */}
-          {successMessage ? (
-            <div
-              id="auth-success-banner"
-              className="mb-4 p-5 bg-[#f0fdf4] border border-[#bbf7d0] text-[#166534] text-center space-y-2 rounded-lg"
-            >
-              <CheckCircle2 className="w-8 h-8 text-[#16a34a] mx-auto animate-bounce" />
-              <h4 className="font-bold text-sm text-[#15803d]">Identity Confirmed</h4>
-              <p className="text-xs leading-relaxed text-[#166534]">{successMessage}</p>
-            </div>
-          ) : activeMode === "login" ? (
-            /* ======================================================= */
-            /* UNIFIED SIGN IN FORM                                    */
-            /* ======================================================= */
-            <form id="auth-unified-login-form" onSubmit={handleUnifiedLogin} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="login-email-input"
-                  className="block text-xs font-semibold text-zinc-700 mb-1.5"
-                >
-                  Work email or registration ID
-                </label>
-                <div className="relative">
-                  <input
-                    id="login-email-input"
-                    required
-                    type="text"
-                    placeholder="e.g. name@company.com or RC-849201"
-                    value={loginEmailOrId}
-                    onChange={(e) => setLoginEmailOrId(e.target.value)}
-                    className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-9 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                  />
-                  <Mail className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    htmlFor="login-password-input"
-                    className="text-xs font-semibold text-zinc-700"
-                  >
-                    Password or access key
-                  </label>
-                  <span className="text-[11px] text-zinc-400">Demo: any passphrase</span>
-                </div>
-                <div className="relative">
-                  <input
-                    id="login-password-input"
-                    required
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your security access key"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-9 pr-9 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                  />
-                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 cursor-pointer"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-3.5 h-3.5" />
-                    ) : (
-                      <Eye className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-0.5 text-xs text-zinc-600">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-zinc-900 rounded"
-                  />
-                  <span>Remember session</span>
-                </label>
-                <span className="text-[11px] text-zinc-400">Auto-routes by account role</span>
-              </div>
-
-              <button
-                id="btn-submit-unified-login"
-                type="submit"
-                disabled={submitting}
-                className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-75 mt-2"
-              >
-                {submitting ? (
-                  <>
-                    <Sparkles className="w-4 h-4 animate-spin text-[#c9a84c]" />
-                    <span>Verifying Credentials…</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Sign In to Console</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-
-              {/* Demo Accounts - ONLY on Sign In mode, compact strip */}
-              <div className="pt-3.5 mt-3.5 border-t border-zinc-100 space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-zinc-500">Quick-fill test accounts</span>
-                  <span className="text-amber-700 font-medium">1-Click Fast Fill</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("company-ng")}
-                    className="p-2 bg-zinc-50/90 hover:bg-zinc-100 border border-zinc-200 hover:border-zinc-900 rounded-lg text-left transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="font-semibold text-zinc-900 text-[11px] truncate">
-                      Sterling Pharma
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">🇳🇬 NGN Brand</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("company-us")}
-                    className="p-2 bg-zinc-50/90 hover:bg-zinc-100 border border-zinc-200 hover:border-zinc-900 rounded-lg text-left transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="font-semibold text-zinc-900 text-[11px] truncate">
-                      Apex FMCG
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">🇺🇸 USD Brand</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("admin")}
-                    className="p-2 bg-zinc-50/90 hover:bg-zinc-100 border border-zinc-200 hover:border-zinc-900 rounded-lg text-left transition-all cursor-pointer shadow-2xs"
-                  >
-                    <div className="font-semibold text-zinc-900 text-[11px] truncate">
-                      NAFDAC Admin
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">🛡️ Root Console</div>
-                  </button>
-                </div>
-              </div>
-            </form>
-          ) : (
-            /* ======================================================= */
-            /* REGISTER BRAND FORM (2-COLUMN COMPACT GRID)             */
-            /* ======================================================= */
-            <form
-              id="auth-register-brand-form"
-              onSubmit={handleRegisterBrand}
-              className="space-y-3.5"
-            >
-              {/* Row 1: Name & Reg Number */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="reg-company-name"
-                    className="block text-xs font-semibold text-zinc-700 mb-1.5"
-                  >
-                    Brand or company legal name
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="reg-company-name"
-                      required
-                      type="text"
-                      placeholder="e.g. Sterling Pharma Ltd"
-                      value={regCompanyName}
-                      onChange={(e) => setRegCompanyName(e.target.value)}
-                      className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-8 text-xs text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                    />
-                    <Building2 className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label
-                      htmlFor="reg-company-number"
-                      className="block text-xs font-semibold text-zinc-700"
-                    >
-                      Business Reg / Tax ID <span className="font-normal text-zinc-400">(Optional)</span>
-                    </label>
-                    <span className="text-[10px] text-zinc-400">Small makers may leave blank</span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      id="reg-company-number"
-                      type="text"
-                      placeholder="e.g. EIN, VAT, CRN, or Reg ID (optional)"
-                      value={regCompanyNumber}
-                      onChange={(e) => setRegCompanyNumber(e.target.value)}
-                      className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-8 text-xs text-zinc-900 font-mono placeholder:text-zinc-400 rounded-lg transition-all"
-                    />
-                    <Tag className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 2: Country (All Countries) & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="reg-country-select"
-                    className="block text-xs font-semibold text-zinc-700 mb-1.5"
-                  >
-                    Operating country
-                  </label>
-                  <CountrySelectDropdown
-                    id="reg-country-select"
-                    selectedCode={selectedCountryCode}
-                    onSelect={handleCountrySelect}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="reg-industry-category"
-                    className="block text-xs font-semibold text-zinc-700 mb-1.5"
-                  >
-                    Primary industry
-                  </label>
-                  <IndustrySelectDropdown
-                    id="reg-industry-category"
-                    selectedId={regCategory}
-                    onSelect={setRegCategory}
-                  />
-                </div>
-              </div>
-
-              {/* Dynamic field if "Other" category is chosen */}
-              {regCategory === "Other" && (
-                <div className="bg-zinc-50/80 p-3 border border-zinc-200 rounded-xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label
-                      htmlFor="reg-custom-category"
-                      className="block text-xs font-semibold text-zinc-800"
-                    >
-                      Specify custom industry / product category *
-                    </label>
-                    <span className="text-[10px] font-mono text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full font-medium">
-                      Custom Classification
-                    </span>
-                  </div>
-                  <input
-                    id="reg-custom-category"
-                    required
-                    type="text"
-                    placeholder="e.g. Artisanal Soaps, Specialty Chemicals, Craft Drinks, Pet Food"
-                    value={regCustomCategory}
-                    onChange={(e) => setRegCustomCategory(e.target.value)}
-                    className="w-full bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 text-xs text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                  />
-                  <p className="text-[11px] text-zinc-500">
-                    Enter the exact goods or product type your brand produces.
-                  </p>
-                </div>
-              )}
-
-              {/* Row 3: Email & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="reg-company-email"
-                    className="block text-xs font-semibold text-zinc-700 mb-1.5"
-                  >
-                    Authorized work email
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="reg-company-email"
-                      required
-                      type="email"
-                      placeholder="compliance@brand.com"
-                      value={regCompanyEmail}
-                      onChange={(e) => setRegCompanyEmail(e.target.value)}
-                      className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-8 text-xs text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                    />
-                    <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label
-                      htmlFor="reg-company-phone"
-                      className="block text-xs font-semibold text-zinc-700"
-                    >
-                      Phone number <span className="font-normal text-zinc-400">(Optional)</span>
-                    </label>
-                    <span className="text-[10px] text-zinc-400">International format</span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      id="reg-company-phone"
-                      type="tel"
-                      placeholder="e.g. +1 555 123 4567 or local format"
-                      value={regCompanyPhone}
-                      onChange={(e) => setRegCompanyPhone(e.target.value)}
-                      className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-8 text-xs text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                    />
-                    <Phone className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 4: Password & Company Document Upload */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="reg-password-input"
-                    className="block text-xs font-semibold text-zinc-700 mb-1.5"
-                  >
-                    Security access password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="reg-password-input"
-                      required
-                      minLength={6}
-                      type="password"
-                      placeholder="At least 6 characters"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      className="w-full bg-[#fafaf9] hover:bg-zinc-50 focus:bg-white border border-zinc-200 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/5 px-3 py-2 pl-8 text-xs text-zinc-900 placeholder:text-zinc-400 rounded-lg transition-all font-sans"
-                    />
-                    <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                    Business registration doc <span className="font-normal text-zinc-400">(Optional)</span>
-                  </label>
-                  <label
-                    htmlFor="reg-company-doc-input"
-                    className="flex items-center justify-between border border-dashed border-zinc-300 hover:border-zinc-900 bg-zinc-50/70 hover:bg-white px-3 py-2 rounded-lg cursor-pointer transition-all"
-                  >
-                    <div className="flex items-center gap-1.5 text-xs truncate max-w-[170px]">
-                      {uploadedDocName ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate text-emerald-800 font-medium">
-                            {uploadedDocName}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <span className="text-zinc-500 truncate">Attach License (Optional)</span>
-                        </>
-                      )}
-                    </div>
-                    <span className="text-[10px] font-mono text-zinc-400 shrink-0">PDF/JPG</span>
-                    <input
-                      id="reg-company-doc-input"
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Universal Access Notice: Small business & artisan inclusivity */}
-              <div className="p-3 bg-sky-50/80 border border-sky-200/70 rounded-xl text-[11px] text-sky-900 flex items-start gap-2.5 leading-relaxed">
-                <Info className="w-3.5 h-3.5 text-sky-600 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Universal Access:</strong> Product authentication and counterfeit defense is open to all brands. Official business incorporation documents and tax IDs are <strong>strictly optional</strong>—small businesses, artisanal makers, and independent brands can register and mint verification tags immediately. Regulatory certificates (such as FDA, CE, NAFDAC, or ISO) and Lab CoAs can be added per product or batch inside your console.
-                </span>
-              </div>
-
-              {/* Free codes benefit banner */}
-              <div className="flex items-center justify-between px-3.5 py-2.5 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900">
-                <span className="font-medium">
-                  🎁 20 complimentary verification tags credited upon registration.
-                </span>
-                <span className="font-bold text-[11px] font-mono bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                  Free Tier
-                </span>
-              </div>
-
-              <button
-                id="btn-submit-brand-registration"
-                type="submit"
-                disabled={submitting}
-                className="w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-75 mt-1"
-              >
-                {aiAnalyzing ? (
-                  <>
-                    <Sparkles className="w-4 h-4 animate-spin text-[#c9a84c]" />
-                    <span>Verifying Legal Jurisdiction & Provisioning Vault…</span>
-                  </>
-                ) : submitting ? (
-                  <span>Registering Entity…</span>
-                ) : (
-                  <>
-                    <span>Register Brand & Claim 20 Free Codes</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+          <h2 className="text-[26px] sm:text-[30px] font-bold text-zinc-950 tracking-tight leading-tight">
+            {isRegister ? "Register your brand" : "Welcome back"}
+          </h2>
+          <p className="mt-1.5 text-[15px] text-zinc-500 max-w-md mx-auto leading-relaxed">
+            {isRegister
+              ? "Create your manufacturer identity and start minting verification tags."
+              : "Sign in to manage your products, codes and scans."}
+          </p>
         </div>
 
-        {/* Micro Security Footer */}
-        <div className="mt-3 pt-2.5 border-t border-[#f4f4f2] text-center text-[10px] text-[#a1a1aa] flex items-center justify-center gap-2">
-          <span>End-to-End Cryptographic Ledger</span>
-          <span>•</span>
-          <span>Region-Locked Currency Guarantee</span>
+        {/* Segmented mode tabs */}
+        <div
+          id="auth-mode-tabs"
+          className="grid grid-cols-2 p-1.5 mb-6 bg-zinc-100/90 rounded-full border border-zinc-200/60"
+        >
+          <button
+            id="tab-btn-signin"
+            type="button"
+            onClick={() => {
+              setActiveMode("login");
+              setErrorMessage("");
+            }}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 text-center text-sm font-semibold rounded-full transition-all cursor-pointer ${
+              !isRegister
+                ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/20"
+                : "text-zinc-500 hover:text-zinc-900"
+            }`}
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Sign In</span>
+          </button>
+          <button
+            id="tab-btn-register"
+            type="button"
+            onClick={() => {
+              setActiveMode("register");
+              setErrorMessage("");
+            }}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 text-center text-sm font-semibold rounded-full transition-all cursor-pointer ${
+              isRegister
+                ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/20"
+                : "text-zinc-500 hover:text-zinc-900"
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Register</span>
+          </button>
+        </div>
+
+        {/* Error Banner */}
+        {errorMessage && (
+          <div
+            id="auth-error-banner"
+            className="mb-4 p-3.5 bg-red-50/80 border border-red-200 text-red-900 text-sm flex items-start gap-2.5 rounded-2xl"
+          >
+            <AlertCircle className="w-[18px] h-[18px] shrink-0 mt-0.5 text-red-500" />
+            <span className="leading-snug font-medium">{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Success Banner */}
+        {successMessage ? (
+          <div
+            id="auth-success-banner"
+            className="mb-4 p-6 bg-emerald-50/70 border border-emerald-200 text-emerald-900 text-center space-y-2 rounded-2xl"
+          >
+            <CheckCircle2 className="w-9 h-9 text-emerald-500 mx-auto" />
+            <h4 className="font-bold text-[15px]">Identity confirmed</h4>
+            <p className="text-sm leading-relaxed">{successMessage}</p>
+          </div>
+        ) : !isRegister ? (
+          /* ================= SIGN IN FORM ================= */
+          <form id="auth-unified-login-form" onSubmit={handleUnifiedLogin} className="space-y-5">
+            <div>
+              <label htmlFor="login-email-input" className={labelCls}>
+                Work email or registration ID
+              </label>
+              <div className="relative">
+                <input
+                  id="login-email-input"
+                  required
+                  type="text"
+                  autoComplete="username"
+                  placeholder="name@company.com or RC-849201"
+                  value={loginEmailOrId}
+                  onChange={(e) => setLoginEmailOrId(e.target.value)}
+                  className={inputCls}
+                />
+                <Mail className={iconCls} />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="login-password-input" className="text-[13px] font-semibold text-zinc-800 tracking-tight">
+                  Password or access key
+                </label>
+                <span className="text-xs text-zinc-400 font-mono">Demo: any passphrase</span>
+              </div>
+              <div className="relative">
+                <input
+                  id="login-password-input"
+                  required
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Enter your security access key"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className={`${inputCls} pr-12`}
+                />
+                <Lock className={iconCls} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center rounded-full text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-all cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-zinc-600">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none font-medium">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-[18px] h-[18px] accent-zinc-950 rounded-md cursor-pointer"
+                />
+                <span>Remember me</span>
+              </label>
+              <span className="text-xs text-zinc-400">Auto-routes by role</span>
+            </div>
+
+            <button
+              id="btn-submit-unified-login"
+              type="submit"
+              disabled={submitting}
+              className="group w-full h-[52px] px-4 bg-zinc-950 hover:bg-black text-white text-[15px] font-semibold rounded-2xl shadow-xl shadow-zinc-950/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-70 active:scale-[0.99]"
+            >
+              {submitting ? (
+                <>
+                  <Sparkles className="w-[18px] h-[18px] animate-spin text-[#c9a84c]" />
+                  <span>Verifying credentials…</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign in to console</span>
+                  <ArrowRight className="w-[18px] h-[18px] transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </button>
+
+            {/* Demo Accounts */}
+            <div className="pt-4 mt-1 border-t border-zinc-100">
+              <div className="flex items-center justify-between text-xs mb-2.5">
+                <span className="font-semibold text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
+                  Quick-fill test accounts
+                </span>
+                <span className="text-amber-700 font-semibold">1-click fill</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { key: "company-ng", name: "Sterling Pharma", sub: "🇳🇬 NGN Brand" },
+                    { key: "company-us", name: "Apex FMCG", sub: "🇺🇸 USD Brand" },
+                    { key: "admin", name: "NAFDAC Admin", sub: "🛡️ Root Console" },
+                  ] as const
+                ).map((a) => (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={() => handleQuickFill(a.key)}
+                    className="p-3 bg-zinc-50 hover:bg-zinc-950 border border-zinc-200 hover:border-zinc-950 rounded-2xl text-left transition-all cursor-pointer group/demo"
+                  >
+                    <div className="font-semibold text-zinc-900 group-hover/demo:text-white text-[13px] truncate">
+                      {a.name}
+                    </div>
+                    <div className="text-[11px] text-zinc-500 group-hover/demo:text-zinc-300 mt-0.5">
+                      {a.sub}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </form>
+        ) : (
+          /* ================= REGISTER FORM ================= */
+          <form id="auth-register-brand-form" onSubmit={handleRegisterBrand} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="reg-company-name" className={labelCls}>
+                  Brand or company legal name
+                </label>
+                <div className="relative">
+                  <input
+                    id="reg-company-name"
+                    required
+                    type="text"
+                    autoComplete="organization"
+                    placeholder="Sterling Pharma Ltd"
+                    value={regCompanyName}
+                    onChange={(e) => setRegCompanyName(e.target.value)}
+                    className={inputCls}
+                  />
+                  <Building2 className={iconCls} />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-company-number" className={labelCls}>
+                  Business Reg / Tax ID{" "}
+                  <span className="font-normal text-zinc-400">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    id="reg-company-number"
+                    type="text"
+                    placeholder="EIN, VAT, CRN, Reg ID"
+                    value={regCompanyNumber}
+                    onChange={(e) => setRegCompanyNumber(e.target.value)}
+                    className={`${inputCls} font-mono`}
+                  />
+                  <Tag className={iconCls} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="reg-country-select" className={labelCls}>
+                  Operating country
+                </label>
+                <CountrySelectDropdown
+                  id="reg-country-select"
+                  selectedCode={selectedCountryCode}
+                  onSelect={handleCountrySelect}
+                />
+                <p className="mt-1.5 text-xs text-zinc-400">
+                  {activeCountry.name} • {activeCountry.currency} ({activeCountry.currencySymbol}
+                  {activeCountry.ratePerCode}/tag)
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="reg-industry-category" className={labelCls}>
+                  Primary industry
+                </label>
+                <IndustrySelectDropdown
+                  id="reg-industry-category"
+                  selectedId={regCategory}
+                  onSelect={setRegCategory}
+                />
+              </div>
+            </div>
+
+            {regCategory === "Other" && (
+              <div className="bg-amber-50/60 p-4 border border-amber-200/70 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="reg-custom-category"
+                    className="text-[13px] font-semibold text-zinc-800"
+                  >
+                    Custom industry / product category *
+                  </label>
+                  <span className="text-[10px] font-mono text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                    Custom
+                  </span>
+                </div>
+                <input
+                  id="reg-custom-category"
+                  required
+                  type="text"
+                  placeholder="e.g. Artisanal soaps, craft drinks, pet food"
+                  value={regCustomCategory}
+                  onChange={(e) => setRegCustomCategory(e.target.value)}
+                  className="w-full h-[52px] bg-white border border-amber-200 focus:border-zinc-950 focus:ring-4 focus:ring-[#c9a84c]/20 rounded-2xl px-4 text-[16px] text-zinc-950 placeholder:text-zinc-400 outline-none transition-all"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="reg-company-email" className={labelCls}>
+                  Authorized work email
+                </label>
+                <div className="relative">
+                  <input
+                    id="reg-company-email"
+                    required
+                    type="email"
+                    autoComplete="email"
+                    placeholder="compliance@brand.com"
+                    value={regCompanyEmail}
+                    onChange={(e) => setRegCompanyEmail(e.target.value)}
+                    className={inputCls}
+                  />
+                  <Mail className={iconCls} />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-company-phone" className={labelCls}>
+                  Phone number <span className="font-normal text-zinc-400">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    id="reg-company-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="+1 555 123 4567"
+                    value={regCompanyPhone}
+                    onChange={(e) => setRegCompanyPhone(e.target.value)}
+                    className={inputCls}
+                  />
+                  <Phone className={iconCls} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="reg-password-input" className={labelCls}>
+                  Security access password
+                </label>
+                <div className="relative">
+                  <input
+                    id="reg-password-input"
+                    required
+                    minLength={6}
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="At least 6 characters"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className={inputCls}
+                  />
+                  <Lock className={iconCls} />
+                </div>
+              </div>
+
+              <div>
+                <span className={labelCls}>
+                  Registration doc <span className="font-normal text-zinc-400">(Optional)</span>
+                </span>
+                <label
+                  htmlFor="reg-company-doc-input"
+                  className={`flex items-center justify-between gap-2 h-[52px] border-2 border-dashed rounded-2xl px-4 cursor-pointer transition-all ${
+                    uploadedDocName
+                      ? "border-emerald-300 bg-emerald-50/60"
+                      : "border-zinc-200 hover:border-zinc-950 bg-zinc-50/50 hover:bg-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-sm truncate min-w-0">
+                    {uploadedDocName ? (
+                      <>
+                        <Check className="w-[18px] h-[18px] text-emerald-600 shrink-0" />
+                        <span className="truncate text-emerald-800 font-semibold">
+                          {uploadedDocName}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-[18px] h-[18px] text-zinc-400 shrink-0" />
+                        <span className="text-zinc-500 font-medium truncate">
+                          Attach license
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-[10px] font-mono font-semibold text-zinc-400 bg-zinc-100 px-2 py-1 rounded-full shrink-0">
+                    PDF/JPG
+                  </span>
+                  <input
+                    id="reg-company-doc-input"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Terms and Conditions */}
+            <div
+              className={`flex items-start gap-3 p-4 rounded-2xl border transition-all ${
+                regAcceptedTerms
+                  ? "bg-emerald-50/60 border-emerald-200"
+                  : "bg-zinc-50/70 border-zinc-200"
+              }`}
+            >
+              <input
+                id="reg-toc-checkbox"
+                type="checkbox"
+                checked={regAcceptedTerms}
+                onChange={(e) => setRegAcceptedTerms(e.target.checked)}
+                className="w-5 h-5 mt-0.5 accent-zinc-950 rounded-md cursor-pointer shrink-0"
+              />
+              <label
+                htmlFor="reg-toc-checkbox"
+                className="text-sm text-zinc-600 leading-relaxed cursor-pointer"
+              >
+                I agree to the{" "}
+                <Link
+                  to="/terms"
+                  className="font-semibold text-zinc-950 underline underline-offset-2 decoration-[#c9a84c] hover:text-[#8f7530]"
+                >
+                  Terms and Conditions
+                </Link>{" "}
+                and confirm that all information provided is accurate.
+              </label>
+            </div>
+
+            {/* Free codes benefit banner */}
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-gradient-to-r from-amber-50 to-[#faf3dd] border border-amber-200/80 rounded-2xl">
+              <span className="flex items-center gap-2 text-sm font-medium text-amber-900">
+                <Gift className="w-[18px] h-[18px] shrink-0" />
+                <span>20 complimentary tags on registration</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider bg-amber-950 text-amber-100 px-2.5 py-1 rounded-full shrink-0">
+                Free tier
+              </span>
+            </div>
+
+            <button
+              id="btn-submit-brand-registration"
+              type="submit"
+              disabled={submitting}
+              className="group w-full h-[54px] px-4 bg-zinc-950 hover:bg-black text-white text-[15px] font-semibold rounded-2xl shadow-xl shadow-zinc-950/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-70 active:scale-[0.99]"
+            >
+              {aiAnalyzing ? (
+                <>
+                  <Sparkles className="w-[18px] h-[18px] animate-spin text-[#c9a84c]" />
+                  <span>Provisioning secure vault…</span>
+                </>
+              ) : submitting ? (
+                <span>Registering entity…</span>
+              ) : (
+                <>
+                  <span>Register brand & claim 20 free codes</span>
+                  <ArrowRight className="w-[18px] h-[18px] transition-transform group-hover:translate-x-1" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* Trust footer */}
+        <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-center gap-5 text-[11px] font-medium text-zinc-400">
+          <span className="flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5" /> 256-bit encrypted
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5" /> Instant verify
+          </span>
+          <span className="hidden sm:flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5" /> Region-locked
+          </span>
         </div>
       </div>
     </div>

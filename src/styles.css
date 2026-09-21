@@ -404,3 +404,59 @@ button:active:not(:disabled),
 .btn-ghost:active {
   background: rgba(26, 26, 30, 0.04);
 }
+
+/* ==========================================================================
+   Custom mouse pointer effect (dot + trailing ring)
+   ========================================================================== */
+#cursor-dot,
+#cursor-ring {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body,
+  body button,
+  body a,
+  body [role="button"],
+  body .btn {
+    cursor: none !important;
+  }
+  body input,
+  body textarea,
+  body select {
+    cursor: auto;
+  }
+
+  #cursor-dot {
+    display: block;
+    position: fixed;
+    left: -100px;
+    top: -100px;
+    width: 6px;
+    height: 6px;
+    background: #1a1a1e;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #cursor-ring {
+    display: block;
+    position: fixed;
+    left: -100px;
+    top: -100px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(26, 26, 30, 0.25);
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition:
+      opacity 0.2s,
+      transform 0.15s ease-out;
+  }
+}

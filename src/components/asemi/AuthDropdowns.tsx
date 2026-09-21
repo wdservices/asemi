@@ -79,28 +79,28 @@ export const CountrySelectDropdown: React.FC<CountrySelectProps> = ({
         id={id}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs bg-[#fafaf9] hover:bg-white border rounded-lg transition-all text-left font-sans cursor-pointer ${
+        className={`relative w-full flex items-center justify-between gap-2 pl-11 pr-3 h-[52px] text-[15px] bg-zinc-50/70 hover:bg-zinc-50 focus:bg-white border rounded-2xl transition-all text-left font-sans cursor-pointer outline-none ${
           isOpen
-            ? "border-zinc-900 bg-white ring-2 ring-zinc-900/5 shadow-xs"
+            ? "border-zinc-950 bg-white ring-4 ring-[#c9a84c]/20 shadow-lg"
             : "border-zinc-200 hover:border-zinc-400"
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
+        <Globe2 className="w-[18px] h-[18px] text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="flex items-center gap-2 min-w-0">
-          <Globe2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <span className="text-sm shrink-0">{activeCountry.flag}</span>
-          <span className="truncate font-medium text-zinc-900">{activeCountry.name}</span>
+          <span className="text-base shrink-0">{activeCountry.flag}</span>
+          <span className="truncate font-medium text-zinc-950">{activeCountry.name}</span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
-            {activeCountry.currency} ({activeCountry.currencySymbol}
-            {activeCountry.ratePerCode}/tag)
+          <span className="hidden sm:inline text-[11px] font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200/60">
+            {activeCountry.currencySymbol}
+            {activeCountry.ratePerCode}/tag
           </span>
           <ChevronDown
-            className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
-              isOpen ? "rotate-180 text-zinc-800" : ""
+            className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${
+              isOpen ? "rotate-180 text-zinc-900" : ""
             }`}
           />
         </div>
@@ -109,19 +109,19 @@ export const CountrySelectDropdown: React.FC<CountrySelectProps> = ({
       {/* Sleek Floating Popover Menu */}
       {isOpen && (
         <div
-          className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-2xl overflow-hidden font-sans flex flex-col"
+          className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border border-zinc-200 rounded-2xl shadow-[0_24px_60px_-16px_rgba(0,0,0,0.3)] overflow-hidden font-sans flex flex-col"
           style={{ minWidth: "280px" }}
         >
           {/* Search Header */}
-          <div className="p-2 border-b border-zinc-100 bg-zinc-50/80 sticky top-0 z-10 flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1" />
+          <div className="p-2.5 border-b border-zinc-100 bg-zinc-50/80 sticky top-0 z-10 flex items-center gap-2">
+            <Search className="w-4 h-4 text-zinc-400 shrink-0 ml-1" />
             <input
               ref={searchInputRef}
               type="text"
               placeholder="Search country or currency..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+              className="w-full bg-transparent text-sm text-zinc-950 placeholder:text-zinc-400 focus:outline-none"
             />
             {searchQuery && (
               <button
@@ -152,7 +152,7 @@ export const CountrySelectDropdown: React.FC<CountrySelectProps> = ({
                       setIsOpen(false);
                       setSearchQuery("");
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors text-left cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm transition-colors text-left cursor-pointer ${
                       isSelected
                         ? "bg-zinc-100/90 text-zinc-950 font-semibold"
                         : "text-zinc-700 hover:bg-zinc-50"
@@ -238,21 +238,21 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
         id={id}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs bg-[#fafaf9] hover:bg-white border rounded-lg transition-all text-left font-sans cursor-pointer ${
+        className={`w-full flex items-center justify-between gap-2 px-4 h-[52px] text-[15px] bg-zinc-50/70 hover:bg-zinc-50 border rounded-2xl transition-all text-left font-sans cursor-pointer outline-none ${
           isOpen
-            ? "border-zinc-900 bg-white ring-2 ring-zinc-900/5 shadow-xs"
+            ? "border-zinc-950 bg-white ring-4 ring-[#c9a84c]/20 shadow-lg"
             : "border-zinc-200 hover:border-zinc-400"
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="truncate font-medium text-zinc-900">{activeCategory.name}</span>
+          <span className="truncate font-medium text-zinc-950">{activeCategory?.name ?? "Select category"}</span>
         </div>
 
         <ChevronDown
-          className={`w-3.5 h-3.5 text-zinc-400 shrink-0 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-zinc-800" : ""
+          className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-zinc-900" : ""
           }`}
         />
       </button>
@@ -260,7 +260,7 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
       {/* Sleek Floating Popover Menu */}
       {isOpen && (
         <div
-          className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-2xl overflow-hidden font-sans flex flex-col"
+          className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border border-zinc-200 rounded-2xl shadow-[0_24px_60px_-16px_rgba(0,0,0,0.3)] overflow-hidden font-sans flex flex-col"
           style={{ minWidth: "290px" }}
         >
           <div className="px-3 py-2 bg-zinc-50/80 border-b border-zinc-100 flex items-center justify-between text-[11px] text-zinc-500">
@@ -280,7 +280,7 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
                     onSelect(cat.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-xs transition-colors text-left cursor-pointer ${
+                  className={`w-full flex items-start gap-2.5 px-3.5 py-3 text-sm transition-colors text-left cursor-pointer ${
                     isSelected
                       ? "bg-zinc-100/90 text-zinc-950 font-semibold"
                       : "text-zinc-700 hover:bg-zinc-50"
