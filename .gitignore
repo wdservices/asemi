@@ -22,6 +22,8 @@ dist-ssr
 scripts/service-account.json
 functions/service-account.json
 *-service-account.json
+scripts/.seed-build
+functions/.seed-build
 
 # Wrangler / Cloudflare
 .wrangler/

@@ -225,15 +225,16 @@ export async function updateCompanySelfService(
 // Products
 // ---------------------------------------------------------------------------
 
+function byCreatedDesc(a: { createdAt?: string }, b: { createdAt?: string }): number {
+  return (b.createdAt || "").localeCompare(a.createdAt || "");
+}
+
 export async function listProducts(companyId: string): Promise<Product[]> {
+  // NOTE: no orderBy — sorted client-side so no composite index is required.
   const snap = await getDocs(
-    query(
-      collection(requireDb(), "products"),
-      where("companyId", "==", companyId),
-      orderBy("createdAt", "desc"),
-    ),
+    query(collection(requireDb(), "products"), where("companyId", "==", companyId)),
   );
-  return snap.docs.map((d) => ser<Product>(d.id, d.data()));
+  return snap.docs.map((d) => ser<Product>(d.id, d.data())).sort(byCreatedDesc);
 }
 
 export async function listProductOptions(companyId: string): Promise<Pick<Product, "id" | "name">[]> {
@@ -296,15 +297,14 @@ export async function deleteProduct(productId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function listBatches(companyId: string, n = 100): Promise<Batch[]> {
+  // NOTE: no orderBy — sorted + sliced client-side so no composite index is required.
   const snap = await getDocs(
-    query(
-      collection(requireDb(), "batches"),
-      where("companyId", "==", companyId),
-      orderBy("createdAt", "desc"),
-      limit(n),
-    ),
+    query(collection(requireDb(), "batches"), where("companyId", "==", companyId)),
   );
-  return snap.docs.map((d) => ser<Batch>(d.id, d.data()));
+  return snap.docs
+    .map((d) => ser<Batch>(d.id, d.data()))
+    .sort(byCreatedDesc)
+    .slice(0, n);
 }
 
 export async function getBatch(batchId: string): Promise<Batch | null> {
@@ -320,22 +320,24 @@ export interface CodeFilters {
 }
 
 export async function listCodes(companyId: string, filters: CodeFilters = {}): Promise<Code[]> {
+  // NOTE: equality filters only, no orderBy — sorted + sliced client-side so
+  // no composite index is required.
   const clauses: any[] = [where("companyId", "==", companyId)];
   if (filters.productId) clauses.push(where("productId", "==", filters.productId));
   if (filters.batchId) clauses.push(where("batchId", "==", filters.batchId));
   if (filters.flaggedOnly) clauses.push(where("flagged", "==", true));
   const snap = await getDocs(
-    query(
-      collection(requireDb(), "codes"),
-      ...clauses,
-      orderBy("createdAt", "desc"),
-      limit(filters.limitN ?? 500),
-    ),
+    query(collection(requireDb(), "codes"), ...clauses, limit(filters.limitN ?? 500)),
   );
-  return snap.docs.map((d) => ser<Code>(d.id, d.data()));
+  return snap.docs
+    .map((d) => ser<Code>(d.id, d.data()))
+    .sort(byCreatedDesc)
+    .slice(0, filters.limitN ?? 500);
 }
 
 export async function listBatchCodeStrings(batchId: string): Promise<string[]> {
+  // NOTE: no orderBy — paged by document-id order, sorted client-side, so no
+  // composite index is required.
   const out: string[] = [];
   let cursor: DocumentData | undefined;
   for (;;) {
@@ -343,7 +345,6 @@ export async function listBatchCodeStrings(batchId: string): Promise<string[]> {
       query(
         collection(requireDb(), "codes"),
         where("batchId", "==", batchId),
-        orderBy("codeString", "asc"),
         ...(cursor ? [startAfter(cursor)] : []),
         limit(1000),
       ),
@@ -353,7 +354,7 @@ export async function listBatchCodeStrings(batchId: string): Promise<string[]> {
     if (snap.size < 1000) break;
     cursor = snap.docs[snap.docs.length - 1];
   }
-  return out;
+  return out.sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -361,16 +362,16 @@ export async function listBatchCodeStrings(batchId: string): Promise<string[]> {
 // ---------------------------------------------------------------------------
 
 export async function listCompanyScans(companyId: string, sinceIso: string, maxN = 5000): Promise<Scan[]> {
+  // NOTE: single equality filter only — time-filtered + sorted client-side so
+  // no collection-group composite index is required.
+  const since = new Date(sinceIso).toISOString();
   const snap = await getDocs(
-    query(
-      collectionGroup(requireDb(), "scans"),
-      where("companyId", "==", companyId),
-      where("scannedAt", ">=", Timestamp.fromDate(new Date(sinceIso))),
-      orderBy("scannedAt", "desc"),
-      limit(maxN),
-    ),
+    query(collectionGroup(requireDb(), "scans"), where("companyId", "==", companyId), limit(maxN)),
   );
-  return snap.docs.map((d) => ser<Scan>(d.id, d.data()));
+  return snap.docs
+    .map((d) => ser<Scan>(d.id, d.data()))
+    .filter((s) => (s.scannedAt || "") >= since)
+    .sort((a, b) => (b.scannedAt || "").localeCompare(a.scannedAt || ""));
 }
 
 // ---------------------------------------------------------------------------
@@ -434,10 +435,11 @@ export async function listReports(n = 500): Promise<Report[]> {
 // ---------------------------------------------------------------------------
 
 export async function listCompaniesByStatus(statuses: CompanyStatus[]): Promise<Company[]> {
+  // NOTE: no orderBy — sorted client-side so no composite index is required.
   const snap = await getDocs(
-    query(collection(requireDb(), "companies"), where("status", "in", statuses), orderBy("createdAt", "desc")),
+    query(collection(requireDb(), "companies"), where("status", "in", statuses)),
   );
-  return snap.docs.map((d) => ser<Company>(d.id, d.data()));
+  return snap.docs.map((d) => ser<Company>(d.id, d.data())).sort(byCreatedDesc);
 }
 
 export async function listAllCompanies(): Promise<Company[]> {

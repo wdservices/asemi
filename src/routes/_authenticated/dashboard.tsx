@@ -111,6 +111,45 @@ function DashboardOverview() {
   const freeRemain = Math.max(0, 20 - freeUsed);
   const walletCurrency = wallet.data?.currency ?? "USD";
 
+  if (stats.isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="panel h-28 animate-pulse p-5" />
+        ))}
+      </div>
+    );
+  }
+
+  if (stats.isError) {
+    const msg = stats.error instanceof Error ? stats.error.message : "Failed to load overview data.";
+    const needsIndex = /index|FAILED_PRECONDITION/i.test(msg);
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Overview"
+          description={`A snapshot of ${company?.name ?? "your brand"} on Asemi.`}
+        />
+        <div className="panel p-8 text-center">
+          <p className="font-display text-lg font-semibold">Couldn't load your overview</p>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">{msg}</p>
+          {needsIndex && (
+            <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+              This usually means Firestore composite indexes aren't deployed yet. Run{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                firebase deploy --only firestore:indexes
+              </code>{" "}
+              from the repo root (after `firebase login`), then retry.
+            </p>
+          )}
+          <Button className="mt-4" onClick={() => stats.refetch()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!s) {
     return (
       <div className="grid gap-4 md:grid-cols-3">

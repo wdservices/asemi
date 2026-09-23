@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -80,6 +81,8 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   // Currently selected country & currency details
   const activeCountry: CountryInfo = useMemo(() => {
@@ -388,8 +391,38 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                 <label htmlFor="login-password-input" className="text-[13px] font-semibold text-zinc-800 tracking-tight">
                   Password or access key
                 </label>
-                <span className="text-xs text-zinc-400 font-mono">Demo: any passphrase</span>
+                <button
+                  type="button"
+                  disabled={resetBusy}
+                  onClick={async () => {
+                    setErrorMessage("");
+                    const email = loginEmailOrId.trim();
+                    if (!email || !email.includes("@")) {
+                      setErrorMessage("Enter your work email above first, then use Forgot password.");
+                      return;
+                    }
+                    setResetBusy(true);
+                    try {
+                      await sendPasswordResetEmail(requireAuth(), email);
+                      setResetSent(true);
+                    } catch (err) {
+                      console.error(err);
+                      setErrorMessage(friendlyAuthError(err));
+                    } finally {
+                      setResetBusy(false);
+                    }
+                  }}
+                  className="text-xs font-semibold text-zinc-500 hover:text-zinc-950 underline underline-offset-2 cursor-pointer disabled:opacity-60"
+                >
+                  {resetBusy ? "Sending…" : resetSent ? "Reset email sent ✓" : "Forgot password?"}
+                </button>
               </div>
+              {resetSent && (
+                <p className="mb-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  Password reset email sent — check your inbox (and spam), then sign in with the
+                  new password.
+                </p>
+              )}
               <div className="relative">
                 <input
                   id="login-password-input"

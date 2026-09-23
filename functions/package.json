@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
-    "deploy": "firebase deploy --only functions,firestore:rules,storage"
+    "deploy": "firebase deploy --only functions,firestore:rules,storage",
+    "seed": "esbuild ../scripts/seed.ts --bundle --platform=node --format=cjs --outfile=.seed-build/seed.cjs --external:firebase-admin --log-level=warning && node .seed-build/seed.cjs"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",
@@ -20,6 +21,7 @@
     "@types/node": "^20.14.0",
     "@types/pdfkit": "^0.17.2",
     "@types/qrcode": "^1.5.5",
+    "esbuild": "^0.28.2",
     "typescript": "~5.5.4"
   }
 }

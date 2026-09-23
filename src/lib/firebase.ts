@@ -39,6 +39,26 @@ if (isFirebaseConfigured) {
   db = getFirestore(app);
   storage = getStorage(app);
   functions = getFunctions(app);
+
+  // Local emulator support (dev only): set VITE_FIREBASE_AUTH_EMULATOR_HOST
+  // (e.g. 127.0.0.1:9099) and VITE_FIREBASE_FIRESTORE_EMULATOR_HOST
+  // (e.g. 127.0.0.1:8090) to point the app at the Emulator Suite.
+  if (typeof window !== "undefined" && import.meta.env.DEV) {
+    const authHost = env["VITE_FIREBASE_AUTH_EMULATOR_HOST"];
+    const fsHost = env["VITE_FIREBASE_FIRESTORE_EMULATOR_HOST"];
+    if (authHost) {
+      const [h, p] = authHost.split(":");
+      import("firebase/auth").then(({ connectAuthEmulator }) =>
+        connectAuthEmulator(auth!, `http://${h}:${p || "9099"}`, { disableWarnings: true }),
+      );
+    }
+    if (fsHost) {
+      const [h, p] = fsHost.split(":");
+      import("firebase/firestore").then(({ connectFirestoreEmulator }) =>
+        connectFirestoreEmulator(db!, h || "127.0.0.1", Number(p || "8090")),
+      );
+    }
+  }
 } else if (typeof window !== "undefined") {
   console.warn(
     "[firebase] VITE_FIREBASE_* keys missing — backend calls will fail until .env.local is set. See .env.example.",
