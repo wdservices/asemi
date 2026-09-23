@@ -461,9 +461,7 @@ function FraudContent() {
                         </div>
                       </TableCell>
                       <TableCell className="px-3">
-                        <StatusBadge
-                          status={c.reviewStatus === "none" ? "open" : c.reviewStatus}
-                        />
+                        <StatusBadge status={c.reviewStatus === "none" ? "open" : c.reviewStatus} />
                       </TableCell>
                       <TableCell className="px-3 text-right">
                         <div className="inline-flex gap-1">

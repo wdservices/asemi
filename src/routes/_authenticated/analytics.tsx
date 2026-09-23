@@ -114,15 +114,18 @@ function AnalyticsPage() {
         (citiesPerCode[s.codeId] ??= new Set()).add(s.city);
       }
       return codes
-        .map((c) => ({
-          id: c.id,
-          code_string: c.codeString,
-          product_id: c.productId,
-          product_name: productNames.get(c.productId) ?? "—",
-          scan_count: c.scanCount,
-          cities_count: citiesPerCode[c.id]?.size ?? 0,
-          review_status: c.reviewStatus,
-        }) satisfies FlaggedRow)
+        .map(
+          (c) =>
+            ({
+              id: c.id,
+              code_string: c.codeString,
+              product_id: c.productId,
+              product_name: productNames.get(c.productId) ?? "—",
+              scan_count: c.scanCount,
+              cities_count: citiesPerCode[c.id]?.size ?? 0,
+              review_status: c.reviewStatus,
+            }) satisfies FlaggedRow,
+        )
         .sort((a, b) => b.scan_count - a.scan_count);
     },
   });

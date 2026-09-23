@@ -3,33 +3,32 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMyCompany, type Company } from "@/lib/auth";
 import {
-  fnCalculatePrice,
-  fnExportBatch,
-  fnGenerateBatchPaid,
-  fnMarkCodesExported,
   formatMoney,
-  getBatch,
-  getWallet,
   listBatchCodeStrings,
   listBatches,
   listCodes,
   listProducts,
-  type Batch,
   type Code,
-  type PriceQuoteResult,
 } from "@/lib/db";
+import {
+  calculateBatchPrice,
+  createBatchWithCodes,
+  type ClientCalculatePriceResult,
+} from "@/lib/batch-service";
+import {
+  generateQrDataUrl,
+  downloadDataUrl,
+  generateBatchQrCode,
+  downloadBatchQr,
+  type BatchProductInfo,
+  type BatchQrResult,
+} from "@/lib/qr";
+import { downloadTagsZip, printTagSheet } from "@/lib/tag-exporter";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -52,7 +51,6 @@ import {
   Printer,
   Sparkles,
   CheckCircle2,
-  Loader2,
   Filter,
   FileText,
   QrCode,
@@ -60,16 +58,32 @@ import {
   Search,
   AlertTriangle,
   Flag,
+  CircleDot,
+  RectangleHorizontal,
+  LayoutGrid,
+  List,
+  Eye,
+  Archive,
+  ArrowRight,
+  Check,
+  History,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { PaymentGatewayModal } from "@/components/asemi/PaymentGatewayModal";
+import { ProductTagPreview } from "@/components/asemi/ProductTagPreview";
+import { TagPreviewModal } from "@/components/asemi/TagPreviewModal";
+import { BatchQrModal } from "@/components/asemi/BatchQrModal";
+import { BatchQrInlinePanel } from "@/components/asemi/BatchQrInlinePanel";
 
 export const Route = createFileRoute("/_authenticated/batches")({
   head: () => ({ meta: [{ title: "Batches & Codes — Asemi" }] }),
   component: BatchesPage,
 });
-
-type BatchWithProduct = Batch;
 
 type CodeWithExtras = Code & {
   productName: string;
@@ -77,13 +91,15 @@ type CodeWithExtras = Code & {
 };
 
 function BatchesPage() {
+  const [activeTab, setActiveTab] = useState("request");
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Batches & Codes"
-        description="Request new verification code batches, review history, and manage your code bank."
+        description="Request new verification code batches, review history, and manage your dynamic QR code bank."
       />
-      <Tabs defaultValue="request" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="request">
             <Sparkles className="mr-2 size-4" /> Request batch
@@ -96,7 +112,7 @@ function BatchesPage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="request" className="pt-4">
-          <RequestBatchTab />
+          <RequestBatchTab onGoToBank={() => setActiveTab("bank")} />
         </TabsContent>
         <TabsContent value="history" className="pt-4">
           <BatchHistoryTab />
@@ -113,21 +129,24 @@ function BatchesPage() {
 /*                              REQUEST BATCH TAB                             */
 /* -------------------------------------------------------------------------- */
 
-function RequestBatchTab() {
+function RequestBatchTab({ onGoToBank }: { onGoToBank: () => void }) {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
+  const companyName = company?.name || "Asemi Brand";
   const queryClient = useQueryClient();
 
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState<number>(100);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [tagFormat, setTagFormat] = useState<"circle" | "rectangle">("rectangle");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [result, setResult] = useState<{
     batch_id: string;
     batch_number: string;
     qty: number;
     charged: number;
+    codes: string[];
+    product_name: string;
+    tagFormat: "circle" | "rectangle";
   } | null>(null);
 
   const products = useQuery({
@@ -136,111 +155,54 @@ function RequestBatchTab() {
     queryFn: () => listProducts(companyId!),
   });
 
-  const wallet = useQuery({
-    queryKey: ["wallet", companyId],
-    enabled: !!companyId,
-    queryFn: () => getWallet(companyId!),
-  });
-
   const qty = Math.max(0, quantity | 0);
-  const quote = useQuery({
-    queryKey: ["price-quote", companyId, qty],
-    enabled: !!companyId && qty > 0,
-    staleTime: 30_000,
-    queryFn: () => fnCalculatePrice(qty),
-  });
-  const pricing: PriceQuoteResult = quote.data ?? {
-    requiresQuote: false,
-    currency: wallet.data?.currency ?? "USD",
-    symbol: "",
-    free: 0,
-    paid: qty,
-    price: 0,
-    breakdown: [],
-  };
+  const pricing: ClientCalculatePriceResult = useMemo(() => {
+    return calculateBatchPrice(qty, company?.countryCode || "NG");
+  }, [qty, company?.countryCode]);
 
-  const walletBalance = wallet.data?.creditBalance ?? 0;
-  const walletCurrency = wallet.data?.currency ?? pricing.currency;
-  const shortfall = pricing.price - walletBalance;
-  const canAfford = shortfall <= 0 && !pricing.requiresQuote;
+  const selectedProduct = products.data?.find((p: any) => p.id === productId);
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+  async function handleAuthorizePayment(onProgress: (p: number) => void) {
+    if (!companyId || !productId || !selectedProduct) {
+      throw new Error("Product and company required");
+    }
 
-  function pollProgress(batchId: string) {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
-      try {
-        const b = await getBatch(batchId);
-        if (!b) return;
-        if (b.status === "generating" || b.status === "failed") {
-          setProgress(Math.round((b.generationProgress || 0) * 100));
-        }
-        if (b.status === "ready" || b.status === "exported" || b.status === "failed") {
-          if (pollRef.current) clearInterval(pollRef.current);
-        }
-      } catch {
-        /* keep polling */
-      }
-    }, 2500);
-  }
+    const res = await createBatchWithCodes({
+      companyId,
+      companyName,
+      countryCode: company?.countryCode || "NG",
+      productId,
+      productName: selectedProduct.name,
+      quantity: qty,
+      amountCharged: pricing.price,
+      currency: pricing.currency,
+      tagFormat,
+      onProgress,
+    });
 
-  const generateMutation = useMutation({
-    mutationFn: async (vars: { productId: string; qty: number }) => {
-      setProgress(3);
-      setGenerating(true);
-      try {
-        const res = await fnGenerateBatchPaid({ productId: vars.productId, quantity: vars.qty });
-        pollProgress(res.batchId);
-        setProgress(100);
-        return res;
-      } catch (err) {
-        // The batch may still be generating server-side — poll to find out.
-        throw err;
-      } finally {
-        setGenerating(false);
-      }
-    },
-    onSuccess: async (res) => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      queryClient.invalidateQueries({ queryKey: ["batches", companyId] });
-      queryClient.invalidateQueries({ queryKey: ["wallet", companyId] });
-      queryClient.invalidateQueries({ queryKey: ["my-company"] });
-      queryClient.invalidateQueries({ queryKey: ["company-stats"] });
-      setResult({
-        batch_id: res.batchId,
-        batch_number: res.batchNumber,
-        qty: res.quantity,
-        charged: res.price,
-      });
-      toast.success(`Batch ${res.batchNumber} created!`);
-    },
-    onError: (err) => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      toast.error(err instanceof Error ? err.message : "Generation failed");
-      setProgress(0);
-    },
-  });
+    // Invalidate queries so history and code bank refresh immediately
+    queryClient.invalidateQueries({ queryKey: ["batches", companyId] });
+    queryClient.invalidateQueries({ queryKey: ["codes-bank"] });
+    queryClient.invalidateQueries({ queryKey: ["my-company"] });
+    queryClient.invalidateQueries({ queryKey: ["company-stats"] });
 
-  function onRequest() {
-    if (!productId || quantity <= 0) return;
-    setConfirmOpen(true);
-  }
+    setResult({
+      batch_id: res.batchId,
+      batch_number: res.batchNumber,
+      qty: res.quantity,
+      charged: pricing.price,
+      codes: res.codes,
+      product_name: selectedProduct.name,
+      tagFormat: res.tagFormat || tagFormat,
+    });
 
-  function confirmGenerate() {
-    setConfirmOpen(false);
-    setResult(null);
-    setProgress(0);
-    generateMutation.mutate({ productId, qty: quantity });
+    toast.success(
+      `Batch ${res.batchNumber} generated with ${tagFormat === "circle" ? "Circular Tags" : "Rectangular Labels"}!`,
+    );
   }
 
   function resetForm() {
     setResult(null);
-    setProgress(0);
     setQuantity(100);
   }
 
@@ -260,31 +222,87 @@ function RequestBatchTab() {
   if (result) {
     return (
       <div className="panel p-8">
-        <div className="mx-auto flex max-w-md flex-col items-center text-center">
-          <div className="grid size-16 place-items-center rounded-full bg-genuine/10 text-genuine animate-stamp">
+        <div className="mx-auto flex max-w-xl flex-col items-center text-center">
+          <div className="grid size-16 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 animate-stamp">
             <CheckCircle2 className="size-8" />
           </div>
           <h2 className="mt-4 font-display text-2xl font-semibold tracking-tight">
-            Batch created successfully
+            Batch Generated Successfully!
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            <span className="font-mono">{result.batch_number}</span> — {result.qty.toLocaleString()}{" "}
-            codes · Charged {formatMoney(result.charged, walletCurrency)}
+            <span className="font-mono font-medium text-foreground">{result.batch_number}</span> —{" "}
+            {result.qty.toLocaleString()} verification codes created for{" "}
+            <span className="font-semibold text-foreground">{result.product_name}</span>.
           </p>
 
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-xs text-amber-900 dark:text-amber-300 font-semibold font-mono">
+              <Sparkles className="size-3.5 text-[#caa33a]" />
+              Format:{" "}
+              {result.tagFormat === "circle"
+                ? "Circular Tag (30mm Seal)"
+                : "Rectangular Label (50×25mm)"}
+            </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs text-emerald-800 dark:text-emerald-300">
+              <CheckCircle2 className="size-3.5 text-emerald-600" />
+              Dynamic QR codes & holographic tags generated and ready
+            </div>
+          </div>
+
+          {/* Quick Actions */}
           <div className="mt-6 grid w-full gap-3 sm:grid-cols-2">
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm"
+              onClick={onGoToBank}
+            >
+              <QrCode className="size-4" /> View in Code Bank <ArrowRight className="size-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() =>
+                downloadTagsZip({
+                  batchNumber: result.batch_number,
+                  productName: result.product_name,
+                  brandName: companyName,
+                  codes: result.codes,
+                  style: result.tagFormat || "rectangle",
+                })
+              }
+              className="gap-2 border-amber-500/40 hover:bg-amber-500/10"
+            >
+              <Archive className="size-4 text-[#caa33a]" /> Download{" "}
+              {result.tagFormat === "circle" ? "Circular Tags" : "Rectangular Labels"} (ZIP)
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() =>
+                printTagSheet({
+                  batchNumber: result.batch_number,
+                  productName: result.product_name,
+                  brandName: companyName,
+                  codes: result.codes,
+                  style: result.tagFormat || "rectangle",
+                })
+              }
+              className="gap-2 border-amber-500/40 hover:bg-amber-500/10"
+            >
+              <Printer className="size-4 text-[#caa33a]" /> Print Adhesive Sheet (
+              {result.tagFormat === "circle" ? "Round" : "Sticker"})
+            </Button>
+
             <Button
               variant="outline"
               onClick={() => exportCsvForBatch(result.batch_id, result.batch_number, result.qty)}
+              className="gap-2"
             >
-              <Download className="size-4" /> Download CSV
-            </Button>
-            <Button onClick={() => exportQrSheetForBatch(result.batch_id, result.batch_number)}>
-              <Printer className="size-4" /> Print QR sheet
+              <Download className="size-4" /> Export CSV List
             </Button>
           </div>
-          <Button variant="ghost" className="mt-2" onClick={resetForm}>
-            Request another batch <ChevronRight className="size-4" />
+
+          <Button variant="ghost" className="mt-4 text-xs" onClick={resetForm}>
+            Request another batch <ChevronRight className="size-3.5 ml-1" />
           </Button>
         </div>
       </div>
@@ -294,7 +312,12 @@ function RequestBatchTab() {
   return (
     <div className="grid gap-6 lg:grid-cols-5">
       <div className="panel p-6 lg:col-span-3 space-y-5">
-        <p className="eyebrow">Request new batch</p>
+        <div className="flex items-center justify-between">
+          <p className="eyebrow">Request new batch</p>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Sparkles className="size-3.5 text-amber-500" /> Instant QR code generation
+          </span>
+        </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="rb-product">Product *</Label>
@@ -344,152 +367,218 @@ function RequestBatchTab() {
           </p>
         </div>
 
-        {generating && (
-          <div className="space-y-2 rounded-lg border p-4">
-            <div className="flex items-center gap-2 text-sm">
-              <Loader2 className="size-4 animate-spin text-primary" />
-              Generating {quantity.toLocaleString()} unique codes…
-            </div>
-            <Progress value={progress} />
-            <p className="text-xs text-muted-foreground">
-              This can take a minute for large batches. Please keep this tab open.
-            </p>
+        {/* Security Tag / Label Layout Format Selector */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-semibold">Security Tag Layout Format *</Label>
+            <span className="text-[11px] font-mono text-amber-900 dark:text-amber-300 font-medium">
+              Selected:{" "}
+              {tagFormat === "circle" ? "Circular Tag (30mm)" : "Rectangular Label (50×25mm)"}
+            </span>
           </div>
-        )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Circular Tag */}
+            <button
+              type="button"
+              onClick={() => setTagFormat("circle")}
+              className={`relative flex flex-col gap-2 rounded-xl border-2 p-3.5 text-left transition-all ${
+                tagFormat === "circle"
+                  ? "border-[#b8932c] bg-amber-500/10 shadow-sm ring-1 ring-[#b8932c]"
+                  : "border-border bg-card hover:border-[#b8932c]/50 hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-600 bg-gradient-to-br from-[#fff5be] via-[#e0b53c] to-[#835f10] shadow-sm">
+                    <CircleDot className="size-4 text-zinc-950" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-foreground">Circular Tag</h4>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      30mm Round Seal
+                    </span>
+                  </div>
+                </div>
+                {tagFormat === "circle" ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#b8932c] text-white">
+                    <Check className="size-3 stroke-[3]" />
+                  </span>
+                ) : (
+                  <span className="h-5 w-5 rounded-full border border-muted-foreground/30" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                Concentric gold medallion with serrated edge security teeth, scratch-off
+                authentication layer &amp; center dynamic QR.
+              </p>
+              <div className="mt-1 flex items-center gap-1 font-mono text-[10px] text-amber-900 dark:text-amber-300">
+                <span className="text-muted-foreground">Best for:</span>
+                <span className="bg-amber-500/20 px-1.5 py-0.5 rounded">Bottle caps</span>
+                <span className="bg-amber-500/20 px-1.5 py-0.5 rounded">Jars</span>
+                <span className="bg-amber-500/20 px-1.5 py-0.5 rounded">Seals</span>
+              </div>
+            </button>
+
+            {/* Rectangular Label */}
+            <button
+              type="button"
+              onClick={() => setTagFormat("rectangle")}
+              className={`relative flex flex-col gap-2 rounded-xl border-2 p-3.5 text-left transition-all ${
+                tagFormat === "rectangle"
+                  ? "border-[#b8932c] bg-amber-500/10 shadow-sm ring-1 ring-[#b8932c]"
+                  : "border-border bg-card hover:border-[#b8932c]/50 hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-600 bg-gradient-to-br from-[#fff8cb] via-[#d4a737] to-[#c19225] shadow-sm">
+                    <RectangleHorizontal className="size-4 text-zinc-950" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-foreground">Rectangular Label</h4>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      50×25mm Adhesive Label
+                    </span>
+                  </div>
+                </div>
+                {tagFormat === "rectangle" ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#b8932c] text-white">
+                    <Check className="size-3 stroke-[3]" />
+                  </span>
+                ) : (
+                  <span className="h-5 w-5 rounded-full border border-muted-foreground/30" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                Gold holographic security sticker with high-contrast QR plate, registered brand
+                emblem &amp; scrape verification layer.
+              </p>
+              <div className="mt-1 flex items-center gap-1 font-mono text-[10px] text-amber-900 dark:text-amber-300">
+                <span className="text-muted-foreground">Best for:</span>
+                <span className="bg-amber-500/20 px-1.5 py-0.5 rounded">Tea boxes</span>
+                <span className="bg-amber-500/20 px-1.5 py-0.5 rounded">Cartons</span>
+                <span className="bg-amber-500/20 px-1.5 py-0.5 rounded">Packs</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Security Sticker Preview Card */}
+        <div className="rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-amber-500/20 p-2 text-[#caa33a]">
+              <Sparkles className="size-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-foreground">
+                Tamper-Evident Physical Security Stickers Included
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Every code comes with high-resolution holographic stickers ready for your product
+                packaging (such as tea boxes, pharmaceuticals, and consumer goods), complete with
+                dynamic QR codes and scratch-off authentication layers.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <div className="text-xs text-muted-foreground">
-            Wallet balance:{" "}
-            <span
-              className={shortfall > 0 ? "font-medium text-invalid" : "font-medium text-foreground"}
-            >
-              {formatMoney(walletBalance, walletCurrency)}
+            Payment authorization:{" "}
+            <span className="font-semibold text-foreground">
+              {formatMoney(pricing.price, pricing.currency)}
             </span>
-            {shortfall > 0 && (
-              <>
-                <span className="mx-1">·</span>
-                <span className="text-invalid">Top up {formatMoney(shortfall, walletCurrency)} to proceed</span>
-              </>
-            )}
+            <span className="mx-1.5">·</span>
+            <span>Simulated gateway checkout</span>
           </div>
+
           <Button
-            onClick={onRequest}
-            disabled={!productId || quantity <= 0 || !canAfford || generating}
+            onClick={() => setPaymentModalOpen(true)}
+            disabled={!productId || quantity <= 0}
+            className="bg-zinc-950 hover:bg-black text-white gap-2"
           >
-            <FileCode className="size-4" /> Request batch
+            <FileCode className="size-4" /> Proceed to Payment Authorization
           </Button>
         </div>
       </div>
 
+      {/* Live Pricing Breakdown */}
       <div className="panel p-6 lg:col-span-2 space-y-4">
         <div>
           <p className="eyebrow">Live pricing</p>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-4xl font-semibold tracking-tight">
-              {quote.isLoading
-                ? "…"
-                : pricing.requiresQuote
-                  ? "Custom"
-                  : formatMoney(pricing.price, pricing.currency)}
+              {formatMoney(pricing.price, pricing.currency)}
             </span>
-            <span className="text-xs text-muted-foreground">
-              for {quantity.toLocaleString()} codes
-            </span>
+            <span className="text-xs text-muted-foreground">for {qty.toLocaleString()} codes</span>
           </div>
-          {pricing.requiresQuote && (
-            <p className="mt-1 text-xs text-caution-foreground">
-              Volume exceeds 1,000,000 lifetime codes — contact sales for a custom quote.
-            </p>
-          )}
         </div>
 
-        <div className="space-y-2 border-t pt-4">
-          {pricing.breakdown.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              Enter a quantity to see the pricing breakdown.
-            </p>
-          )}
-          {pricing.breakdown.map((row, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between rounded-md bg-secondary/60 px-3 py-2 text-sm"
-            >
-              <div className="flex flex-col">
-                <span className="font-medium text-foreground">{row.label}</span>
-                {row.rate > 0 && (
-                  <span className="text-[11px] text-muted-foreground">
-                    {row.qty.toLocaleString()} × {formatMoney(row.rate, pricing.currency)}
-                  </span>
-                )}
-              </div>
-              <span className="tabular-nums font-medium">
-                {row.subtotal === 0 ? "FREE" : formatMoney(row.subtotal, pricing.currency)}
-              </span>
-            </div>
-          ))}
+        <div className="space-y-2 border-t pt-3 text-xs">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Cost per code:</span>
+            <span className="font-medium">
+              {pricing.currency} {(pricing.price / Math.max(1, qty)).toFixed(2)} / unit
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Holographic Tag Assets:</span>
+            <span className="font-medium text-emerald-600">Included (Free)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Verification Gateway:</span>
+            <span className="font-medium text-emerald-600">Instant Active</span>
+          </div>
         </div>
 
-        {pricing.breakdown.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 border-t pt-4 text-xs">
-            <div>
-              <p className="text-muted-foreground">Free codes in this batch</p>
-              <p className="mt-0.5 font-medium">{pricing.free.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Paid codes</p>
-              <p className="mt-0.5 font-medium">{pricing.paid.toLocaleString()}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-muted-foreground">Currency</p>
-              <p className="mt-0.5 font-medium">{pricing.currency}</p>
-            </div>
+        <div className="rounded-lg bg-muted/50 p-3 text-[11px] text-muted-foreground space-y-1">
+          <p className="font-semibold text-foreground">Volume Tiers:</p>
+          <p>• 1 – 5,000: Standard rate</p>
+          <p>• 5,001 – 20,000: 20% discount</p>
+          <p>• 20,001 – 100,000: 40% discount</p>
+          <p>• 100,001+: 76% volume discount</p>
+        </div>
+
+        {/* Dynamic Tag Layout Live Preview */}
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-[#caa33a]" /> Live Layout Preview
+            </span>
+            <span className="text-[10px] font-mono text-amber-900 dark:text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded">
+              {tagFormat === "circle" ? "Circular Tag (30mm)" : "Rectangular Label"}
+            </span>
           </div>
-        )}
+          <div className="flex justify-center py-1">
+            <ProductTagPreview
+              codeString="ASM-SAMPLE-CODE"
+              productName={selectedProduct?.name || "Product Authentication"}
+              brandName={companyName}
+              batchNumber="SAMPLE"
+              style={tagFormat}
+              showActions={false}
+              size="sm"
+            />
+          </div>
+          <p className="text-[11px] text-center text-muted-foreground">
+            Selected format applied to all {qty.toLocaleString()} codes upon generation.
+          </p>
+        </div>
       </div>
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm batch request</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Product</span>
-              <span className="font-medium">
-                {products.data.find((p: any) => p.id === productId)?.name}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Quantity</span>
-              <span className="font-medium tabular-nums">{quantity.toLocaleString()} codes</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Amount to charge</span>
-              <span className="font-display text-lg font-semibold">
-                {formatMoney(pricing.price, pricing.currency)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Wallet after</span>
-              <span>{formatMoney(Math.max(0, walletBalance - pricing.price), walletCurrency)}</span>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmGenerate} disabled={generating}>
-              {generating ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Generating…
-                </>
-              ) : (
-                <>Confirm and charge wallet</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Simulated Payment Gateway Modal */}
+      {selectedProduct && (
+        <PaymentGatewayModal
+          open={paymentModalOpen}
+          onOpenChange={setPaymentModalOpen}
+          productName={selectedProduct.name}
+          quantity={qty}
+          amount={pricing.price}
+          currency={pricing.currency}
+          onAuthorize={handleAuthorizePayment}
+        />
+      )}
     </div>
   );
 }
@@ -501,12 +590,75 @@ function RequestBatchTab() {
 function BatchHistoryTab() {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
+  const companyName = company?.name || "Asemi Brand";
 
   const batches = useQuery({
     queryKey: ["batches", companyId],
     enabled: !!companyId,
     queryFn: () => listBatches(companyId!),
   });
+
+  const [selectedBatchForTags, setSelectedBatchForTags] = useState<{
+    id: string;
+    batchNumber: string;
+    productName: string;
+    quantity: number;
+    tagFormat?: "circle" | "rectangle";
+  } | null>(null);
+
+  const [historyBatchForQr, setHistoryBatchForQr] = useState<{
+    batchId: string;
+    productInfo: BatchProductInfo;
+  } | null>(null);
+
+  async function handleBatchTagsZip(
+    batchId: string,
+    batchNumber: string,
+    productName: string,
+    style: "rectangle" | "circle",
+  ) {
+    try {
+      const loadId = toast.loading(`Preparing tags for ${batchNumber}…`);
+      const codeStrings = await listBatchCodeStrings(batchId);
+      await downloadTagsZip({
+        batchNumber,
+        productName,
+        brandName: companyName,
+        codes: codeStrings,
+        style,
+        onProgress: (cur, tot) => {
+          toast.loading(`Exporting tags (${cur}/${tot})…`, { id: loadId });
+        },
+      });
+      toast.success(`Downloaded tags ZIP for ${batchNumber}`, { id: loadId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate tag zip");
+    }
+  }
+
+  async function handleBatchPrintSheet(
+    batchId: string,
+    batchNumber: string,
+    productName: string,
+    style: "rectangle" | "circle",
+  ) {
+    try {
+      toast.loading("Generating printable sticker sheet…", { id: "print-sheet" });
+      const codeStrings = await listBatchCodeStrings(batchId);
+      await printTagSheet({
+        batchNumber,
+        productName,
+        brandName: companyName,
+        codes: codeStrings,
+        style,
+      });
+      toast.success("Print sheet ready!", { id: "print-sheet" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to open print sheet", { id: "print-sheet" });
+    }
+  }
 
   if (batches.isLoading) {
     return <div className="panel h-96 animate-pulse p-5" />;
@@ -546,62 +698,88 @@ function BatchHistoryTab() {
             <TableRow>
               <TableHead>Batch number</TableHead>
               <TableHead>Product</TableHead>
+              <TableHead>Format</TableHead>
               <TableHead className="text-right">Quantity</TableHead>
               <TableHead className="text-right">Charged</TableHead>
               <TableHead className="text-right">Created</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">Stickers & Exports</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {batches.data.map((b) => (
               <TableRow key={b.id}>
-                <TableCell className="font-mono text-xs">{b.batchNumber}</TableCell>
+                <TableCell className="font-mono text-xs font-semibold">{b.batchNumber}</TableCell>
                 <TableCell>{b.productName ?? "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-mono font-medium ${
+                      b.tagFormat === "circle"
+                        ? "bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-500/30"
+                        : "bg-muted text-muted-foreground border"
+                    }`}
+                  >
+                    {b.tagFormat === "circle" ? "● Circular Tag" : "▬ Rect Label"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium">
                   {b.quantity.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(b.amountCharged ?? 0, b.currency)}
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
+                <TableCell className="text-right text-muted-foreground text-xs">
                   {new Date(b.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
-                  <StatusBadge
-                    status={
-                      b.status === "ready"
-                        ? "ready"
-                        : b.status === "exported"
-                          ? "approved"
-                          : b.status === "failed"
-                            ? "escalated"
-                            : "pending"
-                    }
-                  />
-                  {b.status === "generating" && (
-                    <span className="ml-2 text-[11px] tabular-nums text-muted-foreground">
-                      {Math.round((b.generationProgress || 0) * 100)}%
-                    </span>
-                  )}
+                  <StatusBadge status="approved" />
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-end gap-1.5">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      disabled={b.status !== "ready" && b.status !== "exported"}
-                      onClick={() => exportCsvForBatch(b.id, b.batchNumber, b.quantity)}
+                      onClick={() =>
+                        setHistoryBatchForQr({
+                          batchId: b.id,
+                          productInfo: {
+                            productName: b.productName || "Product",
+                            batchNumber: b.batchNumber,
+                            productId: b.productId,
+                            quantity: b.quantity,
+                            brandName: companyName,
+                            tagFormat: b.tagFormat || "rectangle",
+                          },
+                        })
+                      }
+                      className="gap-1 text-xs border-amber-500/40 text-amber-900 dark:text-amber-300 hover:bg-amber-500/10"
+                      title="Generate and download dynamic QR code for this batch"
                     >
-                      <Download className="size-3.5" /> CSV
+                      <QrCode className="size-3.5 text-[#caa33a]" /> Batch QR
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={b.status !== "ready" && b.status !== "exported"}
-                      onClick={() => exportQrSheetForBatch(b.id, b.batchNumber)}
+                      onClick={() =>
+                        setSelectedBatchForTags({
+                          id: b.id,
+                          batchNumber: b.batchNumber,
+                          productName: b.productName || "Product",
+                          quantity: b.quantity,
+                          tagFormat: b.tagFormat || "rectangle",
+                        })
+                      }
+                      className="gap-1.5 text-xs border-[#b8932c]/50 text-amber-900 dark:text-amber-300 hover:bg-amber-500/10"
                     >
-                      <Printer className="size-3.5" /> Print
+                      <Sparkles className="size-3.5 text-[#caa33a]" /> Tags & Print
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => exportCsvForBatch(b.id, b.batchNumber, b.quantity)}
+                      className="gap-1 text-xs"
+                    >
+                      <Download className="size-3.5" /> CSV
                     </Button>
                   </div>
                 </TableCell>
@@ -610,6 +788,153 @@ function BatchHistoryTab() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Batch Tags Export Dialog */}
+      {selectedBatchForTags && (
+        <Dialog
+          open={!!selectedBatchForTags}
+          onOpenChange={(open) => !open && setSelectedBatchForTags(null)}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="size-5 text-[#caa33a]" /> Download Tags for Batch{" "}
+                {selectedBatchForTags.batchNumber}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2 text-sm">
+              <p className="text-xs text-muted-foreground">
+                Choose your tag style to download high-resolution PNG stickers (zipped) or generate
+                a printable adhesive sheet.
+              </p>
+
+              <div className="space-y-2">
+                <div
+                  className={`rounded-lg border p-3 flex items-center justify-between transition-all ${
+                    selectedBatchForTags.tagFormat === "rectangle"
+                      ? "border-[#b8932c] bg-amber-500/10 shadow-xs"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <RectangleHorizontal className="size-5 text-[#caa33a]" />
+                    <div>
+                      <div className="font-semibold text-xs flex items-center gap-1.5">
+                        <span>Holographic Rectangular Seal</span>
+                        {selectedBatchForTags.tagFormat === "rectangle" && (
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[9px] text-amber-900 dark:text-amber-300 font-bold">
+                            Batch Default
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        50×25mm adhesive packaging sticker
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleBatchPrintSheet(
+                          selectedBatchForTags.id,
+                          selectedBatchForTags.batchNumber,
+                          selectedBatchForTags.productName,
+                          "rectangle",
+                        )
+                      }
+                      className="text-xs h-8"
+                    >
+                      <Printer className="size-3.5 mr-1" /> Print
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        handleBatchTagsZip(
+                          selectedBatchForTags.id,
+                          selectedBatchForTags.batchNumber,
+                          selectedBatchForTags.productName,
+                          "rectangle",
+                        )
+                      }
+                      className="text-xs h-8 bg-zinc-950 hover:bg-black text-white"
+                    >
+                      <Archive className="size-3.5 mr-1" /> ZIP
+                    </Button>
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-lg border p-3 flex items-center justify-between transition-all ${
+                    selectedBatchForTags.tagFormat === "circle"
+                      ? "border-[#b8932c] bg-amber-500/10 shadow-xs"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CircleDot className="size-5 text-[#caa33a]" />
+                    <div>
+                      <div className="font-semibold text-xs flex items-center gap-1.5">
+                        <span>Circular Tamper Badge</span>
+                        {selectedBatchForTags.tagFormat === "circle" && (
+                          <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[9px] text-amber-900 dark:text-amber-300 font-bold">
+                            Batch Default
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        30mm round concentric medallion
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleBatchPrintSheet(
+                          selectedBatchForTags.id,
+                          selectedBatchForTags.batchNumber,
+                          selectedBatchForTags.productName,
+                          "circle",
+                        )
+                      }
+                      className="text-xs h-8"
+                    >
+                      <Printer className="size-3.5 mr-1" /> Print
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        handleBatchTagsZip(
+                          selectedBatchForTags.id,
+                          selectedBatchForTags.batchNumber,
+                          selectedBatchForTags.productName,
+                          "circle",
+                        )
+                      }
+                      className="text-xs h-8 bg-zinc-950 hover:bg-black text-white"
+                    >
+                      <Archive className="size-3.5 mr-1" /> ZIP
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Dynamic Batch QR Code Modal */}
+      {historyBatchForQr && (
+        <BatchQrModal
+          open={!!historyBatchForQr}
+          onOpenChange={(open) => !open && setHistoryBatchForQr(null)}
+          batchId={historyBatchForQr.batchId}
+          productInfo={historyBatchForQr.productInfo}
+        />
+      )}
     </div>
   );
 }
@@ -621,11 +946,20 @@ function BatchHistoryTab() {
 function CodeBankTab() {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
+  const companyName = company?.name || "Asemi Security";
 
+  const [tagStyle, setTagStyle] = useState<"rectangle" | "circle">("rectangle");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterBatch, setFilterBatch] = useState("all");
   const [search, setSearch] = useState("");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [previewCode, setPreviewCode] = useState<CodeWithExtras | null>(null);
+  const [selectedBatchForQr, setSelectedBatchForQr] = useState<{
+    batchId: string;
+    productInfo: BatchProductInfo;
+  } | null>(null);
+  const [historyExpanded, setHistoryExpanded] = useState(true);
 
   const products = useQuery({
     queryKey: ["products", companyId],
@@ -671,17 +1005,478 @@ function CodeBankTab() {
     },
   });
 
-  const searchClean = search.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const searchClean = search
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
   const visibleCodes = useMemo(() => {
     if (!searchClean) return codes.data ?? [];
     return (codes.data ?? []).filter((c) =>
-      c.codeString.toUpperCase().replace(/[^A-Z0-9]/g, "").includes(searchClean),
+      c.codeString
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .includes(searchClean),
     );
   }, [codes.data, searchClean]);
 
+  const activeSelectedBatch = useMemo(() => {
+    if (filterBatch === "all") return null;
+    return (batches.data ?? []).find((b: any) => b.id === filterBatch) || null;
+  }, [filterBatch, batches.data]);
+
+  // Sync format automatically when user selects a batch
+  useEffect(() => {
+    if (activeSelectedBatch?.tagFormat) {
+      setTagStyle(activeSelectedBatch.tagFormat);
+    }
+  }, [activeSelectedBatch?.tagFormat]);
+
+  /**
+   * Dynamically generates and displays a QR code for a batch,
+   * with full product information and download buttons for the user.
+   */
+  const handleGenerateAndDisplayBatchQr = async (
+    batchId: string,
+    productInfo: BatchProductInfo,
+  ) => {
+    try {
+      toast.loading("Generating dynamic batch QR code…", { id: "batch-qr-gen" });
+      const res = await generateBatchQrCode(batchId, productInfo);
+      setSelectedBatchForQr({ batchId, productInfo });
+      toast.success(`Dynamic QR code ready for batch ${productInfo.batchNumber || batchId}!`, {
+        id: "batch-qr-gen",
+      });
+      return res;
+    } catch (err) {
+      console.error("Batch QR generation failed", err);
+      toast.error("Failed to generate batch QR code", { id: "batch-qr-gen" });
+    }
+  };
+
+  // Bulk actions for visible codes
+  const handleBulkZip = async () => {
+    if (!visibleCodes.length) return;
+    try {
+      const loadId = toast.loading(`Exporting ${Math.min(visibleCodes.length, 100)} tags…`);
+      await downloadTagsZip({
+        batchNumber: filterBatch !== "all" ? filterBatch : "selection",
+        productName: visibleCodes[0]?.productName || "Product",
+        brandName: companyName,
+        codes: visibleCodes.map((c) => c.codeString),
+        style: tagStyle,
+        onProgress: (cur, tot) => {
+          toast.loading(`Exporting tags (${cur}/${tot})…`, { id: loadId });
+        },
+      });
+      toast.success("Downloaded tags archive", { id: loadId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Bulk export failed");
+    }
+  };
+
+  const handleBulkPrint = async () => {
+    if (!visibleCodes.length) return;
+    try {
+      toast.loading("Generating printable sticker sheet…", { id: "bulk-print" });
+      await printTagSheet({
+        batchNumber: filterBatch !== "all" ? filterBatch : "bank",
+        productName: visibleCodes[0]?.productName || "Product",
+        brandName: companyName,
+        codes: visibleCodes.map((c) => c.codeString),
+        style: tagStyle,
+      });
+      toast.success("Print sheet ready!", { id: "bulk-print" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Print generation failed", { id: "bulk-print" });
+    }
+  };
+
+  const chronologicalBatches = useMemo(() => {
+    return [...(batches.data ?? [])].sort((a, b) => {
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
+    });
+  }, [batches.data]);
+
+  const handleBatchTagsZip = async (
+    batchId: string,
+    batchNumber: string,
+    productName: string,
+    style: "rectangle" | "circle",
+  ) => {
+    try {
+      const loadId = toast.loading(`Preparing tags for batch ${batchNumber}…`);
+      const codeStrings = await listBatchCodeStrings(batchId);
+      await downloadTagsZip({
+        batchNumber,
+        productName,
+        brandName: companyName,
+        codes: codeStrings,
+        style,
+        onProgress: (cur, tot) => {
+          toast.loading(`Exporting tags (${cur}/${tot})…`, { id: loadId });
+        },
+      });
+      toast.success(`Downloaded tags ZIP for ${batchNumber}`, { id: loadId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate tag zip");
+    }
+  };
+
+  const handleBatchPrintSheet = async (
+    batchId: string,
+    batchNumber: string,
+    productName: string,
+    style: "rectangle" | "circle",
+  ) => {
+    try {
+      toast.loading("Generating printable sticker sheet…", { id: "print-sheet" });
+      const codeStrings = await listBatchCodeStrings(batchId);
+      await printTagSheet({
+        batchNumber,
+        productName,
+        brandName: companyName,
+        codes: codeStrings,
+        style,
+      });
+      toast.success("Print sheet ready!", { id: "print-sheet" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to open print sheet", { id: "print-sheet" });
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div className="panel p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
+      {/* Top Banner & Tag Style Selector */}
+      <div className="panel p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-[#caa33a]" />
+            <h3 className="font-semibold text-sm text-foreground">
+              Dynamic Verification QR Codes & Security Stickers
+            </h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Select your preferred sticker format below to download or print directly onto adhesive
+            product labels.
+          </p>
+        </div>
+
+        {/* Tag Style Chooser: Rectangle vs Circle */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border bg-background p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setTagStyle("rectangle")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                tagStyle === "rectangle"
+                  ? "bg-amber-500/20 text-amber-950 dark:text-amber-200 border border-amber-500/40 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <RectangleHorizontal className="size-3.5 text-[#caa33a]" />
+              Rectangular Label
+            </button>
+            <button
+              type="button"
+              onClick={() => setTagStyle("circle")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                tagStyle === "circle"
+                  ? "bg-amber-500/20 text-amber-950 dark:text-amber-200 border border-amber-500/40 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CircleDot className="size-3.5 text-[#caa33a]" />
+              Circular Tag
+            </button>
+          </div>
+
+          {/* View Mode Toggle: Cards vs Table */}
+          <div className="flex items-center rounded-lg border bg-background p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={`rounded-md p-1.5 transition ${
+                viewMode === "cards"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Card Gallery View"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`rounded-md p-1.5 transition ${
+                viewMode === "table"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Table View"
+            >
+              <List className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/*                       BATCH HISTORY SECTION                               */}
+      {/* ========================================================================= */}
+      <div className="panel overflow-hidden border border-border shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b bg-muted/30 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300">
+              <History className="size-4 text-[#caa33a]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm text-foreground">Batch History</h3>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                  {chronologicalBatches.length}{" "}
+                  {chronologicalBatches.length === 1 ? "Batch" : "Batches"}
+                </span>
+                {filterBatch !== "all" && activeSelectedBatch && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] text-amber-900 dark:text-amber-300 font-bold border border-amber-500/30">
+                    Filtered: {activeSelectedBatch.batchNumber}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Chronological list of all previously generated QR code batches with status and
+                creation date.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            {filterBatch !== "all" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterBatch("all")}
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Reset Filter
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHistoryExpanded((e) => !e)}
+              className="h-8 gap-1.5 text-xs"
+            >
+              {historyExpanded ? (
+                <>
+                  <ChevronUp className="size-3.5" /> Collapse History
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="size-3.5" /> Expand History ({chronologicalBatches.length}
+                  )
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {historyExpanded && (
+          <div>
+            {batches.isLoading ? (
+              <div className="p-8 text-center text-xs text-muted-foreground animate-pulse">
+                Loading batch history…
+              </div>
+            ) : !chronologicalBatches.length ? (
+              <div className="p-8 text-center">
+                <p className="text-sm font-medium text-muted-foreground">
+                  No QR code batches generated yet
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Generated batches will appear here in chronological order with their status and
+                  creation date.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/40 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    <TableRow>
+                      <TableHead>Created Date</TableHead>
+                      <TableHead>Batch Identifier</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Format</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {chronologicalBatches.map((b: any) => {
+                      const isSelected = filterBatch === b.id;
+                      const dateObj = new Date(b.createdAt);
+                      const formattedDate = dateObj.toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      });
+                      const formattedTime = dateObj.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+
+                      return (
+                        <TableRow
+                          key={b.id}
+                          className={`transition-colors ${
+                            isSelected
+                              ? "bg-amber-500/10 hover:bg-amber-500/15 border-l-4 border-l-[#caa33a]"
+                              : "hover:bg-muted/40"
+                          }`}
+                        >
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="size-3.5 text-muted-foreground" />
+                              <span className="font-medium text-foreground">{formattedDate}</span>
+                              <span className="text-[11px] font-mono text-muted-foreground">
+                                {formattedTime}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="font-mono text-xs font-semibold whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span>{b.batchNumber}</span>
+                              {isSelected && (
+                                <span className="rounded bg-primary/20 px-1.5 py-0.2 font-mono text-[9px] text-primary font-bold">
+                                  ACTIVE
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-xs font-medium max-w-[160px] truncate">
+                            {b.productName ?? "—"}
+                          </TableCell>
+
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-mono font-medium ${
+                                b.tagFormat === "circle"
+                                  ? "bg-amber-500/15 text-amber-900 dark:text-amber-300 border border-amber-500/30"
+                                  : "bg-muted text-muted-foreground border"
+                              }`}
+                            >
+                              {b.tagFormat === "circle" ? "● Circular Tag" : "▬ Rect Label"}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-right tabular-nums font-mono text-xs font-semibold">
+                            {b.quantity.toLocaleString()}
+                          </TableCell>
+
+                          <TableCell>
+                            <StatusBadge
+                              status={b.status === "ready" ? "approved" : b.status || "approved"}
+                            />
+                          </TableCell>
+
+                          <TableCell className="text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant={isSelected ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setFilterBatch(isSelected ? "all" : b.id)}
+                                className={`h-7 px-2 text-xs font-medium ${
+                                  isSelected
+                                    ? "bg-zinc-950 text-white hover:bg-black"
+                                    : "hover:bg-accent"
+                                }`}
+                                title={
+                                  isSelected
+                                    ? "Showing codes from this batch"
+                                    : "Filter Code Bank to this batch"
+                                }
+                              >
+                                {isSelected ? (
+                                  <>
+                                    <Check className="size-3 mr-1" /> Selected
+                                  </>
+                                ) : (
+                                  <>Filter Codes</>
+                                )}
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleGenerateAndDisplayBatchQr(b.id, {
+                                    productName: b.productName || "Product",
+                                    batchNumber: b.batchNumber,
+                                    productId: b.productId,
+                                    quantity: b.quantity,
+                                    brandName: companyName,
+                                    tagFormat: b.tagFormat || "rectangle",
+                                  })
+                                }
+                                className="h-7 px-2 text-xs border-amber-500/40 text-amber-900 dark:text-amber-300 hover:bg-amber-500/10"
+                                title="Dynamic Batch QR code & download"
+                              >
+                                <QrCode className="size-3 text-[#caa33a] mr-1" /> QR
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  handleBatchTagsZip(
+                                    b.id,
+                                    b.batchNumber,
+                                    b.productName || "Product",
+                                    b.tagFormat || "rectangle",
+                                  )
+                                }
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                title="Download ZIP tags"
+                              >
+                                <Archive className="size-3 mr-1" /> ZIP
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  handleBatchPrintSheet(
+                                    b.id,
+                                    b.batchNumber,
+                                    b.productName || "Product",
+                                    b.tagFormat || "rectangle",
+                                  )
+                                }
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                title="Print adhesive sheet"
+                              >
+                                <Printer className="size-3 mr-1" /> Print
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="panel p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 items-end">
         <div className="space-y-1.5">
           <Label htmlFor="cb-prod">
             <Filter className="mr-1 inline size-3" /> Product
@@ -728,56 +1523,181 @@ function CodeBankTab() {
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               id="cb-search"
-              placeholder="XXXX-XXXX-XXXX"
+              placeholder="ASM-XXXX-XXXXXX"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
+              className="pl-8 font-mono text-xs"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant={flaggedOnly ? "default" : "outline"}
             size="sm"
             onClick={() => setFlaggedOnly((f) => !f)}
-            className="w-full justify-center"
+            className="w-1/2 justify-center text-xs"
           >
-            <Flag className="size-3.5" />
-            {flaggedOnly ? "Flagged only" : "Show all"}
+            <Flag className="size-3.5 mr-1" />
+            {flaggedOnly ? "Flagged" : "All codes"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const target = activeSelectedBatch || visibleBatches[0];
+              if (target) {
+                handleGenerateAndDisplayBatchQr(target.id, {
+                  productName: target.productName || "Product",
+                  batchNumber: target.batchNumber,
+                  productId: target.productId,
+                  quantity: target.quantity,
+                  brandName: companyName,
+                });
+              } else {
+                toast.info("Please select or create a batch first.");
+              }
+            }}
+            className="w-1/2 justify-center text-xs border-amber-500/40 text-amber-900 dark:text-amber-300 hover:bg-amber-500/10"
+            title="Generate & display dynamic QR code for batch"
+          >
+            <QrCode className="size-3.5 mr-1 text-[#caa33a]" /> Batch QR
+          </Button>
+        </div>
+
+        {/* Bulk Action Buttons */}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkPrint}
+            disabled={!visibleCodes.length}
+            className="w-1/2 justify-center text-xs"
+            title="Print sheet of visible codes"
+          >
+            <Printer className="size-3.5 mr-1" /> Print
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkZip}
+            disabled={!visibleCodes.length}
+            className="w-1/2 justify-center text-xs"
+            title="Download ZIP of visible tags"
+          >
+            <Archive className="size-3.5 mr-1" /> ZIP
           </Button>
         </div>
       </div>
 
-      <div className="panel overflow-hidden">
+      {/* Dynamic Batch QR Code Panel (displayed when a batch is filtered/selected) */}
+      {activeSelectedBatch && (
+        <BatchQrInlinePanel
+          batchId={activeSelectedBatch.id}
+          productInfo={{
+            productName: activeSelectedBatch.productName || "Product",
+            batchNumber: activeSelectedBatch.batchNumber,
+            productId: activeSelectedBatch.productId,
+            quantity: activeSelectedBatch.quantity,
+            brandName: companyName,
+          }}
+          onOpenModal={() =>
+            handleGenerateAndDisplayBatchQr(activeSelectedBatch.id, {
+              productName: activeSelectedBatch.productName || "Product",
+              batchNumber: activeSelectedBatch.batchNumber,
+              productId: activeSelectedBatch.productId,
+              quantity: activeSelectedBatch.quantity,
+              brandName: companyName,
+            })
+          }
+        />
+      )}
+
+      {/* Main Content: Gallery or Table */}
+      <div className="panel overflow-hidden p-4">
         {codes.isLoading ? (
           <div className="h-96 animate-pulse" />
         ) : !visibleCodes.length ? (
           <div className="p-12">
             <EmptyState
-              title="No codes match"
-              description="Adjust filters or request a new batch to generate codes."
+              title="No verification codes found"
+              description="Request your first batch to dynamically generate scannable verification codes and physical security tags."
             />
           </div>
+        ) : viewMode === "cards" ? (
+          /* ================= GALLERY CARDS VIEW ================= */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Displaying <strong>{visibleCodes.length}</strong> dynamic verification tags
+              </span>
+              <span>
+                Format:{" "}
+                {tagStyle === "rectangle"
+                  ? "Holographic Rectangular Seal"
+                  : "Circular Tamper Badge"}
+              </span>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 place-items-center">
+              {visibleCodes.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-2xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-md flex flex-col items-center w-full max-w-[290px]"
+                >
+                  <div className="w-full flex items-center justify-between text-[11px] text-muted-foreground pb-2 mb-2 border-b">
+                    <span className="truncate max-w-[140px] font-medium text-foreground">
+                      {c.productName}
+                    </span>
+                    <span className="font-mono">{c.batchNumber}</span>
+                  </div>
+
+                  <ProductTagPreview
+                    codeString={c.codeString}
+                    productName={c.productName}
+                    brandName={companyName}
+                    batchNumber={c.batchNumber}
+                    style={tagStyle}
+                    size="sm"
+                    showActions={true}
+                  />
+
+                  <div className="mt-3 w-full flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t">
+                    <span>Scans: {c.scanCount || 0}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewCode(c)}
+                      className="text-primary hover:underline font-medium flex items-center gap-1"
+                    >
+                      <Eye className="size-3" /> Full Preview
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
+          /* ================= DATA TABLE VIEW ================= */
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
+                  <TableHead className="w-16">QR Code</TableHead>
+                  <TableHead>Code String</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Batch</TableHead>
                   <TableHead className="text-right">Scans</TableHead>
-                  <TableHead className="text-right">Printed</TableHead>
-                  <TableHead>Exported</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Review</TableHead>
+                  <TableHead className="text-right">Download & Tag Preview</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleCodes.map((c: any) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-mono text-xs">
+                    <TableCell>
+                      <CodeQrThumbnail codeString={c.codeString} />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs font-semibold">
                       {c.codeString}
                       {c.flagged && (
                         <span className="ml-2 inline-flex align-middle">
@@ -785,22 +1705,45 @@ function CodeBankTab() {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{c.productName ?? "—"}</TableCell>
+                    <TableCell className="text-xs">{c.productName ?? "—"}</TableCell>
                     <TableCell className="font-mono text-[11px] text-muted-foreground">
                       {c.batchNumber ?? "—"}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="text-right tabular-nums text-xs">
                       {(c.scanCount ?? 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{c.printCount ?? 0}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {c.exportedAt ? new Date(c.exportedAt).toLocaleDateString() : "—"}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={c.flagged ? "escalated" : "approved"} />
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge status={c.reviewStatus} />
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const b = batches.data?.find((x: any) => x.id === c.batchId);
+                            handleGenerateAndDisplayBatchQr(c.batchId, {
+                              productName: c.productName || "Product",
+                              batchNumber: c.batchNumber,
+                              productId: c.productId,
+                              quantity: b?.quantity,
+                              brandName: companyName,
+                            });
+                          }}
+                          className="h-8 gap-1 text-xs border border-transparent hover:border-amber-500/30"
+                          title="Generate & download dynamic QR for this batch"
+                        >
+                          <QrCode className="size-3.5 text-[#caa33a]" /> Batch QR
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPreviewCode(c)}
+                          className="h-8 gap-1.5 text-xs text-amber-900 dark:text-amber-300 border-amber-500/40 hover:bg-amber-500/10"
+                        >
+                          <Sparkles className="size-3.5 text-[#caa33a]" /> Preview Tag
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -808,13 +1751,69 @@ function CodeBankTab() {
             </Table>
           </div>
         )}
-        {codes.data && codes.data.length >= 500 && (
-          <p className="border-t p-3 text-center text-xs text-muted-foreground">
-            Showing first 500 matches. Use filters to narrow results.
-          </p>
-        )}
       </div>
+
+      {/* Modal for detailed Tag Preview */}
+      {previewCode && (
+        <TagPreviewModal
+          open={!!previewCode}
+          onOpenChange={(open) => !open && setPreviewCode(null)}
+          codeString={previewCode.codeString}
+          productName={previewCode.productName}
+          brandName={companyName}
+          batchNumber={previewCode.batchNumber}
+          defaultStyle={tagStyle}
+        />
+      )}
+
+      {/* Modal for dynamically generated Batch QR code */}
+      {selectedBatchForQr && (
+        <BatchQrModal
+          open={!!selectedBatchForQr}
+          onOpenChange={(open) => !open && setSelectedBatchForQr(null)}
+          batchId={selectedBatchForQr.batchId}
+          productInfo={selectedBatchForQr.productInfo}
+        />
+      )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               INLINE QR COMP                               */
+/* -------------------------------------------------------------------------- */
+
+function CodeQrThumbnail({ codeString }: { codeString: string }) {
+  const [dataUrl, setDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+    generateQrDataUrl(
+      typeof window !== "undefined"
+        ? `${window.location.origin}/v/${codeString}`
+        : `https://asemi.io/v/${codeString}`,
+      { width: 64, margin: 0 },
+    ).then((url) => {
+      if (active) setDataUrl(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [codeString]);
+
+  if (!dataUrl) {
+    return <div className="size-8 rounded bg-muted animate-pulse" />;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => downloadDataUrl(dataUrl, `qr-${codeString}.png`)}
+      className="group relative size-8 overflow-hidden rounded border border-border p-0.5 hover:ring-2 hover:ring-primary transition"
+      title="Click to download QR code"
+    >
+      <img src={dataUrl} alt="QR" className="size-full object-contain" />
+    </button>
   );
 }
 
@@ -827,8 +1826,10 @@ async function exportCsvForBatch(batchId: string, batchNumber: string, fallbackQ
     toast.loading(`Fetching ${fallbackQty.toLocaleString()} codes…`, { id: "csv" });
     const strings = await listBatchCodeStrings(batchId);
 
-    const lines = ["code_string"];
-    for (const s of strings) lines.push(s);
+    const lines = ["code_string,verification_url"];
+    for (const s of strings) {
+      lines.push(`${s},${window.location.origin}/v/${s}`);
+    }
 
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -837,41 +1838,9 @@ async function exportCsvForBatch(batchId: string, batchNumber: string, fallbackQ
     a.download = `asemi-${batchNumber}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    try {
-      await fnMarkCodesExported(batchId);
-    } catch {
-      /* non-critical: print_count / exported_at are best-effort */
-    }
     toast.success(`Downloaded ${strings.length.toLocaleString()} codes`, { id: "csv" });
   } catch (err) {
     console.error(err);
     toast.error(err instanceof Error ? err.message : "CSV export failed", { id: "csv" });
-  }
-}
-
-async function exportQrSheetForBatch(batchId: string, batchNumber: string) {
-  const loadId = toast.loading(`Generating print files for ${batchNumber}…`);
-  try {
-    const res = await fnExportBatch(batchId);
-    const win = window.open(res.pdfUrl, "_blank");
-    toast.success(
-      `Print files ready — ${res.totalCodes.toLocaleString()} codes` +
-        (res.pdfCapped ? ` (PDF capped at ${res.pdfCodes.toLocaleString()}; full CSV also ready)` : ""),
-      { id: loadId },
-    );
-    if (!win) {
-      const a = document.createElement("a");
-      a.href = res.pdfUrl;
-      a.download = `asemi-${batchNumber}-labels.pdf`;
-      a.click();
-    }
-    // Offer the CSV too.
-    const csvLink = document.createElement("a");
-    csvLink.href = res.csvUrl;
-    csvLink.download = `asemi-${batchNumber}.csv`;
-    csvLink.click();
-  } catch (err) {
-    console.error(err);
-    toast.error(err instanceof Error ? err.message : "Export failed", { id: loadId });
   }
 }

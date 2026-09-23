@@ -83,7 +83,7 @@ function DashboardOverview() {
   const recentBatches = useQuery({
     queryKey: ["recent-batches", companyId],
     enabled: !!companyId,
-    queryFn: async () => (await listBatches(companyId!, 5)),
+    queryFn: async () => await listBatches(companyId!, 5),
   });
 
   const scanSeries = useQuery({
@@ -122,7 +122,8 @@ function DashboardOverview() {
   }
 
   if (stats.isError) {
-    const msg = stats.error instanceof Error ? stats.error.message : "Failed to load overview data.";
+    const msg =
+      stats.error instanceof Error ? stats.error.message : "Failed to load overview data.";
     const needsIndex = /index|FAILED_PRECONDITION/i.test(msg);
     return (
       <div className="space-y-6">
@@ -307,9 +308,9 @@ function DashboardOverview() {
                       <p className="text-xs text-muted-foreground">{p.category}</p>
                     </div>
                   </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(p.createdAt).toLocaleDateString()}
-                    </p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(p.createdAt).toLocaleDateString()}
+                  </p>
                 </Link>
               ))
             ) : (
@@ -339,22 +340,22 @@ function DashboardOverview() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                  {recentBatches.data?.length ? (
-                    recentBatches.data.map((b: any) => (
-                      <tr key={b.id}>
-                        <td className="px-4 py-3 font-mono text-xs">{b.batchNumber}</td>
-                        <td className="px-4 py-3">{b.productName}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">
-                          {b.quantity.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
-                          {formatMoney(b.amountCharged, b.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-muted-foreground">
-                          {new Date(b.createdAt).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))
+                {recentBatches.data?.length ? (
+                  recentBatches.data.map((b: any) => (
+                    <tr key={b.id}>
+                      <td className="px-4 py-3 font-mono text-xs">{b.batchNumber}</td>
+                      <td className="px-4 py-3">{b.productName}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {b.quantity.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatMoney(b.amountCharged, b.currency)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {new Date(b.createdAt).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">

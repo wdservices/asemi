@@ -29,7 +29,26 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
   onOpenVerifier,
   onEnterDashboard,
 }) => {
-  const [pricingCurrency, setPricingCurrency] = useState<"NGN" | "USD">("NGN");
+  // Auto-detect visitor's country currency based on regional location / timezone
+  const [pricingCurrency] = useState<"NGN" | "USD">(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const lang = typeof navigator !== "undefined" ? navigator.language : "";
+      if (
+        tz.toLowerCase().includes("lagos") ||
+        tz.toLowerCase().includes("nigeria") ||
+        tz.toLowerCase().includes("africa/lagos") ||
+        tz.toLowerCase().includes("west_central_africa") ||
+        lang.includes("en-NG") ||
+        lang.includes("NG")
+      ) {
+        return "NGN";
+      }
+      return "USD";
+    } catch {
+      return "USD";
+    }
+  });
   const [calculatorVolume, setCalculatorVolume] = useState<number>(25000);
 
   // Pricing calculator values
@@ -335,24 +354,14 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
               </p>
             </div>
 
-            {/* Currency switcher */}
-            <div className="flex items-center gap-1 bg-[#f0ece4] p-1 border border-[#e2ded5] self-start sm:self-auto">
-              <button
-                onClick={() => setPricingCurrency("NGN")}
-                className={`px-3 py-1 text-xs font-mono font-bold ${
-                  pricingCurrency === "NGN" ? "bg-white text-[#1a1a1e] shadow-sm" : "text-[#78716c]"
-                }`}
-              >
-                NGN (Nigeria)
-              </button>
-              <button
-                onClick={() => setPricingCurrency("USD")}
-                className={`px-3 py-1 text-xs font-mono font-bold ${
-                  pricingCurrency === "USD" ? "bg-white text-[#1a1a1e] shadow-sm" : "text-[#78716c]"
-                }`}
-              >
-                USD (International)
-              </button>
+            {/* Region / Currency Indicator (auto-detected, selector moved to billing portal) */}
+            <div className="flex items-center gap-2 bg-[#f0ece4] px-3 py-1.5 border border-[#e2ded5] self-start sm:self-auto font-mono text-xs text-[#1a1a1e]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>
+                {pricingCurrency === "NGN"
+                  ? "Localized for Nigeria (₦ NGN)"
+                  : "Localized in US Dollars ($ USD)"}
+              </span>
             </div>
           </div>
 
@@ -421,7 +430,9 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             <span className="font-bold text-[#1a1a1e]">Asemi Authentication Engine</span>
           </div>
 
-          <div className="hidden sm:block">Official Product Security Infrastructure • Region-locked cryptographic ledger.</div>
+          <div className="hidden sm:block">
+            Official Product Security Infrastructure • Region-locked cryptographic ledger.
+          </div>
 
           <div className="flex flex-wrap gap-4">
             <Link to="/faq" className="hover:text-[#1a1a1e] underline">

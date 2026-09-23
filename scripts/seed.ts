@@ -144,7 +144,9 @@ const COMPANIES = [
     documentUrl: null,
     adminNote: "Unable to verify this business registration number.",
     aiConfidence: 0.31,
-    aiFlags: [{ type: "registration_mismatch", detail: "Registration number not found in registry." }],
+    aiFlags: [
+      { type: "registration_mismatch", detail: "Registration number not found in registry." },
+    ],
     freeCodesUsed: 0,
     totalCodesGenerated: 0,
     approvedAt: null,
@@ -257,12 +259,21 @@ const FRAUD_SCANS = [
 async function seedUsers(): Promise<void> {
   for (const u of USERS) {
     try {
-      await auth.createUser({ uid: u.uid, email: u.email, password: DEMO_PASSWORD, displayName: u.name });
+      await auth.createUser({
+        uid: u.uid,
+        email: u.email,
+        password: DEMO_PASSWORD,
+        displayName: u.name,
+      });
       console.log(`  user created: ${u.email}`);
     } catch (err: unknown) {
       const code = (err as { code?: string }).code;
       if (code === "auth/uid-already-exists" || code === "auth/email-already-exists") {
-        await auth.updateUser(u.uid, { email: u.email, password: DEMO_PASSWORD, displayName: u.name });
+        await auth.updateUser(u.uid, {
+          email: u.email,
+          password: DEMO_PASSWORD,
+          displayName: u.name,
+        });
         console.log(`  user updated (already existed): ${u.email}`);
       } else {
         throw err;
@@ -279,7 +290,10 @@ async function seedRoles(): Promise<void> {
 
 async function seedCompanies(): Promise<void> {
   for (const c of COMPANIES) {
-    await db.collection("companies").doc(c.id).set({ ...c, createdAt: now, updatedAt: now });
+    await db
+      .collection("companies")
+      .doc(c.id)
+      .set({ ...c, createdAt: now, updatedAt: now });
   }
   console.log(`Seeded ${COMPANIES.length} companies (approved/pending/needs_info/rejected)`);
 }
@@ -329,50 +343,56 @@ async function seedWallet(): Promise<void> {
 
 async function seedProducts(): Promise<void> {
   for (const p of PRODUCTS) {
-    await db.collection("products").doc(p.id).set({
-      companyId: APPROVED_ID,
-      name: p.name,
-      sku: p.sku,
-      category: p.category,
-      description: p.description,
-      imageUrls: p.imageUrls,
-      lotNumber: p.lotNumber ?? null,
-      mfgDate: p.mfgDate ?? null,
-      expiryDate: p.expiryDate ?? null,
-      coaDocName: p.coaDocName ?? null,
-      coaDocUrl: null,
-      regulatoryNumber: p.regulatoryNumber ?? null,
-      regulatoryDocName: null,
-      regulatoryDocUrl: null,
-      certificateOfAnalysisName: null,
-      certificateOfAnalysisUrl: null,
-      createdAt: now,
-    });
+    await db
+      .collection("products")
+      .doc(p.id)
+      .set({
+        companyId: APPROVED_ID,
+        name: p.name,
+        sku: p.sku,
+        category: p.category,
+        description: p.description,
+        imageUrls: p.imageUrls,
+        lotNumber: p.lotNumber ?? null,
+        mfgDate: p.mfgDate ?? null,
+        expiryDate: p.expiryDate ?? null,
+        coaDocName: p.coaDocName ?? null,
+        coaDocUrl: null,
+        regulatoryNumber: p.regulatoryNumber ?? null,
+        regulatoryDocName: null,
+        regulatoryDocUrl: null,
+        certificateOfAnalysisName: null,
+        certificateOfAnalysisUrl: null,
+        createdAt: now,
+      });
   }
   console.log(`Seeded ${PRODUCTS.length} products`);
 }
 
 async function seedBatches(): Promise<void> {
   for (const b of BATCHES) {
-    await db.collection("batches").doc(b.id).set({
-      companyId: APPROVED_ID,
-      productId: b.productId,
-      productName: b.productName,
-      batchNumber: b.batchNumber,
-      quantity: b.quantity,
-      amountCharged: b.amountCharged,
-      currency: b.currency,
-      freeCodesApplied: b.freeCodesApplied,
-      status: b.status,
-      generationProgress: 1,
-      lotNumber: b.lotNumber,
-      mfgDate: b.mfgDate,
-      expiryDate: b.expiryDate,
-      coaDocName: null,
-      coaDocUrl: null,
-      exportedAt: b.status === "exported" ? daysAgo(1) : null,
-      createdAt: now,
-    });
+    await db
+      .collection("batches")
+      .doc(b.id)
+      .set({
+        companyId: APPROVED_ID,
+        productId: b.productId,
+        productName: b.productName,
+        batchNumber: b.batchNumber,
+        quantity: b.quantity,
+        amountCharged: b.amountCharged,
+        currency: b.currency,
+        freeCodesApplied: b.freeCodesApplied,
+        status: b.status,
+        generationProgress: 1,
+        lotNumber: b.lotNumber,
+        mfgDate: b.mfgDate,
+        expiryDate: b.expiryDate,
+        coaDocName: null,
+        coaDocUrl: null,
+        exportedAt: b.status === "exported" ? daysAgo(1) : null,
+        createdAt: now,
+      });
   }
   console.log(`Seeded ${BATCHES.length} batches`);
 }
@@ -420,19 +440,24 @@ async function seedScans(): Promise<{ codeId: string; codeString: string }> {
   const codeString = String(codeSnap.data()?.codeString);
 
   for (const [i, s] of FRAUD_SCANS.entries()) {
-    await db.collection("codes").doc(codeId).collection("scans").doc(`scn_seed_${i + 1}`).set({
-      codeId,
-      codeString,
-      companyId: APPROVED_ID,
-      productId: "prd_seed_toothpaste",
-      batchId: "bat_seed_001",
-      browserToken: s.token,
-      city: s.city,
-      country: "Nigeria",
-      deviceFingerprint: "seed-emulator",
-      flagged: false,
-      scannedAt: s.at,
-    });
+    await db
+      .collection("codes")
+      .doc(codeId)
+      .collection("scans")
+      .doc(`scn_seed_${i + 1}`)
+      .set({
+        codeId,
+        codeString,
+        companyId: APPROVED_ID,
+        productId: "prd_seed_toothpaste",
+        batchId: "bat_seed_001",
+        browserToken: s.token,
+        city: s.city,
+        country: "Nigeria",
+        deviceFingerprint: "seed-emulator",
+        flagged: false,
+        scannedAt: s.at,
+      });
   }
   // NOTE (honest accounting): the seeded flag below represents post-detection
   // state — verifyCode only ever sets flagged/reviewStatus when a NEW scan
@@ -440,12 +465,15 @@ async function seedScans(): Promise<{ codeId: string; codeString: string }> {
   // verification re-trips the thresholds (3 distinct tokens, 4 distinct
   // cities, scanCount 5 → genuine_repeated + flagged). If a live verify does
   // NOT flag this code, that is a bug in verifyCode, not in this seed data.
-  await db.collection("codes").doc(codeId).update({
-    scanCount: FRAUD_SCANS.length,
-    flagged: true,
-    reviewStatus: "open",
-    lastScannedAt: hoursAgo(2),
-  });
+  await db
+    .collection("codes")
+    .doc(codeId)
+    .update({
+      scanCount: FRAUD_SCANS.length,
+      flagged: true,
+      reviewStatus: "open",
+      lastScannedAt: hoursAgo(2),
+    });
   console.log(`Seeded ${FRAUD_SCANS.length} scans on code ${codeString} (flagged, review open)`);
   return { codeId, codeString };
 }
@@ -476,15 +504,28 @@ async function verifySeed(): Promise<void> {
   checks.push(["4 companies exist", compSnaps.size === 4]);
   checks.push(["approved status present", byId.get("usr_company_demo_001")?.status === "approved"]);
   checks.push(["pending status present", byId.get("usr_pending_003")?.status === "pending"]);
-  checks.push(["needs_info status present", byId.get("usr_needsinfo_004")?.status === "needs_info"]);
+  checks.push([
+    "needs_info status present",
+    byId.get("usr_needsinfo_004")?.status === "needs_info",
+  ]);
   checks.push(["rejected status present", byId.get("usr_rejected_005")?.status === "rejected"]);
   checks.push([
     "every company has explicit countryCode",
-    [...byId.values()].every((c) => typeof c.countryCode === "string" && c.countryCode.length === 2),
+    [...byId.values()].every(
+      (c) => typeof c.countryCode === "string" && c.countryCode.length === 2,
+    ),
   ]);
 
-  const wallet = await db.collection("companies").doc(APPROVED_ID).collection("wallet").doc("summary").get();
-  checks.push(["wallet exists with non-zero balance", wallet.exists && Number(wallet.data()?.creditBalance) > 0]);
+  const wallet = await db
+    .collection("companies")
+    .doc(APPROVED_ID)
+    .collection("wallet")
+    .doc("summary")
+    .get();
+  checks.push([
+    "wallet exists with non-zero balance",
+    wallet.exists && Number(wallet.data()?.creditBalance) > 0,
+  ]);
 
   const codesSnap = await db.collection("codes").get();
   const codes = codesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -493,7 +534,8 @@ async function verifySeed(): Promise<void> {
     "codes link correct companyId/batchId",
     codes.every(
       (c: Record<string, unknown>) =>
-        c.companyId === APPROVED_ID && ["bat_seed_001", "bat_seed_002", "bat_seed_003"].includes(c.batchId as string),
+        c.companyId === APPROVED_ID &&
+        ["bat_seed_001", "bat_seed_002", "bat_seed_003"].includes(c.batchId as string),
     ),
   ]);
 
@@ -501,7 +543,11 @@ async function verifySeed(): Promise<void> {
   checks.push(["one flagged code exists", !!flagged]);
   let scanCount = 0;
   if (flagged) {
-    const scansSnap = await db.collection("codes").doc(flagged.id as string).collection("scans").get();
+    const scansSnap = await db
+      .collection("codes")
+      .doc(flagged.id as string)
+      .collection("scans")
+      .get();
     scanCount = scansSnap.size;
     const cities = new Set(scansSnap.docs.map((d) => d.data().city));
     checks.push(["flagged code has 5 scans", scanCount === 5]);

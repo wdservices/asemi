@@ -247,7 +247,9 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="truncate font-medium text-zinc-950">{activeCategory?.name ?? "Select category"}</span>
+          <span className="truncate font-medium text-zinc-950">
+            {activeCategory?.name ?? "Select category"}
+          </span>
         </div>
 
         <ChevronDown

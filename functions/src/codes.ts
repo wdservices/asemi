@@ -48,14 +48,21 @@ export function generateUniqueCodeStrings(n: number, existing?: Set<string>): st
 
 /** Normalize a consumer-entered code to XXXX-XXXX-XXXX lookup form. */
 export function normalizeLookup(input: string): string | null {
-  const raw = (input || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+  const raw = (input || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 12);
   if (raw.length !== 12) return null;
   return raw.replace(/(.{4})(?=.)/g, "$1-");
 }
 
 /** Build the batch number: first 2 letters of company name + YYMM + seq. */
 export function buildBatchNumber(companyName: string, seq: number): string {
-  const letters = (companyName || "AS").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2).padEnd(2, "X");
+  const letters = (companyName || "AS")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, "")
+    .slice(0, 2)
+    .padEnd(2, "X");
   const now = new Date();
   const yy = String(now.getFullYear()).slice(2);
   const mm = String(now.getMonth() + 1).padStart(2, "0");

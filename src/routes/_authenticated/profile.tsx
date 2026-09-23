@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -467,8 +466,8 @@ function ProfilePage() {
                 verification tags immediately.
               </p>
               <p className="mt-2">
-                Regulatory certificates (such as FDA, CE, NAFDAC, or ISO) and Lab CoAs can be
-                added per product or batch inside your console.
+                Regulatory certificates (such as FDA, CE, NAFDAC, or ISO) and Lab CoAs can be added
+                per product or batch inside your console.
               </p>
             </CardContent>
           </Card>

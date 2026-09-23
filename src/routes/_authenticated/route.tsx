@@ -431,7 +431,11 @@ function OnboardingCompanyForm() {
               ))}
             </select>
           </Field>
-          <Field label="Operating country" required hint="Sets your pricing region — cannot be changed later">
+          <Field
+            label="Operating country"
+            required
+            hint="Sets your pricing region — cannot be changed later"
+          >
             <CountrySelectDropdown selectedCode={countryCode} onSelect={setCountryCode} />
           </Field>
           <Field label="CAC / Business registration number" required>

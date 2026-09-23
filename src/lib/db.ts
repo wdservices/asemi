@@ -94,6 +94,7 @@ export interface Batch {
   quantity: number;
   amountCharged: number;
   currency: string;
+  tagFormat?: "circle" | "rectangle";
   freeCodesApplied: number;
   status: "generating" | "ready" | "exported" | "failed";
   generationProgress: number;
@@ -216,7 +217,19 @@ export async function createCompany(uid: string, data: CompanyRegistration): Pro
 
 export async function updateCompanySelfService(
   uid: string,
-  data: Partial<Pick<Company, "name" | "email" | "phone" | "address" | "category" | "registrationNumber" | "logoUrl" | "documentUrl">>,
+  data: Partial<
+    Pick<
+      Company,
+      | "name"
+      | "email"
+      | "phone"
+      | "address"
+      | "category"
+      | "registrationNumber"
+      | "logoUrl"
+      | "documentUrl"
+    >
+  >,
 ): Promise<void> {
   await updateDoc(doc(requireDb(), "companies", uid), { ...data, updatedAt: serverTimestamp() });
 }
@@ -237,7 +250,9 @@ export async function listProducts(companyId: string): Promise<Product[]> {
   return snap.docs.map((d) => ser<Product>(d.id, d.data())).sort(byCreatedDesc);
 }
 
-export async function listProductOptions(companyId: string): Promise<Pick<Product, "id" | "name">[]> {
+export async function listProductOptions(
+  companyId: string,
+): Promise<Pick<Product, "id" | "name">[]> {
   const all = await listProducts(companyId);
   return all.map((p) => ({ id: p.id, name: p.name }));
 }
@@ -284,7 +299,10 @@ export async function createProduct(companyId: string, input: ProductInput): Pro
   return ser<Product>(snap.id, snap.data()!);
 }
 
-export async function updateProduct(productId: string, input: Partial<ProductInput>): Promise<void> {
+export async function updateProduct(
+  productId: string,
+  input: Partial<ProductInput>,
+): Promise<void> {
   await updateDoc(doc(requireDb(), "products", productId), { ...input });
 }
 
@@ -361,7 +379,11 @@ export async function listBatchCodeStrings(batchId: string): Promise<string[]> {
 // Scans (collection-group analytics)
 // ---------------------------------------------------------------------------
 
-export async function listCompanyScans(companyId: string, sinceIso: string, maxN = 5000): Promise<Scan[]> {
+export async function listCompanyScans(
+  companyId: string,
+  sinceIso: string,
+  maxN = 5000,
+): Promise<Scan[]> {
   // NOTE: single equality filter only — time-filtered + sorted client-side so
   // no collection-group composite index is required.
   const since = new Date(sinceIso).toISOString();
@@ -443,11 +465,16 @@ export async function listCompaniesByStatus(statuses: CompanyStatus[]): Promise<
 }
 
 export async function listAllCompanies(): Promise<Company[]> {
-  const snap = await getDocs(query(collection(requireDb(), "companies"), orderBy("createdAt", "desc"), limit(500)));
+  const snap = await getDocs(
+    query(collection(requireDb(), "companies"), orderBy("createdAt", "desc"), limit(500)),
+  );
   return snap.docs.map((d) => ser<Company>(d.id, d.data()));
 }
 
-export async function countCollection(coll: "products" | "batches" | "codes", companyId: string): Promise<number> {
+export async function countCollection(
+  coll: "products" | "batches" | "codes",
+  companyId: string,
+): Promise<number> {
   const snap = await getCountFromServer(
     query(collection(requireDb(), coll), where("companyId", "==", companyId)),
   );
@@ -567,7 +594,11 @@ export async function platformScans(sinceIso: string, maxN = 5000): Promise<Scan
   return snap.docs.map((d) => ser<Scan>(d.id, d.data()));
 }
 
-export async function nameMaps(ids: { companyIds: string[]; productIds: string[]; batchIds: string[] }): Promise<{
+export async function nameMaps(ids: {
+  companyIds: string[];
+  productIds: string[];
+  batchIds: string[];
+}): Promise<{
   companies: Map<string, string>;
   products: Map<string, string>;
   batches: Map<string, string>;
@@ -694,22 +725,71 @@ export interface ExportBatchResult {
   pdfUrl: string;
 }
 
-export const fnExportBatch = (batchId: string) => callFn<ExportBatchResult>("exportbatch", { batchId });
+export const fnExportBatch = (batchId: string) =>
+  callFn<ExportBatchResult>("exportbatch", { batchId });
 
 // ---------------------------------------------------------------------------
 // Money formatting
 // ---------------------------------------------------------------------------
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  NGN: "₦", USD: "$", GHS: "₵", KES: "KSh", ZAR: "R", EGP: "E£", RWF: "RF",
-  UGX: "USh", TZS: "TSh", ETB: "Br", XOF: "CFA", XAF: "FCFA", MAD: "DH",
-  CAD: "CA$", MXN: "MX$", GBP: "£", EUR: "€", CHF: "CHF", SEK: "kr",
-  NOK: "kr", DKK: "kr", PLN: "zł", AED: "د.إ", SAR: "﷼", QAR: "QR",
-  KWD: "KD", INR: "₹", CNY: "¥", JPY: "¥", SGD: "S$", AUD: "A$", NZD: "NZ$",
-  KRW: "₩", MYR: "RM", IDR: "Rp", PHP: "₱", THB: "฿", VND: "₫", PKR: "₨",
-  BDT: "৳", BRL: "R$", ARS: "AR$", CLP: "CL$", COP: "CO$", PEN: "S/",
-  AOA: "Kz", BWP: "P", CDF: "FC", DZD: "DA", TND: "DT", ZMW: "K",
-  MUR: "₨", NAD: "N$", TRY: "₺", ILS: "₪", HKD: "HK$", TWD: "NT$",
+  NGN: "₦",
+  USD: "$",
+  GHS: "₵",
+  KES: "KSh",
+  ZAR: "R",
+  EGP: "E£",
+  RWF: "RF",
+  UGX: "USh",
+  TZS: "TSh",
+  ETB: "Br",
+  XOF: "CFA",
+  XAF: "FCFA",
+  MAD: "DH",
+  CAD: "CA$",
+  MXN: "MX$",
+  GBP: "£",
+  EUR: "€",
+  CHF: "CHF",
+  SEK: "kr",
+  NOK: "kr",
+  DKK: "kr",
+  PLN: "zł",
+  AED: "د.إ",
+  SAR: "﷼",
+  QAR: "QR",
+  KWD: "KD",
+  INR: "₹",
+  CNY: "¥",
+  JPY: "¥",
+  SGD: "S$",
+  AUD: "A$",
+  NZD: "NZ$",
+  KRW: "₩",
+  MYR: "RM",
+  IDR: "Rp",
+  PHP: "₱",
+  THB: "฿",
+  VND: "₫",
+  PKR: "₨",
+  BDT: "৳",
+  BRL: "R$",
+  ARS: "AR$",
+  CLP: "CL$",
+  COP: "CO$",
+  PEN: "S/",
+  AOA: "Kz",
+  BWP: "P",
+  CDF: "FC",
+  DZD: "DA",
+  TND: "DT",
+  ZMW: "K",
+  MUR: "₨",
+  NAD: "N$",
+  TRY: "₺",
+  ILS: "₪",
+  HKD: "HK$",
+  TWD: "NT$",
 };
 
 export function formatMoney(amount: number, currency = "USD"): string {

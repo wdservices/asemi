@@ -37,9 +37,12 @@ const db = admin.firestore();
 const now = admin.firestore.FieldValue.serverTimestamp();
 
 (async () => {
-  await admin.auth().getUser(uid).catch(() => {
-    throw new Error(`No Auth user ${uid} (${email}) — register it first.`);
-  });
+  await admin
+    .auth()
+    .getUser(uid)
+    .catch(() => {
+      throw new Error(`No Auth user ${uid} (${email}) — register it first.`);
+    });
 
   const cRef = db.collection("companies").doc(uid);
   if ((await cRef.get()).exists) {
@@ -104,7 +107,9 @@ const now = admin.firestore.FieldValue.serverTimestamp();
 
   // Verify
   const check = await cRef.get();
-  console.log(`VERIFY company: ${check.exists && check.data().status === status ? "PASS" : "FAIL"}`);
+  console.log(
+    `VERIFY company: ${check.exists && check.data().status === status ? "PASS" : "FAIL"}`,
+  );
   console.log("Done.");
   process.exit(0);
 })().catch((err) => {

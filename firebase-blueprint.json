@@ -1,0 +1,264 @@
+{
+  "entities": {
+    "Role": {
+      "title": "Role",
+      "description": "User role assignment",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "User role (admin or company)"
+        }
+      },
+      "required": ["role"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Registered company entity",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner"
+        },
+        "name": {
+          "type": "string",
+          "description": "Brand/company legal name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Corporate contact email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number"
+        },
+        "address": {
+          "type": "string",
+          "description": "Physical headquarters address"
+        },
+        "category": {
+          "type": "string",
+          "description": "Industry category"
+        },
+        "registrationNumber": {
+          "type": "string",
+          "description": "Business tax or registration ID"
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "ISO 2-letter country code"
+        },
+        "status": {
+          "type": "string",
+          "description": "Verification status (pending, approved, needs_info, rejected)"
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "Brand logo URL"
+        },
+        "documentUrl": {
+          "type": "string",
+          "description": "Proof of registration document URL"
+        },
+        "adminNote": {
+          "type": "string",
+          "description": "Admin review commentary"
+        },
+        "freeCodesUsed": {
+          "type": "number",
+          "description": "Number of free starter codes utilized"
+        },
+        "totalCodesGenerated": {
+          "type": "number",
+          "description": "Cumulative codes generated"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp last updated"
+        }
+      },
+      "required": ["ownerId", "name", "email", "registrationNumber", "countryCode", "status"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Product catalog item",
+      "type": "object",
+      "properties": {
+        "companyId": {
+          "type": "string",
+          "description": "Owning company UID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name"
+        },
+        "sku": {
+          "type": "string",
+          "description": "Stock keeping unit"
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category"
+        },
+        "description": {
+          "type": "string",
+          "description": "Product summary"
+        },
+        "imageUrls": {
+          "type": "array",
+          "description": "Gallery image URLs"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp created"
+        }
+      },
+      "required": ["companyId", "name", "category"]
+    },
+    "Batch": {
+      "title": "Batch",
+      "description": "Batch of authentication codes",
+      "type": "object",
+      "properties": {
+        "companyId": {
+          "type": "string",
+          "description": "Owning company UID"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Associated product ID"
+        },
+        "productName": {
+          "type": "string",
+          "description": "Snapshot of product name"
+        },
+        "batchNumber": {
+          "type": "string",
+          "description": "Human readable batch number"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Number of unit codes in batch"
+        },
+        "amountCharged": {
+          "type": "number",
+          "description": "Total payment amount"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code"
+        },
+        "status": {
+          "type": "string",
+          "description": "Batch generation status (generating, ready, exported, failed)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp created"
+        }
+      },
+      "required": ["companyId", "productId", "batchNumber", "quantity", "status"]
+    },
+    "Code": {
+      "title": "Code",
+      "description": "Unique anti-counterfeit product code",
+      "type": "object",
+      "properties": {
+        "batchId": {
+          "type": "string",
+          "description": "Batch ID"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Product ID"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Company UID"
+        },
+        "codeString": {
+          "type": "string",
+          "description": "Formatted anti-counterfeit code"
+        },
+        "scanCount": {
+          "type": "number",
+          "description": "Verification scan count"
+        },
+        "flagged": {
+          "type": "boolean",
+          "description": "Fraud flag status"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp created"
+        }
+      },
+      "required": ["batchId", "productId", "companyId", "codeString"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "Consumer verification scan record",
+      "type": "object",
+      "properties": {
+        "codeId": {
+          "type": "string",
+          "description": "Scanned code document ID"
+        },
+        "codeString": {
+          "type": "string",
+          "description": "Code string"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Company UID"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Product ID"
+        },
+        "scannedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Scan timestamp"
+        }
+      },
+      "required": ["codeId", "codeString", "companyId", "productId"]
+    }
+  },
+  "firestore": {
+    "/roles/{uid}": {
+      "schema": "Role",
+      "description": "Access roles for administrators and special accounts"
+    },
+    "/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Brand manufacturer accounts"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Verified product catalogs"
+    },
+    "/batches/{batchId}": {
+      "schema": "Batch",
+      "description": "Production batches for serialization"
+    },
+    "/codes/{codeId}": {
+      "schema": "Code",
+      "description": "Individual serialized item tags"
+    },
+    "/codes/{codeId}/scans/{scanId}": {
+      "schema": "Scan",
+      "description": "Verification scan audit trail"
+    }
+  }
+}

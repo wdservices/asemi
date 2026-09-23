@@ -106,13 +106,7 @@ export function regionFor(countryCode: string): RegionPricing {
     return {
       currency: entry.currency,
       symbol: entry.symbol,
-      tiers: [
-        entry.base * 4.2,
-        entry.base * 3.3,
-        entry.base * 2.5,
-        entry.base * 1.6,
-        entry.base,
-      ],
+      tiers: [entry.base * 4.2, entry.base * 3.3, entry.base * 2.5, entry.base * 1.6, entry.base],
     };
   }
   return USD_PRICING;
@@ -173,7 +167,12 @@ export function calculatePrice(
     const rate = region.tiers[i]!;
     const subtotal = take * rate;
     price += subtotal;
-    breakdown.push({ label: `Tier ${i + 1} (${region.currency} ${rate}/code)`, qty: take, rate, subtotal });
+    breakdown.push({
+      label: `Tier ${i + 1} (${region.currency} ${rate}/code)`,
+      qty: take,
+      rate,
+      subtotal,
+    });
     left -= take;
     pos += take;
   }

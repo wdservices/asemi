@@ -133,11 +133,7 @@ function ProductsPage() {
             <div key={p.id} className="panel overflow-hidden transition hover:shadow-md">
               <div className="relative aspect-[4/3] w-full overflow-hidden bg-secondary">
                 {p.imageUrls?.length ? (
-                  <img
-                    src={p.imageUrls[0]}
-                    alt={p.name}
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={p.imageUrls[0]} alt={p.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
                     <Package className="size-16 text-muted-foreground/40" />

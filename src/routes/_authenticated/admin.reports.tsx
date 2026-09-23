@@ -321,9 +321,7 @@ function ReportsContent() {
                           <span className="font-mono text-sm">{r.codeString}</span>
                         </TableCell>
                         <TableCell className="px-3 text-sm">
-                          {r.companyName ?? (
-                            <span className="text-muted-foreground">Unknown</span>
-                          )}
+                          {r.companyName ?? <span className="text-muted-foreground">Unknown</span>}
                         </TableCell>
                         <TableCell className="px-3 text-sm">
                           {r.contact ? (
