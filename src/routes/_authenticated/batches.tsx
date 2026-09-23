@@ -95,11 +95,25 @@ function BatchesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Batches & Codes"
-        description="Request new verification code batches, review history, and manage your dynamic QR code bank."
-      />
+      <div className="rounded-2xl border border-primary/15 bg-primary/[0.06] p-5 md:p-6">
+        <PageHeader
+          title="Batches & Codes"
+          description="Create, download, and track every verification code in one place."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-background/70 p-3"><p className="text-xs text-muted-foreground">Fast creation</p><p className="mt-1 text-sm font-semibold">Generate in seconds</p></div>
+          <div className="rounded-xl bg-background/70 p-3"><p className="text-xs text-muted-foreground">Flexible exports</p><p className="mt-1 text-sm font-semibold">QR, CSV, and labels</p></div>
+          <div className="rounded-xl bg-background/70 p-3"><p className="text-xs text-muted-foreground">Always organized</p><p className="mt-1 text-sm font-semibold">History and code bank</p></div>
+        </div>
+      </div>
+      <div>
+        <PageHeader
+          title="Workspace"
+          description="Request new verification code batches, review history, and manage your dynamic QR code bank."
+        />
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Tabs keep the batch workflow in one predictable, fast surface. */}
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="request">
             <Sparkles className="mr-2 size-4" /> Request batch
@@ -1048,6 +1062,7 @@ function CodeBankTab() {
       });
       return res;
     } catch (err) {
+      return null;
       console.error("Batch QR generation failed", err);
       toast.error("Failed to generate batch QR code", { id: "batch-qr-gen" });
     }
@@ -1726,8 +1741,8 @@ function CodeBankTab() {
                               productName: c.productName || "Product",
                               batchNumber: c.batchNumber,
                               productId: c.productId,
-                              quantity: b?.quantity,
-                              brandName: companyName,
+          quantity: b?.quantity ?? 0,
+          brandName: companyName,
                             });
                           }}
                           className="h-8 gap-1 text-xs border border-transparent hover:border-amber-500/30"

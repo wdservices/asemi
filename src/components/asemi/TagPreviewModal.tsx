@@ -91,9 +91,9 @@ export function TagPreviewModal({
         <div className="flex justify-center py-2">
           <ProductTagPreview
             codeString={codeString}
-            productName={productName}
-            brandName={brandName}
-            batchNumber={batchNumber}
+            {...(productName ? { productName } : {})}
+            {...(brandName ? { brandName } : {})}
+            {...(batchNumber ? { batchNumber } : {})}
             style={style}
             size="lg"
             showActions={true}

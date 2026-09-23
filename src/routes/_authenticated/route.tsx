@@ -104,6 +104,7 @@ function DashboardShell() {
                 <Link
                   key={to}
                   to={to}
+                  preload="intent"
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     active
@@ -226,6 +227,7 @@ function DashboardShell() {
                     <Link
                       key={to}
                       to={to}
+                      preload="intent"
                       onClick={() => setMobileOpen(false)}
                       className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
                     >
