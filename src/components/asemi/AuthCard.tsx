@@ -1,7 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { asemiStore } from "@/lib/asemiStore";
-import { fb as supabase } from "@/integrations/firebase/client";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { requireAuth, requireDb } from "@/lib/firebase";
+import { createCompany, uploadCompanyDoc } from "@/lib/db";
 import {
   Building2,
   Lock,
@@ -29,7 +34,7 @@ import { CountrySelectDropdown, IndustrySelectDropdown } from "./AuthDropdowns";
 
 export interface AuthCardProps {
   initialMode?: "login" | "register";
-  onSuccess?: () => void;
+  onSuccess?: (role?: "ADMIN" | "COMPANY_USER") => void;
   onClose?: () => void;
   isModal?: boolean;
 }
@@ -61,11 +66,13 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   const [regCompanyPhone, setRegCompanyPhone] = useState("");
   const [regCompanyNumber, setRegCompanyNumber] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regCompanyAddress, setRegCompanyAddress] = useState("");
   const [regCategory, setRegCategory] = useState("Food & Edibles");
   const [regCustomCategory, setRegCustomCategory] = useState("");
-  const [selectedCountryCode, setSelectedCountryCode] = useState("NG");
+  // No default country — the user must explicitly pick one (sets pricing region).
+  const [selectedCountryCode, setSelectedCountryCode] = useState("");
+  const [uploadedDoc, setUploadedDoc] = useState<File | null>(null);
   const [uploadedDocName, setUploadedDocName] = useState<string>("");
-  const [docPreviewUrl, setDocPreviewUrl] = useState<string>("");
   const [regAcceptedTerms, setRegAcceptedTerms] = useState(false);
 
   // Feedback & State
@@ -74,11 +81,9 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const companies = asemiStore.getState().companies;
-
   // Currently selected country & currency details
   const activeCountry: CountryInfo = useMemo(() => {
-    return getCountryByCode(selectedCountryCode);
+    return getCountryByCode(selectedCountryCode || "XX");
   }, [selectedCountryCode]);
 
   // Handle Country Change
@@ -89,20 +94,37 @@ export const AuthCard: React.FC<AuthCardProps> = ({
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setUploadedDoc(file);
       setUploadedDocName(file.name);
-      const url = URL.createObjectURL(file);
-      setDocPreviewUrl(url);
     }
   };
 
-  // Unified Sign In Handler (Auto-routes to Admin or Brand)
+  function friendlyAuthError(err: unknown): string {
+    const code = (err as { code?: string })?.code || "";
+    if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential")) {
+      return "No account matches these credentials. Check your email and password, or register your brand.";
+    }
+    if (code.includes("invalid-email")) return "That email address doesn't look valid.";
+    if (code.includes("too-many-requests")) return "Too many attempts — please wait a moment and try again.";
+    if (code.includes("email-already-in-use")) return "An account with this email already exists. Sign in instead.";
+    if (code.includes("weak-password")) return "Password must be at least 6 characters.";
+    if (code.includes("network-request-failed")) return "Network error — check your connection and retry.";
+    return err instanceof Error ? err.message : "Authentication failed. Please try again.";
+  }
+
+  async function resolveRole(uid: string): Promise<"ADMIN" | "COMPANY_USER"> {
+    const snap = await getDoc(doc(requireDb(), "roles", uid));
+    return snap.exists() && snap.data()?.["role"] === "admin" ? "ADMIN" : "COMPANY_USER";
+  }
+
+  // Unified Sign In Handler — real Firebase Auth, role from roles/{uid}.
   const handleUnifiedLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
     const input = loginEmailOrId.trim();
     if (!input) {
-      setErrorMessage("Please enter your registered email address or company identifier.");
+      setErrorMessage("Please enter your registered email address.");
       return;
     }
     if (!loginPassword.trim()) {
@@ -113,62 +135,24 @@ export const AuthCard: React.FC<AuthCardProps> = ({
     setSubmitting(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 500));
-
-      const lower = input.toLowerCase();
-      const isAdminLogin =
-        lower === "admin" ||
-        lower.includes("admin@") ||
-        lower === "regulatory@nafdac.gov.ng" ||
-        lower.includes("nafdac");
-
-      if (isAdminLogin) {
-        asemiStore.setRole("ADMIN");
-        setSuccessMessage("Admin clearance authenticated. Redirecting to regulatory console…");
-        setTimeout(() => {
-          if (onSuccess) onSuccess();
-        }, 600);
-        return;
-      }
-
-      // Check registered companies in store
-      const matchedCompany = companies.find(
-        (c) =>
-          c.email.toLowerCase() === lower ||
-          c.registrationNumber.toLowerCase() === lower ||
-          c.name.toLowerCase().includes(lower),
+      const cred = await signInWithEmailAndPassword(requireAuth(), input, loginPassword);
+      const role = await resolveRole(cred.user.uid);
+      setSuccessMessage(
+        role === "ADMIN"
+          ? "Admin clearance authenticated. Redirecting to regulatory console…"
+          : "Signed in. Redirecting to dashboard…",
       );
-
-      const targetCompany = matchedCompany || companies[0];
-
-      if (!targetCompany) {
-        setErrorMessage("No matching company found. Please register your brand.");
-        setSubmitting(false);
-        return;
-      }
-
-      asemiStore.setCurrentCompany(targetCompany.id);
-      asemiStore.setRole("COMPANY_USER");
-
-      await supabase.auth.signInAs({
-        id: targetCompany.id,
-        email: targetCompany.email,
-        companyName: targetCompany.name,
-        role: "COMPANY_USER",
-      });
-
-      setSuccessMessage(`Signed in as ${targetCompany.name}. Redirecting to dashboard…`);
       setTimeout(() => {
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess(role);
       }, 600);
     } catch (err) {
       console.error(err);
-      setErrorMessage("Authentication failed. Please verify credentials.");
+      setErrorMessage(friendlyAuthError(err));
       setSubmitting(false);
     }
   };
 
-  // Register Brand Handler
+  // Register Brand Handler — real Firebase Auth + companies/{uid} doc.
   const handleRegisterBrand = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -183,6 +167,14 @@ export const AuthCard: React.FC<AuthCardProps> = ({
     }
     if (!regPassword.trim() || regPassword.length < 6) {
       setErrorMessage("Access password must be at least 6 characters.");
+      return;
+    }
+    if (!selectedCountryCode) {
+      setErrorMessage("Please select your operating country — this sets your pricing region.");
+      return;
+    }
+    if (!regCompanyNumber.trim()) {
+      setErrorMessage("Please enter your business registration / tax ID.");
       return;
     }
 
@@ -202,67 +194,47 @@ export const AuthCard: React.FC<AuthCardProps> = ({
     setAiAnalyzing(true);
 
     try {
-      await new Promise((r) => setTimeout(r, 900));
-      setAiAnalyzing(false);
+      const cred = await createUserWithEmailAndPassword(
+        requireAuth(),
+        regCompanyEmail.trim().toLowerCase(),
+        regPassword,
+      );
+      const uid = cred.user.uid;
 
-      const newCompany = await asemiStore.registerCompany({
+      let documentUrl: string | null = null;
+      if (uploadedDoc) {
+        try {
+          documentUrl = await uploadCompanyDoc(uid, uploadedDoc);
+        } catch (uploadErr) {
+          console.warn("Registration doc upload failed:", uploadErr);
+        }
+      }
+
+      await createCompany(uid, {
         name: regCompanyName.trim(),
         email: regCompanyEmail.trim().toLowerCase(),
         phone: regCompanyPhone.trim(),
+        address: regCompanyAddress.trim(),
+        category: effectiveIndustry,
+        registrationNumber: regCompanyNumber.trim(),
         countryCode: selectedCountryCode,
-        registrationNumber: regCompanyNumber.trim()
-          ? regCompanyNumber.trim().toUpperCase()
-          : "UNREGISTERED / INDIE",
-        industry: effectiveIndustry,
-        verificationDocUrl: docPreviewUrl || "",
+        logoUrl: null,
+        documentUrl,
       });
-
-      asemiStore.setCurrentCompany(newCompany.id);
-      asemiStore.setRole("COMPANY_USER");
-
-      await supabase.auth.signInAs({
-        id: newCompany.id,
-        email: newCompany.email,
-        companyName: newCompany.name,
-        role: "COMPANY_USER",
-      });
+      setAiAnalyzing(false);
 
       setSuccessMessage(
-        `${newCompany.name} registered with 20 complimentary verification tags! Redirecting…`,
+        `${regCompanyName.trim()} registered! Your account is pending verification — 20 complimentary tags on approval. Redirecting…`,
       );
 
       setTimeout(() => {
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess("COMPANY_USER");
       }, 700);
     } catch (err) {
       console.error(err);
-      setErrorMessage(String(err));
+      setErrorMessage(friendlyAuthError(err));
       setSubmitting(false);
       setAiAnalyzing(false);
-    }
-  };
-
-  // 1-Click Fill Helpers for quick testing
-  const handleQuickFill = (type: "company-ng" | "company-us" | "admin") => {
-    setErrorMessage("");
-    if (type === "company-ng") {
-      const comp = companies[0] || {
-        registrationNumber: "RC-849201",
-        email: "compliance@sterling-pharma.com",
-      };
-      setLoginEmailOrId(comp.email || "compliance@sterling-pharma.com");
-      setLoginPassword("asemi_vault_2026_secured");
-    } else if (type === "company-us") {
-      const comp = companies.find((c) => c.countryCode === "US") ||
-        companies[1] || {
-          registrationNumber: "DEL-948201",
-          email: "supplychain@apex-fmcg.com",
-        };
-      setLoginEmailOrId(comp.email || "supplychain@apex-fmcg.com");
-      setLoginPassword("asemi_vault_2026_secured");
-    } else {
-      setLoginEmailOrId("admin@asemi.demo");
-      setLoginPassword("asemi_admin_master_clearance_2026");
     }
   };
 
@@ -473,38 +445,19 @@ export const AuthCard: React.FC<AuthCardProps> = ({
               )}
             </button>
 
-            {/* Demo Accounts */}
-            <div className="pt-4 mt-1 border-t border-zinc-100">
-              <div className="flex items-center justify-between text-xs mb-2.5">
-                <span className="font-semibold text-zinc-500 uppercase tracking-wider font-mono text-[10px]">
-                  Quick-fill test accounts
-                </span>
-                <span className="text-amber-700 font-semibold">1-click fill</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { key: "company-ng", name: "Sterling Pharma", sub: "🇳🇬 NGN Brand" },
-                    { key: "company-us", name: "Apex FMCG", sub: "🇺🇸 USD Brand" },
-                    { key: "admin", name: "NAFDAC Admin", sub: "🛡️ Root Console" },
-                  ] as const
-                ).map((a) => (
-                  <button
-                    key={a.key}
-                    type="button"
-                    onClick={() => handleQuickFill(a.key)}
-                    className="p-3 bg-zinc-50 hover:bg-zinc-950 border border-zinc-200 hover:border-zinc-950 rounded-2xl text-left transition-all cursor-pointer group/demo"
-                  >
-                    <div className="font-semibold text-zinc-900 group-hover/demo:text-white text-[13px] truncate">
-                      {a.name}
-                    </div>
-                    <div className="text-[11px] text-zinc-500 group-hover/demo:text-zinc-300 mt-0.5">
-                      {a.sub}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="pt-3 mt-1 border-t border-zinc-100 text-center text-sm text-zinc-500">
+              New to Asemi?{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMode("register");
+                  setErrorMessage("");
+                }}
+                className="font-semibold text-zinc-950 underline underline-offset-2 decoration-[#c9a84c] cursor-pointer"
+              >
+                Register your brand
+              </button>
+            </p>
           </form>
         ) : (
           /* ================= REGISTER FORM ================= */
@@ -531,12 +484,12 @@ export const AuthCard: React.FC<AuthCardProps> = ({
 
               <div>
                 <label htmlFor="reg-company-number" className={labelCls}>
-                  Business Reg / Tax ID{" "}
-                  <span className="font-normal text-zinc-400">(Optional)</span>
+                  Business Reg / Tax ID *
                 </label>
                 <div className="relative">
                   <input
                     id="reg-company-number"
+                    required
                     type="text"
                     placeholder="EIN, VAT, CRN, Reg ID"
                     value={regCompanyNumber}
@@ -548,10 +501,27 @@ export const AuthCard: React.FC<AuthCardProps> = ({
               </div>
             </div>
 
+            <div>
+              <label htmlFor="reg-company-address" className={labelCls}>
+                Registered address
+              </label>
+              <div className="relative">
+                <input
+                  id="reg-company-address"
+                  type="text"
+                  autoComplete="street-address"
+                  placeholder="Street, city, state"
+                  value={regCompanyAddress}
+                  onChange={(e) => setRegCompanyAddress(e.target.value)}
+                  className={`${inputCls} pl-4`}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="reg-country-select" className={labelCls}>
-                  Operating country
+                  Operating country *
                 </label>
                 <CountrySelectDropdown
                   id="reg-country-select"
@@ -559,8 +529,14 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                   onSelect={handleCountrySelect}
                 />
                 <p className="mt-1.5 text-xs text-zinc-400">
-                  {activeCountry.name} • {activeCountry.currency} ({activeCountry.currencySymbol}
-                  {activeCountry.ratePerCode}/tag)
+                  {selectedCountryCode ? (
+                    <>
+                      {activeCountry.name} • {activeCountry.currency} ({activeCountry.currencySymbol}
+                      {activeCountry.ratePerCode}/tag)
+                    </>
+                  ) : (
+                    "Select your country — this locks your pricing region."
+                  )}
                 </p>
               </div>
 

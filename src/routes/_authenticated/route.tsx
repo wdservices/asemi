@@ -6,7 +6,7 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { fb as supabase } from "@/integrations/firebase/client";
+import { getCurrentUserId } from "@/lib/auth";
 import {
   LayoutDashboard,
   Package,
@@ -25,9 +25,12 @@ import {
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand";
 import { useIsAdmin, useMyCompany, useSession, useSignOut } from "@/lib/auth";
+import { CountrySelectDropdown } from "@/components/asemi/AuthDropdowns";
+import { createCompany, uploadCompanyDoc, uploadProductImage } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,9 +44,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    const userId = await getCurrentUserId();
+    if (!userId) throw redirect({ to: "/auth" });
+    return { userId };
   },
   component: DashboardShell,
 });
@@ -251,7 +254,7 @@ function DashboardShell() {
               {needsOnboarding ? (
                 <OnboardingCompanyForm />
               ) : showPending && !isProfileRoute ? (
-                <PendingStatusCard status={company.status} note={company.admin_note} />
+                <PendingStatusCard status={company.status} note={company.adminNote} />
               ) : (
                 <Outlet />
               )}
@@ -336,12 +339,14 @@ function OnboardingCompanyForm() {
   const { data: session } = useSession();
   const signOut = useSignOut();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState(session?.user.email ?? "");
   const [category, setCategory] = useState("Personal care");
+  const [countryCode, setCountryCode] = useState("");
   const [logo, setLogo] = useState<File | null>(null);
   const [document, setDocument] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -351,46 +356,29 @@ function OnboardingCompanyForm() {
     setBusy(true);
     try {
       const userId = session!.user.id;
+      if (!countryCode) throw new Error("Please select your operating country.");
       let logoUrl: string | null = null;
       let docUrl: string | null = null;
 
       if (logo) {
-        const ext = logo.name.split(".").pop() ?? "png";
-        const key = `${userId}/logo-${Date.now()}.${ext}`;
-        const { error } = await supabase.storage
-          .from("product-images")
-          .upload(key, logo, { upsert: true });
-        if (!error) {
-          const { data } = supabase.storage.from("product-images").getPublicUrl(key);
-          logoUrl = data.publicUrl;
-        }
+        logoUrl = await uploadProductImage(userId, logo);
       }
       if (document) {
-        const ext = document.name.split(".").pop() ?? "pdf";
-        const key = `${userId}/doc-${Date.now()}.${ext}`;
-        const { error } = await supabase.storage
-          .from("company-docs")
-          .upload(key, document, { upsert: true });
-        if (!error) {
-          const { data } = await supabase.storage
-            .from("company-docs")
-            .createSignedUrl(key, 60 * 60 * 24 * 365);
-          docUrl = data?.signedUrl ?? null;
-        }
+        docUrl = await uploadCompanyDoc(userId, document);
       }
 
-      const { error } = await supabase.from("companies").insert({
-        owner_id: userId,
+      await createCompany(userId, {
         name,
-        registration_number: registrationNumber,
-        address,
-        phone,
         email,
+        phone,
+        address,
         category,
-        logo_url: logoUrl,
-        document_url: docUrl,
+        registrationNumber,
+        countryCode,
+        logoUrl,
+        documentUrl: docUrl,
       });
-      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["my-company", userId] });
       navigate({ to: "/dashboard", replace: true });
     } catch (err) {
       console.error(err);
@@ -442,6 +430,9 @@ function OnboardingCompanyForm() {
                 </option>
               ))}
             </select>
+          </Field>
+          <Field label="Operating country" required hint="Sets your pricing region — cannot be changed later">
+            <CountrySelectDropdown selectedCode={countryCode} onSelect={setCountryCode} />
           </Field>
           <Field label="CAC / Business registration number" required>
             <input

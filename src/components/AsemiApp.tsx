@@ -1,41 +1,23 @@
-import React, { useState, useEffect } from "react";
-import { asemiStore, UserRole, Company } from "@/lib/asemiStore";
-import { TopRoleBar } from "./asemi/TopRoleBar";
+import React, { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useIsAdmin, useSession } from "@/lib/auth";
 import { MarketingSite } from "./asemi/MarketingSite";
-import { CompanyDashboard } from "./asemi/CompanyDashboard";
-import { AdminDashboard } from "./asemi/AdminDashboard";
-import { ConsumerVerification } from "./asemi/ConsumerVerification";
 import { AuthModal } from "./asemi/AuthModal";
 
 export function AsemiApp() {
-  const [storeState, setStoreState] = useState(asemiStore.getState());
-  const [isVerifierOpen, setIsVerifierOpen] = useState(false);
-  const [verifierInitialCode, setVerifierInitialCode] = useState("ASM-9K4T-7X2P");
-  const [inDashboard, setInDashboard] = useState(false);
+  const navigate = useNavigate();
+  const { data: session } = useSession();
+  const { data: isAdmin } = useIsAdmin();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">("register");
 
-  // Subscribe to store updates
-  useEffect(() => {
-    return asemiStore.subscribe(() => {
-      setStoreState({ ...asemiStore.getState() });
-    });
-  }, []);
-
-  const activeCompany =
-    storeState.companies.find((c) => c.id === storeState.activeCompanyId) ||
-    storeState.companies[0];
-
-  const handleRoleSelect = (role: UserRole) => {
-    asemiStore.setRole(role);
-    setIsVerifierOpen(false);
-    if (role === "COMPANY_USER") {
-      setInDashboard(true);
+  const enterConsole = () => {
+    if (!session) {
+      setAuthModalMode("login");
+      setAuthModalOpen(true);
+      return;
     }
-  };
-
-  const handleSelectCompany = (companyId: string) => {
-    asemiStore.setActiveCompany(companyId);
+    navigate({ to: isAdmin ? "/admin" : "/dashboard" });
   };
 
   return (
@@ -53,69 +35,29 @@ export function AsemiApp() {
         <rect width="100%" height="100%" filter="url(#noise)" />
       </svg>
 
-      {/* Top Universal Platform Bar */}
-      <TopRoleBar
-        currentRole={storeState.currentUserRole}
-        onSelectRole={handleRoleSelect}
-        activeCompany={activeCompany}
-        companies={storeState.companies}
-        onSelectCompany={handleSelectCompany}
-        onOpenVerifier={() => {
-          setIsVerifierOpen(true);
+      <MarketingSite
+        onOpenRegisterModal={() => {
+          setAuthModalMode("register");
+          setAuthModalOpen(true);
         }}
-        isVerifierOpen={isVerifierOpen}
+        onOpenLoginModal={() => {
+          setAuthModalMode("login");
+          setAuthModalOpen(true);
+        }}
+        onOpenVerifier={() => {
+          navigate({ to: "/verify" });
+        }}
+        onEnterDashboard={enterConsole}
       />
-
-      {/* Main View Router */}
-      {isVerifierOpen ? (
-        <ConsumerVerification
-          initialCode={verifierInitialCode}
-          onBackToApp={() => setIsVerifierOpen(false)}
-        />
-      ) : inDashboard && storeState.currentUserRole === "ADMIN" ? (
-        <AdminDashboard
-          onSignOut={() => {
-            asemiStore.setRole("COMPANY_USER");
-            setInDashboard(false);
-          }}
-        />
-      ) : inDashboard ? (
-        <CompanyDashboard
-          company={activeCompany}
-          onOpenVerifierWithCode={(code) => {
-            setVerifierInitialCode(code);
-            setIsVerifierOpen(true);
-          }}
-          onSignOut={() => {
-            setInDashboard(false);
-          }}
-        />
-      ) : (
-        <MarketingSite
-          onOpenRegisterModal={() => {
-            setAuthModalMode("register");
-            setAuthModalOpen(true);
-          }}
-          onOpenLoginModal={() => {
-            setAuthModalMode("login");
-            setAuthModalOpen(true);
-          }}
-          onOpenVerifier={() => {
-            setIsVerifierOpen(true);
-          }}
-          onEnterDashboard={() => {
-            setInDashboard(true);
-          }}
-        />
-      )}
 
       {/* Authentication / Onboarding Modal */}
       <AuthModal
         mode={authModalMode}
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={() => {
-          setInDashboard(true);
+        onSuccess={(role) => {
+          setAuthModalOpen(false);
+          navigate({ to: role === "ADMIN" ? "/admin" : "/dashboard" });
         }}
       />
     </div>

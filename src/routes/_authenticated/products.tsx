@@ -1,8 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useMyCompany, type Company, CATEGORIES } from "@/lib/auth";
+import {
+  countCodesForProduct,
+  createProduct,
+  deleteProduct,
+  listProducts,
+  updateProduct,
+  uploadProductImage,
+  type Product,
+} from "@/lib/db";
 import { PageHeader, EmptyState, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +41,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { Tables, Database } from "@/integrations/firebase/types";
 import { PackagePlus, Pencil, Trash2, Package, Upload, X, ImagePlus, Hash } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
@@ -43,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/products")({
   component: ProductsPage,
 });
 
-type ProductWithCount = Tables<"products"> & {
+type ProductWithCount = Product & {
   codes_count: number;
 };
 
@@ -59,33 +66,20 @@ function ProductsPage() {
   const products = useQuery({
     queryKey: ["products", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          `
-          *,
-          codes:codes(count)
-        `,
-        )
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map(
-        (p: any) =>
-          ({
-            ...p,
-            codes_count:
-              ((p as unknown as { codes?: { count: number }[] }).codes?.[0]?.count as number) ?? 0,
-          }) as ProductWithCount,
+    queryFn: async (): Promise<ProductWithCount[]> => {
+      const list = await listProducts(companyId!);
+      return Promise.all(
+        list.map(async (p) => ({
+          ...p,
+          codes_count: await countCodesForProduct(companyId!, p.id),
+        })),
       );
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("products").delete().eq("id", id);
-      if (error) throw error;
+      await deleteProduct(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products", companyId] });
@@ -138,9 +132,9 @@ function ProductsPage() {
           {products.data.map((p: any) => (
             <div key={p.id} className="panel overflow-hidden transition hover:shadow-md">
               <div className="relative aspect-[4/3] w-full overflow-hidden bg-secondary">
-                {(p as any).images?.length ? (
+                {p.imageUrls?.length ? (
                   <img
-                    src={(p as any).images[0]}
+                    src={p.imageUrls[0]}
                     alt={p.name}
                     className="h-full w-full object-cover"
                   />
@@ -149,9 +143,9 @@ function ProductsPage() {
                     <Package className="size-16 text-muted-foreground/40" />
                   </div>
                 )}
-                {(p as any).images?.length > 1 && (
+                {p.imageUrls?.length > 1 && (
                   <span className="absolute right-2 top-2 rounded-md bg-background/90 px-2 py-0.5 text-xs font-medium backdrop-blur">
-                    +{(p as any).images.length - 1}
+                    +{p.imageUrls.length - 1}
                   </span>
                 )}
               </div>
@@ -259,10 +253,12 @@ function ProductDialog({
   const [category, setCategory] = useState(CATEGORIES[0] ?? "");
   const [description, setDescription] = useState("");
   const [sku, setSku] = useState("");
-  const [specsText, setSpecsText] = useState("");
+  const [regulatoryNumber, setRegulatoryNumber] = useState("");
+  const [lotNumber, setLotNumber] = useState("");
+  const [mfgDate, setMfgDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [specsError, setSpecsError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   function resetForm() {
@@ -270,10 +266,12 @@ function ProductDialog({
     setCategory(CATEGORIES[0] ?? "");
     setDescription("");
     setSku("");
-    setSpecsText("");
+    setRegulatoryNumber("");
+    setLotNumber("");
+    setMfgDate("");
+    setExpiryDate("");
     setImages([]);
     setUploading(false);
-    setSpecsError(null);
     setSaving(false);
   }
 
@@ -283,8 +281,11 @@ function ProductDialog({
       setCategory(editing.category ?? "");
       setDescription(editing.description ?? "");
       setSku(editing.sku ?? "");
-      setSpecsText(editing.specs ? JSON.stringify(editing.specs, null, 2) : "{\n  \n}");
-      setImages((editing as any).images ?? []);
+      setRegulatoryNumber(editing.regulatoryNumber ?? "");
+      setLotNumber(editing.lotNumber ?? "");
+      setMfgDate(editing.mfgDate ?? "");
+      setExpiryDate(editing.expiryDate ?? "");
+      setImages(editing.imageUrls ?? []);
     } else {
       resetForm();
     }
@@ -301,7 +302,6 @@ function ProductDialog({
 
   async function handleImageFiles(files: FileList | null) {
     if (!files || !companyId) return;
-    const productFolder = editing?.id ?? `temp-${Date.now()}`;
     const newImages = [...images];
 
     setUploading(true);
@@ -309,17 +309,7 @@ function ProductDialog({
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file) continue;
-        const ext = file.name.split(".").pop() ?? "png";
-        const random = Math.random().toString(36).slice(2, 8);
-        const key = `${companyId}/products/${productFolder}/img-${Date.now()}-${random}.${ext}`;
-
-        const { error } = await supabase.storage
-          .from("product-images")
-          .upload(key, file, { upsert: true });
-        if (error) throw error;
-
-        const { data } = supabase.storage.from("product-images").getPublicUrl(key);
-        newImages.push(data.publicUrl);
+        newImages.push(await uploadProductImage(companyId, file));
       }
       setImages(newImages);
       toast.success(`${files.length} image${files.length > 1 ? "s" : ""} uploaded`);
@@ -335,65 +325,28 @@ function ProductDialog({
     setImages(images.filter((_, i) => i !== idx));
   }
 
-  function parseSpecs(): {
-    specs: Record<string, unknown> | null;
-    error: string | null;
-  } {
-    const trimmed = specsText.trim();
-    if (!trimmed) return { specs: {}, error: null };
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        return { specs: null, error: "Specs must be a JSON object" };
-      }
-      return { specs: parsed as Record<string, unknown>, error: null };
-    } catch {
-      return { specs: null, error: "Invalid JSON" };
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!companyId || !name.trim()) return;
 
-    const { specs, error: specErr } = parseSpecs();
-    if (specErr) {
-      setSpecsError(specErr);
-      return;
-    }
-    setSpecsError(null);
-
     setSaving(true);
     try {
+      const payload = {
+        name: name.trim(),
+        category,
+        description: description.trim(),
+        sku: sku.trim(),
+        imageUrls: images,
+        regulatoryNumber: regulatoryNumber.trim() || null,
+        lotNumber: lotNumber.trim() || null,
+        mfgDate: mfgDate || null,
+        expiryDate: expiryDate || null,
+      };
       if (editing) {
-        const { error } = await supabase
-          .from("products")
-          .update({
-            name: name.trim(),
-            category,
-            description: description.trim(),
-            sku: sku.trim(),
-            specs: specs as unknown as any,
-            images,
-          })
-          .eq("id", editing.id);
-        if (error) throw error;
+        await updateProduct(editing.id, payload);
         toast.success("Product updated");
       } else {
-        const { data, error } = await supabase
-          .from("products")
-          .insert({
-            company_id: companyId,
-            name: name.trim(),
-            category,
-            description: description.trim(),
-            sku: sku.trim(),
-            specs: specs as unknown as any,
-            images,
-          })
-          .select()
-          .single();
-        if (error) throw error;
+        await createProduct(companyId, payload);
         toast.success("Product created");
       }
       queryClient.invalidateQueries({ queryKey: ["products", companyId] });
@@ -509,33 +462,43 @@ function ProductDialog({
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="p-specs">
-              Specs (optional JSON)
-              <span className="ml-2 font-normal text-xs text-muted-foreground">
-                Displayed on the public verification page
-              </span>
-            </Label>
-            <Textarea
-              id="p-specs"
-              value={specsText}
-              onChange={(e) => {
-                setSpecsText(e.target.value);
-                if (specsError) setSpecsError(null);
-              }}
-              rows={6}
-              className="font-mono text-xs"
-              placeholder={`{\n  "Volume": "250ml",\n  "Ingredients": "Xylitol, Mint"\n}`}
-            />
-            {specsError ? (
-              <p className="text-xs text-invalid">{specsError}</p>
-            ) : specsText.trim() ? (
-              (() => {
-                const { error } = parseSpecs();
-                if (error) return <p className="text-xs text-invalid">{error}</p>;
-                return <p className="text-xs text-genuine">Valid JSON object</p>;
-              })()
-            ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="p-regno">Regulatory approval no. (optional)</Label>
+              <Input
+                id="p-regno"
+                value={regulatoryNumber}
+                onChange={(e) => setRegulatoryNumber(e.target.value)}
+                placeholder="e.g. NAFDAC, FDA, CE number"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="p-lot">Lot number (optional)</Label>
+              <Input
+                id="p-lot"
+                value={lotNumber}
+                onChange={(e) => setLotNumber(e.target.value)}
+                placeholder="e.g. LOT-2026-1042"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="p-mfg">Manufacture date (optional)</Label>
+              <Input
+                id="p-mfg"
+                type="date"
+                value={mfgDate}
+                onChange={(e) => setMfgDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="p-exp">Expiry date (optional)</Label>
+              <Input
+                id="p-exp"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+              />
+            </div>
           </div>
 
           <DialogFooter>

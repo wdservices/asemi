@@ -1,8 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useIsAdmin, useSession } from "@/lib/auth";
+import {
+  fnSetCodeReview,
+  listCodeScans,
+  listFlaggedCodes,
+  nameMaps,
+  platformScans,
+  type Code,
+  type Scan,
+} from "@/lib/db";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatNaira } from "@/lib/pricing";
 import { ShieldAlert, Building2, Flag, Search, Download, Check, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,17 +49,10 @@ export const Route = createFileRoute("/_authenticated/admin/fraud")({
   component: AdminFraud,
 });
 
-type FlaggedCode = {
-  id: string;
-  code_string: string;
-  scan_count: number;
-  flagged: boolean;
-  review_status: string;
-  created_at: string;
-  last_scanned_at: string | null;
-  companies: { name: string } | null;
-  products: { name: string } | null;
-  batches: { batch_number: string } | null;
+type FlaggedCode = Code & {
+  companyName: string;
+  productName: string;
+  batchNumber: string;
   scans: Array<{ city: string | null; country: string | null }>;
 };
 
@@ -106,38 +106,44 @@ function FraudContent() {
 
   const flaggedCodes = useQuery({
     queryKey: ["admin-flagged-codes"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("codes")
-        .select(
-          `id, code_string, scan_count, flagged, review_status, created_at, last_scanned_at,
-         companies:companies!inner(name),
-         products:products!inner(name),
-         batches:batches!inner(batch_number),
-         scans!left(city, country)`,
-        )
-        .or("flagged.eq.true,review_status.neq.none")
-        .order("last_scanned_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data as unknown as FlaggedCode[];
+    staleTime: 30_000,
+    queryFn: async (): Promise<FlaggedCode[]> => {
+      const codes = await listFlaggedCodes(100);
+      const names = await nameMaps({
+        companyIds: codes.map((c) => c.companyId),
+        productIds: codes.map((c) => c.productId),
+        batchIds: codes.map((c) => c.batchId),
+      });
+      const withScans = await Promise.all(
+        codes.map(async (c) => {
+          let scans: Scan[] = [];
+          try {
+            scans = await listCodeScans(c.id, 100);
+          } catch {
+            scans = [];
+          }
+          return {
+            ...c,
+            companyName: names.companies.get(c.companyId) ?? "—",
+            productName: names.products.get(c.productId) ?? "—",
+            batchNumber: names.batches.get(c.batchId) ?? "—",
+            scans: scans.map((s) => ({ city: s.city, country: s.country })),
+          };
+        }),
+      );
+      return withScans;
     },
   });
 
   const trend30d = useQuery({
     queryKey: ["admin-flagged-trend"],
+    staleTime: 60_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 30 * 86400000).toISOString();
-      const { data, error } = await supabase
-        .from("scans")
-        .select("scanned_at, flagged")
-        .gte("scanned_at", since)
-        .order("scanned_at", { ascending: true });
-      if (error) throw error;
+      const scans = await platformScans(since);
       const byDay = new Map<string, { day: string; flagged: number; genuine: number }>();
-      for (const s of data ?? []) {
-        const d = new Date(s.scanned_at).toISOString().slice(0, 10);
+      for (const s of scans) {
+        const d = new Date(s.scannedAt).toISOString().slice(0, 10);
         if (!byDay.has(d)) byDay.set(d, { day: d.slice(5), flagged: 0, genuine: 0 });
         const row = byDay.get(d)!;
         if (s.flagged) row.flagged += 1;
@@ -152,14 +158,14 @@ function FraudContent() {
     const q = search.trim().toLowerCase();
     return all.filter((c) => {
       if (reviewFilter === "flagged" && !c.flagged) return false;
-      if (reviewFilter !== "all" && reviewFilter !== "flagged" && c.review_status !== reviewFilter)
+      if (reviewFilter !== "all" && reviewFilter !== "flagged" && c.reviewStatus !== reviewFilter)
         return false;
       if (!q) return true;
       return (
-        c.code_string.toLowerCase().includes(q) ||
-        c.companies?.name.toLowerCase().includes(q) ||
-        c.products?.name.toLowerCase().includes(q) ||
-        c.batches?.batch_number.toLowerCase().includes(q)
+        c.codeString.toLowerCase().includes(q) ||
+        c.companyName.toLowerCase().includes(q) ||
+        c.productName.toLowerCase().includes(q) ||
+        c.batchNumber.toLowerCase().includes(q)
       );
     });
   }, [flaggedCodes.data, search, reviewFilter]);
@@ -168,21 +174,17 @@ function FraudContent() {
     const all = flaggedCodes.data ?? [];
     return {
       total: all.length,
-      open: all.filter((c) => c.review_status === "open" || c.flagged).length,
-      reviewed: all.filter((c) => c.review_status === "reviewed").length,
-      escalated: all.filter((c) => c.review_status === "escalated").length,
-      totalScans: all.reduce((s, c) => s + (c.scan_count || 0), 0),
+      open: all.filter((c) => c.reviewStatus === "open" || c.flagged).length,
+      reviewed: all.filter((c) => c.reviewStatus === "reviewed").length,
+      escalated: all.filter((c) => c.reviewStatus === "escalated").length,
+      totalScans: all.reduce((s, c) => s + (c.scanCount || 0), 0),
     };
   }, [flaggedCodes.data]);
 
   async function setReviewStatus(codeId: string, status: "reviewed" | "escalated") {
     setBusyId(codeId);
     try {
-      const { error } = await supabase.rpc("set_code_review", {
-        _code_id: codeId,
-        _status: status,
-      });
-      if (error) throw error;
+      await fnSetCodeReview(codeId, status);
       toast.success(status === "reviewed" ? "Marked as reviewed" : "Escalated for further review");
       await queryClient.invalidateQueries({ queryKey: ["admin-flagged-codes"] });
     } catch (err) {
@@ -222,16 +224,16 @@ function FraudContent() {
       const locs = distinctLocations(r.scans);
       lines.push(
         [
-          r.code_string,
-          `"${(r.companies?.name ?? "").replace(/"/g, '""')}"`,
-          `"${(r.products?.name ?? "").replace(/"/g, '""')}"`,
-          r.batches?.batch_number ?? "",
-          r.scan_count,
+          r.codeString,
+          `"${r.companyName.replace(/"/g, '""')}"`,
+          `"${r.productName.replace(/"/g, '""')}"`,
+          r.batchNumber ?? "",
+          r.scanCount,
           locs.cities,
           locs.countries,
           r.flagged ? "yes" : "no",
-          r.review_status,
-          r.last_scanned_at ?? "",
+          r.reviewStatus,
+          r.lastScannedAt ?? "",
         ].join(","),
       );
     }
@@ -423,7 +425,7 @@ function FraudContent() {
                     <TableRow key={c.id}>
                       <TableCell className="px-3">
                         <div>
-                          <p className="font-mono text-sm font-medium">{c.code_string}</p>
+                          <p className="font-mono text-sm font-medium">{c.codeString}</p>
                           {c.flagged && (
                             <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-invalid/10 px-1.5 py-0.5 text-[10px] font-medium text-invalid">
                               <Flag className="size-3" /> Flagged
@@ -431,19 +433,19 @@ function FraudContent() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="px-3 text-sm">{c.companies?.name ?? "—"}</TableCell>
-                      <TableCell className="px-3 text-sm">{c.products?.name ?? "—"}</TableCell>
+                      <TableCell className="px-3 text-sm">{c.companyName ?? "—"}</TableCell>
+                      <TableCell className="px-3 text-sm">{c.productName ?? "—"}</TableCell>
                       <TableCell className="px-3 font-mono text-xs">
-                        {c.batches?.batch_number ?? "—"}
+                        {c.batchNumber ?? "—"}
                       </TableCell>
                       <TableCell className="px-3 text-right tabular-nums">
                         <div>
                           <p className="text-sm font-medium tabular-nums">
-                            {c.scan_count.toLocaleString()}
+                            {c.scanCount.toLocaleString()}
                           </p>
-                          {c.last_scanned_at && (
+                          {c.lastScannedAt && (
                             <p className="text-[10px] text-muted-foreground">
-                              {new Date(c.last_scanned_at).toLocaleDateString()}
+                              {new Date(c.lastScannedAt).toLocaleDateString()}
                             </p>
                           )}
                         </div>
@@ -460,7 +462,7 @@ function FraudContent() {
                       </TableCell>
                       <TableCell className="px-3">
                         <StatusBadge
-                          status={c.review_status === "none" ? "open" : c.review_status}
+                          status={c.reviewStatus === "none" ? "open" : c.reviewStatus}
                         />
                       </TableCell>
                       <TableCell className="px-3 text-right">
@@ -470,7 +472,7 @@ function FraudContent() {
                             variant="outline"
                             className="h-7 px-2 text-genuine hover:bg-genuine/10 hover:text-genuine"
                             onClick={() => setReviewStatus(c.id, "reviewed")}
-                            disabled={busy || c.review_status === "reviewed"}
+                            disabled={busy || c.reviewStatus === "reviewed"}
                           >
                             <Check className="size-3.5" />
                             <span className="sr-only">Mark reviewed</span>
@@ -480,7 +482,7 @@ function FraudContent() {
                             variant="outline"
                             className="h-7 px-2 text-caution hover:bg-caution/10 hover:text-caution"
                             onClick={() => setReviewStatus(c.id, "escalated")}
-                            disabled={busy || c.review_status === "escalated"}
+                            disabled={busy || c.reviewStatus === "escalated"}
                           >
                             <ShieldAlert className="size-3.5" />
                             <span className="sr-only">Escalate</span>

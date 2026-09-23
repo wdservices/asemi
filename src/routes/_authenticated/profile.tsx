@@ -2,8 +2,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useMyCompany, useSession, useSignOut, CATEGORIES, type Company } from "@/lib/auth";
+import {
+  countCollection,
+  updateCompanySelfService,
+  uploadCompanyDoc,
+  uploadProductImage,
+} from "@/lib/db";
 import { PageHeader, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,10 +44,7 @@ export const Route = createFileRoute("/_authenticated/profile")({
   component: ProfilePage,
 });
 
-type ExtendedCompany = Company & {
-  total_codes_generated?: number;
-  free_codes_used?: number;
-};
+type ExtendedCompany = Company;
 
 function ProfilePage() {
   const { data: session } = useSession();
@@ -50,7 +52,6 @@ function ProfilePage() {
   const signOut = useSignOut();
   const queryClient = useQueryClient();
   const companyId = company?.id;
-  const ownerId = company?.owner_id;
 
   const [name, setName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -66,26 +67,19 @@ function ProfilePage() {
   useEffect(() => {
     if (company) {
       setName(company.name ?? "");
-      setRegistrationNumber(company.registration_number ?? "");
+      setRegistrationNumber(company.registrationNumber ?? "");
       setAddress(company.address ?? "");
       setPhone(company.phone ?? "");
       setEmail(company.email ?? "");
       setCategory(company.category ?? CATEGORIES[0] ?? "");
-      setLogoPreview(company.logo_url ?? null);
+      setLogoPreview(company.logoUrl ?? null);
     }
   }, [company]);
 
   const productCount = useQuery({
     queryKey: ["profile-product-count", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("products")
-        .select("*", { count: "exact", head: true })
-        .eq("company_id", companyId!);
-      if (error) throw error;
-      return count ?? 0;
-    },
+    queryFn: () => countCollection("products", companyId!),
   });
 
   async function handleSave(e: React.FormEvent) {
@@ -93,63 +87,42 @@ function ProfilePage() {
     if (!companyId) return;
     setBusy(true);
     try {
-      let logoUrl: string | null | undefined = undefined;
-      let docUrl: string | null | undefined = undefined;
+      let logoUrl: string | undefined;
+      let docUrl: string | undefined;
 
       if (logo) {
-        const ext = logo.name.split(".").pop() ?? "png";
-        const key = `${companyId}/logo-${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from("product-images")
-          .upload(key, logo, { upsert: true });
-        if (!uploadErr) {
-          const { data } = supabase.storage.from("product-images").getPublicUrl(key);
-          logoUrl = data.publicUrl;
-          setLogoPreview(logoUrl ?? null);
-        } else {
+        try {
+          logoUrl = await uploadProductImage(companyId, logo);
+          setLogoPreview(logoUrl);
+        } catch (uploadErr) {
           console.warn("Logo upload failed:", uploadErr);
         }
       }
       if (document) {
-        const ext = document.name.split(".").pop() ?? "pdf";
-        const key = `${companyId}/doc-${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from("company-docs")
-          .upload(key, document, { upsert: true });
-        if (!uploadErr) {
-          const { data } = await supabase.storage
-            .from("company-docs")
-            .createSignedUrl(key, 60 * 60 * 24 * 365);
-          docUrl = data?.signedUrl ?? null;
-        } else {
+        try {
+          docUrl = await uploadCompanyDoc(companyId, document);
+        } catch (uploadErr) {
           console.warn("Document upload failed:", uploadErr);
         }
       }
 
-      const payload: Record<string, any> = {
+      await updateCompanySelfService(companyId, {
         name,
-        registration_number: registrationNumber,
+        registrationNumber,
         address,
         phone,
         email,
         category,
-      };
-      if (logoUrl !== undefined) payload["logo_url"] = logoUrl;
-      if (docUrl !== undefined) payload["document_url"] = docUrl;
-
-      const { error } = await supabase
-        .from("companies")
-
-        .update(payload as any)
-        .eq("id", companyId);
-      if (error) throw error;
+        ...(logoUrl !== undefined ? { logoUrl } : {}),
+        ...(docUrl !== undefined ? { documentUrl: docUrl } : {}),
+      });
 
       await queryClient.invalidateQueries({ queryKey: ["my-company", session?.user.id] });
       setLogo(null);
       setDocument(null);
       toast.success("Company details saved.");
       if (docUrl !== undefined) {
-        toast.message("Document updated — status returned to pending for admin review.");
+        toast.message("Document updated — an admin will re-review your registration.");
       }
     } catch (err) {
       console.error(err);
@@ -159,8 +132,8 @@ function ProfilePage() {
     }
   }
 
-  const totalCodes = company?.total_codes_generated ?? 0;
-  const freeUsed = company?.free_codes_used ?? 0;
+  const totalCodes = company?.totalCodesGenerated ?? 0;
+  const freeUsed = company?.freeCodesUsed ?? 0;
   const freeRemain = Math.max(0, 20 - freeUsed);
   const totalProducts = productCount.data ?? 0;
 
@@ -213,10 +186,10 @@ function ProfilePage() {
               </div>
             </div>
           </div>
-          {company.admin_note && (
+          {company.adminNote && (
             <div className="mt-4 rounded-lg border bg-background p-4 text-sm">
               <p className="eyebrow">Note from Asemi admin</p>
-              <p className="mt-1 whitespace-pre-wrap">{company.admin_note}</p>
+              <p className="mt-1 whitespace-pre-wrap">{company.adminNote}</p>
             </div>
           )}
         </div>
@@ -362,7 +335,7 @@ function ProfilePage() {
                     <div
                       className={cn(
                         "grid size-16 place-items-center rounded-lg border",
-                        company?.document_url
+                        company?.documentUrl
                           ? "bg-genuine/10 text-genuine"
                           : "bg-muted/40 text-muted-foreground",
                       )}
@@ -377,7 +350,7 @@ function ProfilePage() {
                         <Upload className="size-3.5" />
                         {document
                           ? document.name
-                          : company?.document_url
+                          : company?.documentUrl
                             ? "Re-upload document"
                             : "Upload document"}
                       </Label>
@@ -403,14 +376,14 @@ function ProfilePage() {
                   onClick={() => {
                     if (!company) return;
                     setName(company.name ?? "");
-                    setRegistrationNumber(company.registration_number ?? "");
+                    setRegistrationNumber(company.registrationNumber ?? "");
                     setAddress(company.address ?? "");
                     setPhone(company.phone ?? "");
                     setEmail(company.email ?? "");
                     setCategory(company.category ?? "");
                     setLogo(null);
                     setDocument(null);
-                    setLogoPreview(company.logo_url ?? null);
+                    setLogoPreview(company.logoUrl ?? null);
                   }}
                   disabled={busy}
                 >

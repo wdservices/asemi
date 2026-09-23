@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useMyCompany, type Company } from "@/lib/auth";
+import { listCodes, listCompanyScans, listProducts } from "@/lib/db";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,8 +22,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Tables, Database } from "@/integrations/firebase/types";
-import { formatNaira } from "@/lib/pricing";
 import {
   BarChart3,
   ScanEye,
@@ -88,86 +86,44 @@ function AnalyticsPage() {
   const products = useQuery({
     queryKey: ["products", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,name")
-        .eq("company_id", companyId!)
-        .order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => listProducts(companyId!),
   });
 
   const scans = useQuery({
     queryKey: ["analytics-scans", companyId, since, productId],
     enabled: !!companyId,
     queryFn: async () => {
-      let q = supabase
-        .from("scans")
-        .select("scanned_at, flagged, city, code_id")
-        .eq("company_id", companyId!)
-        .gte("scanned_at", since);
-      if (productId !== "all") q = q.eq("product_id", productId);
-      const { data, error } = await q.order("scanned_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
+      const all = await listCompanyScans(companyId!, since);
+      return productId === "all" ? all : all.filter((s) => s.productId === productId);
     },
   });
 
   const flaggedCodes = useQuery({
     queryKey: ["analytics-flagged", companyId, since, productId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const codesQ = supabase
-        .from("codes")
-        .select(
-          `
-          id, code_string, scan_count, flagged, review_status, product_id,
-          products(name)
-        `,
-        )
-        .eq("company_id", companyId!)
-        .eq("flagged", true);
-      if (productId !== "all") codesQ.eq("product_id", productId);
-      const { data: codes, error: cErr } = await codesQ
-        .order("scan_count", { ascending: false })
-        .limit(50);
-      if (cErr) throw cErr;
-
-      const codeIds = (codes ?? []).map((c: any) => c.id);
-      const citiesPerCode: Record<string, number> = {};
-      if (codeIds.length) {
-        const { data: scanRows, error: sErr } = await supabase
-          .from("scans")
-          .select("code_id, city")
-          .in("code_id", codeIds);
-        if (sErr) throw sErr;
-        for (const s of scanRows ?? []) {
-          if (!s.city) continue;
-          citiesPerCode[s.code_id] = (citiesPerCode[s.code_id] ?? 0) + 1;
-        }
-      }
-
-      return (codes ?? []).map((c: any) => {
-        const cx = c as unknown as {
-          id: string;
-          code_string: string;
-          product_id: string;
-          scan_count: number;
-          review_status: any;
-          products?: { name?: string } | null;
-        };
-        return {
-          id: cx.id,
-          code_string: cx.code_string,
-          product_id: cx.product_id,
-          product_name: cx.products?.name ?? "—",
-          scan_count: cx.scan_count,
-          cities_count: citiesPerCode[cx.id] ?? 0,
-          review_status: cx.review_status,
-        } satisfies FlaggedRow;
+    queryFn: async (): Promise<FlaggedRow[]> => {
+      const codes = await listCodes(companyId!, {
+        productId: productId === "all" ? undefined : productId,
+        flaggedOnly: true,
+        limitN: 50,
       });
+      const productNames = new Map((products.data ?? []).map((p) => [p.id, p.name]));
+      const citiesPerCode: Record<string, Set<string>> = {};
+      for (const s of scans.data ?? []) {
+        if (!s.city) continue;
+        (citiesPerCode[s.codeId] ??= new Set()).add(s.city);
+      }
+      return codes
+        .map((c) => ({
+          id: c.id,
+          code_string: c.codeString,
+          product_id: c.productId,
+          product_name: productNames.get(c.productId) ?? "—",
+          scan_count: c.scanCount,
+          cities_count: citiesPerCode[c.id]?.size ?? 0,
+          review_status: c.reviewStatus,
+        }) satisfies FlaggedRow)
+        .sort((a, b) => b.scan_count - a.scan_count);
     },
   });
 
@@ -180,7 +136,7 @@ function AnalyticsPage() {
       let flagged = 0;
 
       for (const s of raw) {
-        const d = new Date(s.scanned_at).toISOString().slice(5, 10);
+        const d = new Date(s.scannedAt).toISOString().slice(5, 10);
         if (!byDay.has(d)) byDay.set(d, { day: d, genuine: 0, flagged: 0 });
         const row = byDay.get(d)!;
         if (s.flagged) {
@@ -192,9 +148,9 @@ function AnalyticsPage() {
           if (!byCity.has(s.city)) byCity.set(s.city, { scans: 0, codes: new Set() });
           const cb = byCity.get(s.city)!;
           cb.scans += 1;
-          if (s.code_id) cb.codes.add(s.code_id);
+          if (s.codeId) cb.codes.add(s.codeId);
         }
-        if (s.code_id) codes.add(s.code_id);
+        if (s.codeId) codes.add(s.codeId);
       }
 
       const series = Array.from(byDay.values()).sort((a, b) => a.day.localeCompare(b.day));

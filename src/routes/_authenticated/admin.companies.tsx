@@ -2,8 +2,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useIsAdmin, useSession } from "@/lib/auth";
+import {
+  adminCompanyOverview,
+  fnAdminApproveCompany,
+  fnAdminRejectCompany,
+  fnAdminRequestInfo,
+  type CompanyOverview,
+} from "@/lib/db";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatNaira } from "@/lib/pricing";
 import {
   ShieldAlert,
   Building2,
@@ -44,18 +49,6 @@ export const Route = createFileRoute("/_authenticated/admin/companies")({
   head: () => ({ meta: [{ title: "Companies — Asemi Admin" }] }),
   component: AdminCompanies,
 });
-
-type CompanyOverview = {
-  id: string;
-  name: string;
-  status: string;
-  subscription_plan: string;
-  product_count: number;
-  code_count: number;
-  created_at: string;
-  registration_number: string;
-  email: string;
-};
 
 const STATUS_FILTERS: Array<{ key: string; label: string }> = [
   { key: "all", label: "All" },
@@ -120,11 +113,8 @@ function CompaniesContent() {
 
   const companies = useQuery({
     queryKey: ["admin-company-overview"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_company_overview");
-      if (error) throw error;
-      return data as CompanyOverview[];
-    },
+    queryFn: adminCompanyOverview,
+    staleTime: 60_000,
   });
 
   const rows = useMemo(() => {
@@ -135,7 +125,7 @@ function CompaniesContent() {
       if (!q) return true;
       return (
         c.name.toLowerCase().includes(q) ||
-        c.registration_number.toLowerCase().includes(q) ||
+        c.registrationNumber.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
         c.id.toLowerCase().includes(q)
       );
@@ -150,8 +140,8 @@ function CompaniesContent() {
       needs_info: all.filter((c) => c.status === "needs_info").length,
       approved: all.filter((c) => c.status === "approved").length,
       rejected: all.filter((c) => c.status === "rejected").length,
-      totalCodes: all.reduce((s, c) => s + c.code_count, 0),
-      totalProducts: all.reduce((s, c) => s + c.product_count, 0),
+      totalCodes: all.reduce((s, c) => s + c.codeCount, 0),
+      totalProducts: all.reduce((s, c) => s + c.productCount, 0),
     };
   }, [companies.data]);
 
@@ -169,18 +159,14 @@ function CompaniesContent() {
     if (!dialogState.company || !dialogState.mode) return;
     setDialogState((s) => ({ ...s, busy: true }));
     try {
-      const rpc =
-        dialogState.mode === "approve"
-          ? "admin_approve_company"
-          : dialogState.mode === "reject"
-            ? "admin_reject_company"
-            : "admin_request_info";
-
-      const args: any = { _company_id: dialogState.company.id };
-      if (dialogState.note) args._note = dialogState.note;
-
-      const { error } = await (supabase.rpc as any)(rpc, args);
-      if (error) throw error;
+      const note = dialogState.note || null;
+      if (dialogState.mode === "approve") {
+        await fnAdminApproveCompany(dialogState.company.id, note);
+      } else if (dialogState.mode === "reject") {
+        await fnAdminRejectCompany(dialogState.company.id, note);
+      } else {
+        await fnAdminRequestInfo(dialogState.company.id, note);
+      }
       toast.success(
         dialogState.mode === "approve"
           ? "Company approved"
@@ -216,11 +202,11 @@ function CompaniesContent() {
         [
           `"${r.name.replace(/"/g, '""')}"`,
           r.status,
-          r.subscription_plan,
-          r.product_count,
-          r.code_count,
-          r.created_at,
-          r.registration_number,
+          "Starter",
+          r.productCount,
+          r.codeCount,
+          r.createdAt,
+          r.registrationNumber,
           `"${r.email.replace(/"/g, '""')}"`,
         ].join(","),
       );
@@ -375,16 +361,16 @@ function CompaniesContent() {
                           <StatusBadge status={c.status} />
                         </TableCell>
                         <TableCell className="px-3">
-                          <span className="text-sm capitalize">{c.subscription_plan}</span>
+                          <span className="text-sm capitalize">Starter</span>
                         </TableCell>
                         <TableCell className="px-3 text-right tabular-nums">
-                          {c.product_count.toLocaleString()}
+                          {c.productCount.toLocaleString()}
                         </TableCell>
                         <TableCell className="px-3 text-right tabular-nums">
-                          {c.code_count.toLocaleString()}
+                          {c.codeCount.toLocaleString()}
                         </TableCell>
                         <TableCell className="px-3 text-xs text-muted-foreground">
-                          {new Date(c.created_at).toLocaleDateString()}
+                          {new Date(c.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="px-3 text-right">
                           <div className="inline-flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -425,29 +411,29 @@ function CompaniesContent() {
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">CAC / Reg no:</span>{" "}
-                                  <span className="font-mono">{c.registration_number}</span>
+                                  <span className="font-mono">{c.registrationNumber}</span>
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Email:</span> {c.email}
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Signed up:</span>{" "}
-                                  {new Date(c.created_at).toLocaleString()}
+                                  {new Date(c.createdAt).toLocaleString()}
                                 </p>
                               </div>
                               <div className="space-y-2 text-sm">
                                 <p className="eyebrow">Usage</p>
                                 <p>
                                   <span className="text-muted-foreground">Products:</span>{" "}
-                                  {c.product_count}
+                                  {c.productCount}
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Codes issued:</span>{" "}
-                                  {c.code_count.toLocaleString()}
+                                  {c.codeCount.toLocaleString()}
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Subscription:</span>{" "}
-                                  {c.subscription_plan}
+                                  Starter
                                 </p>
                               </div>
                               <div className="space-y-2">
@@ -537,7 +523,7 @@ function CompaniesContent() {
             {dialogState.company && (
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{dialogState.company.name}</span> ·{" "}
-                {dialogState.company.registration_number}
+                {dialogState.company.registrationNumber}
               </p>
             )}
           </DialogHeader>

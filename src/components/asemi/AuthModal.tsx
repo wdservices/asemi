@@ -5,7 +5,7 @@ interface AuthModalProps {
   mode: "login" | "register";
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (role?: "ADMIN" | "COMPANY_USER") => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ mode, isOpen, onClose, onSuccess }) => {
@@ -36,8 +36,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, isOpen, onClose, onS
       <div className="relative w-full max-w-2xl my-auto flex justify-center animate-[rise_300ms_cubic-bezier(0.32,0.72,0,1)_both]">
         <AuthCard
           initialMode={mode}
-          onSuccess={() => {
-            onSuccess();
+          onSuccess={(role) => {
+            onSuccess(role);
             onClose();
           }}
           onClose={onClose}

@@ -10,7 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { CustomCursor } from "@/components/CustomCursor";
-import { fb as supabase } from "@/integrations/firebase/client";
+import { onAuthStateChanged } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -130,12 +131,12 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+    if (!firebaseAuth) return;
+    const unsub = onAuthStateChanged(firebaseAuth, () => {
       router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      queryClient.invalidateQueries();
     });
-    return () => data.subscription.unsubscribe();
+    return unsub;
   }, [router, queryClient]);
 
   return (

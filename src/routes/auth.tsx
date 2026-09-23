@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
-import { asemiStore } from "@/lib/asemiStore";
+import { getCurrentUserId } from "@/lib/auth";
 import { Logo } from "@/components/brand";
 import { AuthCard } from "@/components/asemi/AuthCard";
 import { ArrowLeft } from "lucide-react";
@@ -9,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): { mode?: "login" | "register" } => {
     return {
-      mode: search.mode === "register" ? "register" : "login",
+      mode: search["mode"] === "register" ? "register" : "login",
     };
   },
   head: () => ({
@@ -37,8 +36,8 @@ function AuthPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      const uid = await getCurrentUserId();
+      if (uid) {
         navigate({ to: "/dashboard", replace: true });
       }
     })();
@@ -62,8 +61,7 @@ function AuthPage() {
         {/* Unified Authentication Card (Same UI for Login and Register) */}
         <AuthCard
           initialMode={initialMode}
-          onSuccess={() => {
-            const role = asemiStore.getState().currentUserRole;
+          onSuccess={(role) => {
             if (role === "ADMIN") {
               navigate({ to: "/admin" });
             } else {

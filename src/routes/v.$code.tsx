@@ -2,12 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle, AlertTriangle, Flag } from "lucide-react";
 import { toast } from "sonner";
-import { asemiStore } from "@/lib/asemiStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Logo } from "@/components/brand";
 import { normalizeCode } from "@/lib/auth";
+import { fnVerifyCode, submitReport, type VerifyResult } from "@/lib/db";
 
 export const Route = createFileRoute("/v/$code")({
   head: ({ params }) => ({
@@ -25,11 +25,10 @@ export const Route = createFileRoute("/v/$code")({
 type Result = {
   status: "genuine" | "soft_escalation" | "invalid";
   code?: string;
-  scan_count?: number;
-  product?: { name: string; category: string; description: string };
-  company?: { name: string };
-  batch?: { number: string; produced_at: string };
-  warningMessage?: string;
+  scan_count?: number | undefined;
+  product?: VerifyResult["product"] | undefined;
+  company?: VerifyResult["company"] | undefined;
+  batch?: VerifyResult["batch"] | undefined;
 };
 
 function browserToken() {
@@ -55,10 +54,9 @@ function VerifyResult() {
           typeof window !== "undefined"
             ? `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
             : "browser_fp";
-        const res = await asemiStore.verifyCode({
-          codeString: code,
+        const res = await fnVerifyCode({
+          code,
           browserToken: browserToken(),
-          roughLocation: "Consumer Camera / Lagos, NG",
           deviceFingerprint: fp,
         });
         if (cancelled) return;
@@ -67,24 +65,12 @@ function VerifyResult() {
           setResult({ status: "invalid", code });
         } else {
           setResult({
-            status: res.status,
-            code: res.code?.codeString || code,
-            scan_count: res.scanCount,
-            product: res.product
-              ? {
-                  name: res.product.name,
-                  category: res.product.category,
-                  description: res.product.description,
-                }
-              : undefined,
-            company: res.company ? { name: res.company.name } : undefined,
-            batch: res.batch
-              ? {
-                  number: res.batch.id.replace("batch_", "B-"),
-                  produced_at: res.batch.createdAt,
-                }
-              : undefined,
-            warningMessage: res.warningMessage,
+            status: res.status === "genuine_repeated" ? "soft_escalation" : "genuine",
+            code: res.code || code,
+            scan_count: res.scan_count,
+            product: res.product,
+            company: res.company,
+            batch: res.batch,
           });
         }
       } catch (err) {
@@ -125,40 +111,75 @@ function VerifyResult() {
               subtitle={
                 result.status === "genuine"
                   ? `Verified by ${result.company?.name || "the manufacturer"}.`
-                  : result.warningMessage ||
-                    `This code has been checked ${result.scan_count} times. If something feels off, let us know.`
+                  : `This code has been checked ${result.scan_count} times from different locations. If something feels off, let us know.`
               }
               code={result.code as string}
             />
-            <div className="panel mt-4 p-5">
-              <p className="eyebrow">Product</p>
-              <p className="mt-1 font-display text-xl font-semibold">{result.product?.name}</p>
-              <p className="text-sm text-muted-foreground">{result.product?.category}</p>
-              {result.product?.description && (
-                <p className="mt-3 text-sm">{result.product.description}</p>
+            <div className="panel mt-4 overflow-hidden">
+              {result.product?.image && (
+                <img
+                  src={result.product.image}
+                  alt={result.product.name}
+                  className="aspect-[16/9] w-full object-cover"
+                />
               )}
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <dt className="text-muted-foreground">Manufacturer</dt>
-                  <dd className="font-medium">{result.company?.name}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Batch</dt>
-                  <dd className="font-mono font-medium">{result.batch?.number}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Produced</dt>
-                  <dd className="font-medium">
-                    {result.batch?.produced_at
-                      ? new Date(result.batch.produced_at).toLocaleDateString()
-                      : "Recently"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Total Scans</dt>
-                  <dd className="font-medium">{result.scan_count}</dd>
-                </div>
-              </dl>
+              <div className="p-5">
+                <p className="eyebrow">Product</p>
+                <p className="mt-1 font-display text-xl font-semibold">{result.product?.name}</p>
+                <p className="text-sm text-muted-foreground">{result.product?.category}</p>
+                {result.product?.description && (
+                  <p className="mt-3 text-sm">{result.product.description}</p>
+                )}
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Manufacturer</dt>
+                    <dd className="font-medium">{result.company?.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Batch</dt>
+                    <dd className="font-mono font-medium">{result.batch?.number}</dd>
+                  </div>
+                  {(result.product?.lotNumber || result.batch?.lotNumber) && (
+                    <div>
+                      <dt className="text-muted-foreground">Lot number</dt>
+                      <dd className="font-mono font-medium">
+                        {result.product?.lotNumber || result.batch?.lotNumber}
+                      </dd>
+                    </div>
+                  )}
+                  {(result.product?.mfgDate || result.product?.expiryDate) && (
+                    <div>
+                      <dt className="text-muted-foreground">Dates</dt>
+                      <dd className="font-medium">
+                        {result.product?.mfgDate
+                          ? `Mfg ${new Date(result.product.mfgDate).toLocaleDateString()}`
+                          : ""}
+                        {result.product?.mfgDate && result.product?.expiryDate ? " · " : ""}
+                        {result.product?.expiryDate
+                          ? `Exp ${new Date(result.product.expiryDate).toLocaleDateString()}`
+                          : ""}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-muted-foreground">Produced</dt>
+                    <dd className="font-medium">
+                      {result.batch?.produced_at
+                        ? new Date(result.batch.produced_at).toLocaleDateString()
+                        : "Recently"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Total Scans</dt>
+                    <dd className="font-medium">{result.scan_count}</dd>
+                  </div>
+                </dl>
+                {result.product?.regulatoryNumber && (
+                  <p className="mt-4 rounded-lg bg-genuine/10 px-3 py-2 text-xs font-medium text-genuine">
+                    Registered approval: {result.product.regulatoryNumber}
+                  </p>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -224,8 +245,8 @@ function ReportForm({
   productName,
 }: {
   code: string;
-  companyName?: string;
-  productName?: string;
+  companyName?: string | undefined;
+  productName?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [contact, setContact] = useState("");
@@ -254,23 +275,24 @@ function ReportForm({
       onSubmit={(e) => {
         e.preventDefault();
         setBusy(true);
-        try {
-          asemiStore.submitReport({
-            codeId: code,
-            codeString: code,
-            companyId: "comp_reported",
-            productName: productName || "Reported Item",
-            message,
-            contact,
-          });
-          setBusy(false);
-          setSent(true);
-          toast.success("Report submitted successfully");
-        } catch (err) {
-          console.error(err);
-          setBusy(false);
-          toast.error("Failed to submit report. Please try again.");
-        }
+        (async () => {
+          try {
+            await submitReport({
+              codeId: null,
+              companyId: null,
+              codeString: code,
+              message: `[${productName || "Reported item"}] ${message}`,
+              contact: contact || null,
+            });
+            setBusy(false);
+            setSent(true);
+            toast.success("Report submitted successfully");
+          } catch (err) {
+            console.error(err);
+            setBusy(false);
+            toast.error("Failed to submit report. Please try again.");
+          }
+        })();
       }}
     >
       <p className="font-medium">Report this product</p>

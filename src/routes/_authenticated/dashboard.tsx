@@ -1,8 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useMyCompany, type Company } from "@/lib/auth";
+import {
+  countCollection,
+  formatMoney,
+  getWallet,
+  listBatches,
+  listCompanyScans,
+  listProducts,
+} from "@/lib/db";
 import { EmptyState, PageHeader, StatCard } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +24,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { formatNaira } from "@/lib/pricing";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Asemi" }] }),
@@ -39,71 +45,58 @@ function DashboardOverview() {
   const stats = useQuery({
     queryKey: ["company-stats", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("company_stats", { _company_id: companyId! });
-      if (error) throw error;
-      return data as unknown as Stats;
+    queryFn: async (): Promise<Stats> => {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const [products, codes, scans, batches] = await Promise.all([
+        countCollection("products", companyId!),
+        countCollection("codes", companyId!),
+        listCompanyScans(companyId!, new Date(Date.now() - 30 * 864e5).toISOString()),
+        listBatches(companyId!, 100),
+      ]);
+      const codesMonth = batches
+        .filter((b) => new Date(b.createdAt) >= monthStart)
+        .reduce((sum, b) => sum + b.quantity, 0);
+      return {
+        products,
+        codes,
+        scans_month: scans.length,
+        flagged: scans.filter((x) => x.flagged).length,
+        codes_month: codesMonth,
+      };
     },
   });
 
   const wallet = useQuery({
     queryKey: ["wallet", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("wallets")
-        .select("credit_balance, lifetime_topup, lifetime_spent")
-        .eq("company_id", companyId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => getWallet(companyId!),
   });
 
   const recentProducts = useQuery({
     queryKey: ["recent-products", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,name,category,created_at")
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => (await listProducts(companyId!)).slice(0, 5),
   });
 
   const recentBatches = useQuery({
     queryKey: ["recent-batches", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("batches")
-        .select("id,batch_number,quantity,amount_charged,created_at,products(name)")
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => (await listBatches(companyId!, 5)),
   });
 
   const scanSeries = useQuery({
     queryKey: ["scan-series", companyId],
     enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("scans")
-        .select("scanned_at, flagged")
-        .eq("company_id", companyId!)
-        .gte("scanned_at", new Date(Date.now() - 30 * 864e5).toISOString())
-        .order("scanned_at", { ascending: true });
-      if (error) throw error;
+      const scans = await listCompanyScans(
+        companyId!,
+        new Date(Date.now() - 30 * 864e5).toISOString(),
+      );
       const byDay = new Map<string, { day: string; genuine: number; flagged: number }>();
-      for (const s of data) {
-        const d = new Date(s.scanned_at).toISOString().slice(0, 10);
+      for (const s of scans) {
+        const d = new Date(s.scannedAt).toISOString().slice(0, 10);
         if (!byDay.has(d)) byDay.set(d, { day: d.slice(5), genuine: 0, flagged: 0 });
         const row = byDay.get(d)!;
         if (s.flagged) row.flagged += 1;
@@ -114,8 +107,9 @@ function DashboardOverview() {
   });
 
   const s = stats.data;
-  const freeUsed = company?.free_codes_used ?? 0;
+  const freeUsed = company?.freeCodesUsed ?? 0;
   const freeRemain = Math.max(0, 20 - freeUsed);
+  const walletCurrency = wallet.data?.currency ?? "USD";
 
   if (!s) {
     return (
@@ -190,7 +184,7 @@ function DashboardOverview() {
         />
         <StatCard
           label="Wallet balance"
-          value={formatNaira(wallet.data?.credit_balance ?? 0)}
+          value={formatMoney(wallet.data?.creditBalance ?? 0, walletCurrency)}
           hint={`Free codes: ${freeRemain}/20 left`}
           icon={<ReceiptText className="size-4" />}
         />
@@ -274,9 +268,9 @@ function DashboardOverview() {
                       <p className="text-xs text-muted-foreground">{p.category}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(p.createdAt).toLocaleDateString()}
+                    </p>
                 </Link>
               ))
             ) : (
@@ -306,23 +300,22 @@ function DashboardOverview() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {recentBatches.data?.length ? (
-                  recentBatches.data.map((b: any) => (
-                    <tr key={b.id}>
-                      <td className="px-4 py-3 font-mono text-xs">{b.batch_number}</td>
-                      {}
-                      <td className="px-4 py-3">{(b.products as any)?.name}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {b.quantity.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {formatNaira(b.amount_charged)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {new Date(b.created_at).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))
+                  {recentBatches.data?.length ? (
+                    recentBatches.data.map((b: any) => (
+                      <tr key={b.id}>
+                        <td className="px-4 py-3 font-mono text-xs">{b.batchNumber}</td>
+                        <td className="px-4 py-3">{b.productName}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          {b.quantity.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          {formatMoney(b.amountCharged, b.currency)}
+                        </td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">
+                          {new Date(b.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))
                 ) : (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">

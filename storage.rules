@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/roles/$(request.auth.uid));
+    }
+
+    // Registration / verification documents: owner or admin read, owner write.
+    match /verification-docs/{companyId}/{fileName} {
+      allow read: if signedIn() && (request.auth.uid == companyId || isAdmin());
+      allow write: if signedIn() && request.auth.uid == companyId;
+    }
+
+    // Legacy bucket name used by the current client (migrated to verification-docs).
+    match /company-docs/{companyId}/{fileName} {
+      allow read: if signedIn() && (request.auth.uid == companyId || isAdmin());
+      allow write: if signedIn() && request.auth.uid == companyId;
+    }
+
+    // Product images: public read (consumer verification page), owner write.
+    match /product-images/{companyId}/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == companyId;
+    }
+
+    // Bulk exports: owner or admin (shared via signed URLs from the function).
+    match /exports/{companyId}/{batchId}/{fileName} {
+      allow read: if signedIn() && (request.auth.uid == companyId || isAdmin());
+      allow write: if false;
+    }
+  }
+}

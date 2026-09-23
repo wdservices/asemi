@@ -2,8 +2,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useIsAdmin, useMyCompany, useSession, type Company } from "@/lib/auth";
+import {
+  fnCalculatePrice,
+  fnTopupWallet,
+  formatMoney,
+  getWallet,
+  listBatches,
+  listInvoices,
+} from "@/lib/db";
 import { EmptyState, PageHeader, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +34,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { formatNaira, TIERS } from "@/lib/pricing";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/billing")({
@@ -36,23 +42,10 @@ export const Route = createFileRoute("/_authenticated/billing")({
 });
 
 type WalletRow = {
-  credit_balance: number;
-  lifetime_topup: number;
-  lifetime_spent: number;
-};
-
-type InvoiceRow = {
-  id: string;
-  company_id: string;
-  kind: string;
-  reference: string | null;
-  amount: number;
-  codes_applied: number;
+  creditBalance: number;
+  lifetimeTopup: number;
+  lifetimeSpent: number;
   currency: string;
-  status: string;
-  description: string | null;
-  paid_at: string;
-  created_at: string;
 };
 
 function BillingPage() {
@@ -65,34 +58,20 @@ function BillingPage() {
   const wallet = useQuery({
     queryKey: ["wallet", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("wallets")
-        .select("credit_balance, lifetime_topup, lifetime_spent")
-        .eq("company_id", companyId!)
-        .maybeSingle();
-      if (error) throw error;
-
-      return ((data as any) ?? {
-        credit_balance: 0,
-        lifetime_topup: 0,
-        lifetime_spent: 0,
-      }) as WalletRow;
-    },
+    queryFn: async (): Promise<WalletRow> =>
+      (await getWallet(companyId!)) ?? {
+        creditBalance: 0,
+        lifetimeTopup: 0,
+        lifetimeSpent: 0,
+        currency: "USD",
+      },
   });
+  const currency = wallet.data?.currency ?? "USD";
 
   const invoices = useQuery({
     queryKey: ["invoices", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("invoices")
-        .select("*")
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as InvoiceRow[];
-    },
+    queryFn: () => listInvoices(companyId!),
   });
 
   const monthToDateUsed = useQuery({
@@ -102,14 +81,18 @@ function BillingPage() {
       const monthStart = new Date();
       monthStart.setDate(1);
       monthStart.setHours(0, 0, 0, 0);
-      const { data, error } = await supabase
-        .from("batches")
-        .select("quantity")
-        .eq("company_id", companyId!)
-        .gte("created_at", monthStart.toISOString());
-      if (error) throw error;
-      return data.reduce((sum: any, b: any) => sum + (b.quantity ?? 0), 0);
+      const batches = await listBatches(companyId!, 200);
+      return batches
+        .filter((b) => new Date(b.createdAt) >= monthStart)
+        .reduce((sum, b) => sum + (b.quantity ?? 0), 0);
     },
+  });
+
+  const exampleQuote = useQuery({
+    queryKey: ["price-quote", companyId, 6000],
+    enabled: !!companyId,
+    staleTime: 60_000,
+    queryFn: () => fnCalculatePrice(6000),
   });
 
   const [topupOpen, setTopupOpen] = useState(false);
@@ -126,13 +109,8 @@ function BillingPage() {
     setTopupBusy(true);
     try {
       if (isAdmin) {
-        const { error } = await (supabase.rpc as any)("topup_wallet", {
-          _company_id: companyId!,
-          _amount: amount,
-          _reference: `MANUAL-ADMIN-${Date.now()}`,
-        });
-        if (error) throw error;
-        toast.success(`Wallet credited with ${formatNaira(amount)}`);
+        await fnTopupWallet(companyId!, amount, `MANUAL-ADMIN-${Date.now()}`);
+        toast.success(`Wallet credited with ${formatMoney(amount, currency)}`);
       } else {
         toast.success(
           "Top-up request submitted. An admin will review and credit your wallet shortly.",
@@ -150,11 +128,11 @@ function BillingPage() {
     }
   }
 
-  const plan = (company as any)?.subscription_plan ?? "Starter";
-  const planLimit = (company as any)?.plan_code_limit ?? 50000;
+  const plan = "Starter";
+  const planLimit = 50000;
   const mtdUsed = monthToDateUsed.data ?? 0;
 
-  const freeUsed = (company as any)?.free_codes_used ?? 0;
+  const freeUsed = company?.freeCodesUsed ?? 0;
   const freeRemain = Math.max(0, 20 - freeUsed);
 
   return (
@@ -179,7 +157,7 @@ function BillingPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Amount (₦)</Label>
+                  <Label htmlFor="amount">Amount ({currency})</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -195,7 +173,7 @@ function BillingPage() {
                       <p className="text-xs text-muted-foreground">
                         You will request{" "}
                         <span className="font-medium text-foreground">
-                          {formatNaira(parseInt(topupAmount, 10))}
+                          {formatMoney(parseInt(topupAmount, 10), currency)}
                         </span>{" "}
                         in wallet credit.
                       </p>
@@ -257,7 +235,7 @@ function BillingPage() {
             <div>
               <p className="eyebrow">Available credit</p>
               <p className="mt-2 font-display text-5xl font-semibold tracking-tight">
-                {formatNaira(wallet.data?.credit_balance ?? 0)}
+                {formatMoney(wallet.data?.creditBalance ?? 0, currency)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 You have {freeRemain} of 20 free codes remaining.
@@ -267,13 +245,13 @@ function BillingPage() {
               <div>
                 <p className="eyebrow">Lifetime topped up</p>
                 <p className="mt-1 font-medium tabular-nums">
-                  {formatNaira(wallet.data?.lifetime_topup ?? 0)}
+                  {formatMoney(wallet.data?.lifetimeTopup ?? 0, currency)}
                 </p>
               </div>
               <div>
                 <p className="eyebrow">Lifetime spent</p>
                 <p className="mt-1 font-medium tabular-nums">
-                  {formatNaira(wallet.data?.lifetime_spent ?? 0)}
+                  {formatMoney(wallet.data?.lifetimeSpent ?? 0, currency)}
                 </p>
               </div>
             </div>
@@ -342,55 +320,69 @@ function BillingPage() {
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Tier</th>
-                  <th className="px-4 py-3">Codes generated</th>
-                  <th className="px-4 py-3 text-right">Rate per code</th>
+                  <th className="px-4 py-3">Paid lifetime codes</th>
+                  <th className="px-4 py-3 text-right">Rate per code ({currency})</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {TIERS.map((tier, i) => (
-                  <tr key={i}>
-                    <td className="px-4 py-3 font-medium">Tier {i + 1}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {i === 0
-                        ? `First ${tier.upTo.toLocaleString()} codes`
-                        : tier.upTo === Infinity
-                          ? `${TIERS[i - 1]?.upTo.toLocaleString()}+ codes`
-                          : `${((TIERS[i - 1]?.upTo ?? 0) + 1).toLocaleString()} – ${tier.upTo.toLocaleString()} codes`}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">
-                      {formatNaira(tier.rate)}
+                {(exampleQuote.data?.breakdown ?? [])
+                  .filter((r) => r.rate > 0)
+                  .map((row, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-3 font-medium">{row.label}</td>
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                        {row.qty.toLocaleString()} codes
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono tabular-nums">
+                        {formatMoney(row.rate, currency)}
+                      </td>
+                    </tr>
+                  ))}
+                {!(exampleQuote.data?.breakdown ?? []).some((r) => r.rate > 0) && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-6 text-center text-muted-foreground">
+                      Loading your region-locked rates…
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="rounded-xl border bg-muted/30 p-5">
-            <p className="eyebrow mb-2">Worked example</p>
+            <p className="eyebrow mb-2">Worked example — your region ({currency})</p>
             <p className="text-sm text-muted-foreground">
-              A request for <span className="font-medium text-foreground">6,000 codes</span> when
-              you have 0 codes generated so far is billed as:
+              A request for <span className="font-medium text-foreground">6,000 codes</span> on a
+              fresh account is billed as:
             </p>
             <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-3 text-sm">
-                <span className="text-muted-foreground">Tier 1: 5,000 codes × ₦150</span>
-                <span className="font-medium tabular-nums">{formatNaira(5000 * 150)}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-3 text-sm">
-                <span className="text-muted-foreground">Tier 2: 1,000 codes × ₦120</span>
-                <span className="font-medium tabular-nums">{formatNaira(1000 * 120)}</span>
-              </div>
+              {(exampleQuote.data?.breakdown ?? []).map((row, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-lg border bg-background px-4 py-3 text-sm"
+                >
+                  <span className="text-muted-foreground">
+                    {row.label}
+                    {row.rate > 0 &&
+                      `: ${row.qty.toLocaleString()} codes × ${formatMoney(row.rate, currency)}`}
+                  </span>
+                  <span className="font-medium tabular-nums">
+                    {row.subtotal === 0 ? "FREE" : formatMoney(row.subtotal, currency)}
+                  </span>
+                </div>
+              ))}
               <div className="flex items-center justify-between rounded-lg border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm">
                 <span className="font-medium">Total for 6,000 codes</span>
                 <span className="font-display text-xl font-semibold tabular-nums">
-                  {formatNaira(5000 * 150 + 1000 * 120)}
+                  {exampleQuote.data
+                    ? formatMoney(exampleQuote.data.price, currency)
+                    : "…"}
                 </span>
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              The first 20 codes are free if you haven't used them yet — your actual charge for a
-              6,000-code batch would be 5,980 billed across the tiers.
+              The first 20 codes are free — your actual charge for a 6,000-code batch would be
+              5,980 codes billed across the tiers above.
             </p>
           </div>
         </CardContent>
@@ -428,37 +420,33 @@ function BillingPage() {
                   {invoices.data.map((inv) => (
                     <tr key={inv.id}>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(inv.paid_at ?? inv.created_at).toLocaleDateString()}
+                        {new Date(inv.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge
                           status={
                             inv.kind === "topup"
                               ? "reviewed"
-                              : inv.codes_applied > 0
+                              : inv.codesApplied > 0
                                 ? "approved"
                                 : "none"
                           }
                         />
                         <span className="ml-2 capitalize text-xs">
-                          {inv.kind === "topup"
-                            ? "Top-up"
-                            : inv.kind === "batch_generation"
-                              ? "Batch"
-                              : inv.kind}
+                          {inv.kind === "topup" ? "Top-up" : "Batch"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <p className="max-w-md truncate">{inv.description ?? "—"}</p>
-                        {inv.codes_applied > 0 && (
+                        {inv.codesApplied > 0 && (
                           <p className="text-xs text-muted-foreground tabular-nums">
-                            {inv.codes_applied.toLocaleString()} codes
+                            {inv.codesApplied.toLocaleString()} codes
                           </p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums">
-                        {inv.kind === "batch_generation" ? "-" : "+"}
-                        {formatNaira(inv.amount)}
+                        {inv.kind === "purchase" ? "-" : "+"}
+                        {formatMoney(inv.amount, inv.currency)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <StatusBadge status={inv.status} />

@@ -48,7 +48,7 @@ function DocsPage() {
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
               <p>
                 <strong className="text-[#1a1a1e]">Step 1: Register your brand.</strong>{" "}
-                Visit <Link to="/auth?mode=register" className="underline text-[#b8962e] font-medium">the registration page</Link>{" "}
+                Visit <Link to="/auth" search={{ mode: "register" }} className="underline text-[#b8962e] font-medium">the registration page</Link>{" "}
                 and provide your company name, operating country, industry category, and an authorized
                 work email. Business registration documents and tax IDs are optional.
               </p>

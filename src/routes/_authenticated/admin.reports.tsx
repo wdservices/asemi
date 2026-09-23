@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useIsAdmin, useSession } from "@/lib/auth";
+import { fnAdminReviewReport, listReports, nameMaps, type Report } from "@/lib/db";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatNaira } from "@/lib/pricing";
 import {
   ShieldAlert,
   Building2,
@@ -33,17 +32,8 @@ export const Route = createFileRoute("/_authenticated/admin/reports")({
   component: AdminReports,
 });
 
-type ReportRow = {
-  id: string;
-  code_id: string | null;
-  code_string: string;
-  company_id: string | null;
-  contact: string | null;
-  created_at: string;
-  message: string;
-  reviewed: boolean;
-  companies: { name: string } | null;
-  codes: { id: string; code_string: string } | null;
+type ReportRow = Report & {
+  companyName: string;
 };
 
 type ReviewedFilter = "all" | "unreviewed" | "reviewed";
@@ -97,18 +87,17 @@ function ReportsContent() {
 
   const reports = useQuery({
     queryKey: ["admin-reports-inbox"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reports")
-        .select(
-          `*,
-           companies:companies(name),
-           codes:codes(id, code_string)`,
-        )
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data as unknown as ReportRow[];
+    queryFn: async (): Promise<ReportRow[]> => {
+      const list = await listReports();
+      const names = await nameMaps({
+        companyIds: list.map((r) => r.companyId).filter((x): x is string => !!x),
+        productIds: [],
+        batchIds: [],
+      });
+      return list.map((r) => ({
+        ...r,
+        companyName: (r.companyId && names.companies.get(r.companyId)) || "Unknown",
+      }));
     },
   });
 
@@ -120,8 +109,8 @@ function ReportsContent() {
       if (reviewedFilter === "reviewed" && !r.reviewed) return false;
       if (!q) return true;
       return (
-        r.code_string.toLowerCase().includes(q) ||
-        r.companies?.name.toLowerCase().includes(q) ||
+        r.codeString.toLowerCase().includes(q) ||
+        r.companyName.toLowerCase().includes(q) ||
         r.message.toLowerCase().includes(q) ||
         (r.contact ?? "").toLowerCase().includes(q)
       );
@@ -141,11 +130,7 @@ function ReportsContent() {
     setBusyId(report.id);
     try {
       const nextReviewed = !report.reviewed;
-      const { error } = await supabase.rpc("admin_review_report", {
-        _report_id: report.id,
-        _reviewed: nextReviewed,
-      });
-      if (error) throw error;
+      await fnAdminReviewReport(report.id, nextReviewed);
       toast.success(nextReviewed ? "Marked as reviewed" : "Reopened report");
       await queryClient.invalidateQueries({ queryKey: ["admin-reports-inbox"] });
     } catch (err) {
@@ -163,9 +148,9 @@ function ReportsContent() {
     for (const r of rows) {
       lines.push(
         [
-          r.created_at,
-          r.code_string,
-          `"${(r.companies?.name ?? "").replace(/"/g, '""')}"`,
+          r.createdAt,
+          r.codeString,
+          `"${r.companyName.replace(/"/g, '""')}"`,
           `"${(r.contact ?? "").replace(/"/g, '""')}"`,
           `"${r.message.replace(/"/g, '""').replace(/\n/g, " ")}"`,
           r.reviewed ? "yes" : "no",
@@ -323,9 +308,9 @@ function ReportsContent() {
                         </TableCell>
                         <TableCell className="px-3 w-28 whitespace-nowrap">
                           <div className="text-xs">
-                            <p>{new Date(r.created_at).toLocaleDateString()}</p>
+                            <p>{new Date(r.createdAt).toLocaleDateString()}</p>
                             <p className="text-muted-foreground">
-                              {new Date(r.created_at).toLocaleTimeString([], {
+                              {new Date(r.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -333,10 +318,10 @@ function ReportsContent() {
                           </div>
                         </TableCell>
                         <TableCell className="px-3">
-                          <span className="font-mono text-sm">{r.code_string}</span>
+                          <span className="font-mono text-sm">{r.codeString}</span>
                         </TableCell>
                         <TableCell className="px-3 text-sm">
-                          {r.companies?.name ?? (
+                          {r.companyName ?? (
                             <span className="text-muted-foreground">Unknown</span>
                           )}
                         </TableCell>
@@ -383,15 +368,15 @@ function ReportsContent() {
                                 <p className="eyebrow">Report details</p>
                                 <p>
                                   <span className="text-muted-foreground">Submitted:</span>{" "}
-                                  {new Date(r.created_at).toLocaleString()}
+                                  {new Date(r.createdAt).toLocaleString()}
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Code:</span>{" "}
-                                  <span className="font-mono">{r.code_string}</span>
+                                  <span className="font-mono">{r.codeString}</span>
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Company:</span>{" "}
-                                  {r.companies?.name ?? "Unknown"}
+                                  {r.companyName ?? "Unknown"}
                                 </p>
                                 <p>
                                   <span className="text-muted-foreground">Contact:</span>{" "}
@@ -409,7 +394,7 @@ function ReportsContent() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => (window.location.href = `/v/${r.code_string}`)}
+                                    onClick={() => (window.location.href = `/v/${r.codeString}`)}
                                   >
                                     View code page
                                   </Button>

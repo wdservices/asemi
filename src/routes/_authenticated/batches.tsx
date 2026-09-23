@@ -1,8 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fb as supabase } from "@/integrations/firebase/client";
 import { useMyCompany, type Company } from "@/lib/auth";
+import {
+  fnCalculatePrice,
+  fnExportBatch,
+  fnGenerateBatchPaid,
+  fnMarkCodesExported,
+  formatMoney,
+  getBatch,
+  getWallet,
+  listBatchCodeStrings,
+  listBatches,
+  listCodes,
+  listProducts,
+  type Batch,
+  type Code,
+  type PriceQuoteResult,
+} from "@/lib/db";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,8 +46,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Tables, Database } from "@/integrations/firebase/types";
-import { calculatePriceLocal, formatNaira, type PricingBreakdown } from "@/lib/pricing";
 import {
   FileCode,
   Download,
@@ -49,28 +62,18 @@ import {
   Flag,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useMemo, useEffect } from "react";
-import QRCode from "qrcode";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 export const Route = createFileRoute("/_authenticated/batches")({
   head: () => ({ meta: [{ title: "Batches & Codes — Asemi" }] }),
   component: BatchesPage,
 });
 
-type BatchWithProduct = Tables<"batches"> & {
-  amount_charged: number;
-  products: { name: string } | null;
-};
+type BatchWithProduct = Batch;
 
-type CodeWithExtras = Tables<"codes"> & {
-  products: { name: string } | null;
-  batches: { batch_number: string } | null;
-  exported_at: string | null;
-  print_count: number;
-  code_string?: string;
-  flagged?: boolean;
-  scan_count?: number;
-  review_status?: string | null;
+type CodeWithExtras = Code & {
+  productName: string;
+  batchNumber: string;
 };
 
 function BatchesPage() {
@@ -130,88 +133,94 @@ function RequestBatchTab() {
   const products = useQuery({
     queryKey: ["products", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,name")
-        .eq("company_id", companyId!)
-        .order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => listProducts(companyId!),
   });
 
   const wallet = useQuery({
     queryKey: ["wallet", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("wallets")
-        .select("credit_balance")
-        .eq("company_id", companyId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as unknown as { credit_balance: number } | null;
-    },
+    queryFn: () => getWallet(companyId!),
   });
 
-  const pricing = useMemo(() => {
-    type CompanyEx = Company & {
-      total_codes_generated?: number;
-      free_codes_used?: number;
-    };
-    const cEx = company as CompanyEx | null | undefined;
-    const totalGenerated = cEx?.total_codes_generated ?? 0;
-    const freeUsed = cEx?.free_codes_used ?? 0;
-    const freeRemaining = Math.max(0, 20 - freeUsed);
-    const q = Math.max(0, quantity | 0);
-    return calculatePriceLocal(q, totalGenerated, freeRemaining);
-  }, [company, quantity]);
+  const qty = Math.max(0, quantity | 0);
+  const quote = useQuery({
+    queryKey: ["price-quote", companyId, qty],
+    enabled: !!companyId && qty > 0,
+    staleTime: 30_000,
+    queryFn: () => fnCalculatePrice(qty),
+  });
+  const pricing: PriceQuoteResult = quote.data ?? {
+    requiresQuote: false,
+    currency: wallet.data?.currency ?? "USD",
+    symbol: "",
+    free: 0,
+    paid: qty,
+    price: 0,
+    breakdown: [],
+  };
 
-  const walletBalance = wallet.data?.credit_balance ?? 0;
-  const shortfall = pricing.totalPrice - walletBalance;
-  const canAfford = shortfall <= 0;
+  const walletBalance = wallet.data?.creditBalance ?? 0;
+  const walletCurrency = wallet.data?.currency ?? pricing.currency;
+  const shortfall = pricing.price - walletBalance;
+  const canAfford = shortfall <= 0 && !pricing.requiresQuote;
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  function pollProgress(batchId: string) {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const b = await getBatch(batchId);
+        if (!b) return;
+        if (b.status === "generating" || b.status === "failed") {
+          setProgress(Math.round((b.generationProgress || 0) * 100));
+        }
+        if (b.status === "ready" || b.status === "exported" || b.status === "failed") {
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+      } catch {
+        /* keep polling */
+      }
+    }, 2500);
+  }
 
   const generateMutation = useMutation({
     mutationFn: async (vars: { productId: string; qty: number }) => {
-      setProgress(5);
+      setProgress(3);
       setGenerating(true);
-      const interval = setInterval(() => setProgress((p) => Math.min(p + 8, 92)), 350);
       try {
-        const { data, error } = await (supabase.rpc as any)("generate_batch_paid", {
-          _product_id: vars.productId,
-          _quantity: vars.qty,
-        });
-        if (error) throw error;
+        const res = await fnGenerateBatchPaid({ productId: vars.productId, quantity: vars.qty });
+        pollProgress(res.batchId);
         setProgress(100);
-        return data as unknown as string;
+        return res;
+      } catch (err) {
+        // The batch may still be generating server-side — poll to find out.
+        throw err;
       } finally {
-        clearInterval(interval);
         setGenerating(false);
       }
     },
-    onSuccess: async (batchNum) => {
+    onSuccess: async (res) => {
+      if (pollRef.current) clearInterval(pollRef.current);
       queryClient.invalidateQueries({ queryKey: ["batches", companyId] });
       queryClient.invalidateQueries({ queryKey: ["wallet", companyId] });
       queryClient.invalidateQueries({ queryKey: ["my-company"] });
       queryClient.invalidateQueries({ queryKey: ["company-stats"] });
-
-      const { data: batchData } = await supabase
-        .from("batches")
-        .select("id, batch_number, quantity, amount_charged")
-        .eq("batch_number", batchNum)
-        .maybeSingle();
-
-      const b = batchData as any;
       setResult({
-        batch_id: b?.id ?? "",
-        batch_number: batchNum,
-        qty: b?.quantity ?? quantity,
-        charged: b?.amount_charged ?? pricing.totalPrice,
+        batch_id: res.batchId,
+        batch_number: res.batchNumber,
+        qty: res.quantity,
+        charged: res.price,
       });
-      toast.success(`Batch ${batchNum} created!`);
+      toast.success(`Batch ${res.batchNumber} created!`);
     },
     onError: (err) => {
+      if (pollRef.current) clearInterval(pollRef.current);
       toast.error(err instanceof Error ? err.message : "Generation failed");
       setProgress(0);
     },
@@ -260,7 +269,7 @@ function RequestBatchTab() {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             <span className="font-mono">{result.batch_number}</span> — {result.qty.toLocaleString()}{" "}
-            codes · Charged {formatNaira(result.charged)}
+            codes · Charged {formatMoney(result.charged, walletCurrency)}
           </p>
 
           <div className="mt-6 grid w-full gap-3 sm:grid-cols-2">
@@ -354,12 +363,12 @@ function RequestBatchTab() {
             <span
               className={shortfall > 0 ? "font-medium text-invalid" : "font-medium text-foreground"}
             >
-              {formatNaira(walletBalance)}
+              {formatMoney(walletBalance, walletCurrency)}
             </span>
             {shortfall > 0 && (
               <>
                 <span className="mx-1">·</span>
-                <span className="text-invalid">Top up {formatNaira(shortfall)} to proceed</span>
+                <span className="text-invalid">Top up {formatMoney(shortfall, walletCurrency)} to proceed</span>
               </>
             )}
           </div>
@@ -377,12 +386,21 @@ function RequestBatchTab() {
           <p className="eyebrow">Live pricing</p>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-display text-4xl font-semibold tracking-tight">
-              {formatNaira(pricing.totalPrice)}
+              {quote.isLoading
+                ? "…"
+                : pricing.requiresQuote
+                  ? "Custom"
+                  : formatMoney(pricing.price, pricing.currency)}
             </span>
             <span className="text-xs text-muted-foreground">
               for {quantity.toLocaleString()} codes
             </span>
           </div>
+          {pricing.requiresQuote && (
+            <p className="mt-1 text-xs text-caution-foreground">
+              Volume exceeds 1,000,000 lifetime codes — contact sales for a custom quote.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2 border-t pt-4">
@@ -391,7 +409,7 @@ function RequestBatchTab() {
               Enter a quantity to see the pricing breakdown.
             </p>
           )}
-          {pricing.breakdown.map((row: PricingBreakdown, i) => (
+          {pricing.breakdown.map((row, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-md bg-secondary/60 px-3 py-2 text-sm"
@@ -400,12 +418,12 @@ function RequestBatchTab() {
                 <span className="font-medium text-foreground">{row.label}</span>
                 {row.rate > 0 && (
                   <span className="text-[11px] text-muted-foreground">
-                    {row.qty.toLocaleString()} × {formatNaira(row.rate)}
+                    {row.qty.toLocaleString()} × {formatMoney(row.rate, pricing.currency)}
                   </span>
                 )}
               </div>
               <span className="tabular-nums font-medium">
-                {row.subtotal === 0 ? "FREE" : formatNaira(row.subtotal)}
+                {row.subtotal === 0 ? "FREE" : formatMoney(row.subtotal, pricing.currency)}
               </span>
             </div>
           ))}
@@ -414,18 +432,16 @@ function RequestBatchTab() {
         {pricing.breakdown.length > 0 && (
           <div className="grid grid-cols-2 gap-3 border-t pt-4 text-xs">
             <div>
-              <p className="text-muted-foreground">Free codes used</p>
-              <p className="mt-0.5 font-medium">{pricing.freeCodesUsed.toLocaleString()}</p>
+              <p className="text-muted-foreground">Free codes in this batch</p>
+              <p className="mt-0.5 font-medium">{pricing.free.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Free remaining</p>
-              <p className="mt-0.5 font-medium text-genuine">
-                {pricing.freeCodesRemaining.toLocaleString()}
-              </p>
+              <p className="text-muted-foreground">Paid codes</p>
+              <p className="mt-0.5 font-medium">{pricing.paid.toLocaleString()}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-muted-foreground">Total codes generated after this batch</p>
-              <p className="mt-0.5 font-medium">{pricing.totalCodesAfter.toLocaleString()}</p>
+              <p className="text-muted-foreground">Currency</p>
+              <p className="mt-0.5 font-medium">{pricing.currency}</p>
             </div>
           </div>
         )}
@@ -450,12 +466,12 @@ function RequestBatchTab() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Amount to charge</span>
               <span className="font-display text-lg font-semibold">
-                {formatNaira(pricing.totalPrice)}
+                {formatMoney(pricing.price, pricing.currency)}
               </span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Wallet after</span>
-              <span>{formatNaira(Math.max(0, walletBalance - pricing.totalPrice))}</span>
+              <span>{formatMoney(Math.max(0, walletBalance - pricing.price), walletCurrency)}</span>
             </div>
           </div>
           <DialogFooter>
@@ -489,21 +505,7 @@ function BatchHistoryTab() {
   const batches = useQuery({
     queryKey: ["batches", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("batches")
-        .select(
-          `
-          id, batch_number, quantity, status, created_at, product_id, company_id,
-          amount_charged,
-          products(name)
-        `,
-        )
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as BatchWithProduct[];
-    },
+    queryFn: () => listBatches(companyId!),
   });
 
   if (batches.isLoading) {
@@ -528,11 +530,14 @@ function BatchHistoryTab() {
         />
         <StatCard
           label="Total spent"
-          value={formatNaira(batches.data.reduce((s, b) => s + (b.amount_charged ?? 0), 0))}
+          value={formatMoney(
+            batches.data.reduce((s, b) => s + (b.amountCharged ?? 0), 0),
+            batches.data[0]?.currency ?? "USD",
+          )}
         />
         <StatCard
           label="Last batch"
-          value={batches.data[0] ? new Date(batches.data[0].created_at).toLocaleDateString() : "—"}
+          value={batches.data[0] ? new Date(batches.data[0].createdAt).toLocaleDateString() : "—"}
         />
       </div>
       <div className="overflow-x-auto">
@@ -551,41 +556,50 @@ function BatchHistoryTab() {
           <TableBody>
             {batches.data.map((b) => (
               <TableRow key={b.id}>
-                <TableCell className="font-mono text-xs">{b.batch_number}</TableCell>
-                <TableCell>{b.products?.name ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs">{b.batchNumber}</TableCell>
+                <TableCell>{b.productName ?? "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {b.quantity.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatNaira(b.amount_charged ?? 0)}
+                  {formatMoney(b.amountCharged ?? 0, b.currency)}
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground">
-                  {new Date(b.created_at).toLocaleDateString()}
+                  {new Date(b.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
                   <StatusBadge
                     status={
                       b.status === "ready"
                         ? "ready"
-                        : (b.status as any) === "open"
-                          ? "open"
-                          : "pending"
+                        : b.status === "exported"
+                          ? "approved"
+                          : b.status === "failed"
+                            ? "escalated"
+                            : "pending"
                     }
                   />
+                  {b.status === "generating" && (
+                    <span className="ml-2 text-[11px] tabular-nums text-muted-foreground">
+                      {Math.round((b.generationProgress || 0) * 100)}%
+                    </span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => exportCsvForBatch(b.id, b.batch_number, b.quantity)}
+                      disabled={b.status !== "ready" && b.status !== "exported"}
+                      onClick={() => exportCsvForBatch(b.id, b.batchNumber, b.quantity)}
                     >
                       <Download className="size-3.5" /> CSV
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => exportQrSheetForBatch(b.id, b.batch_number)}
+                      disabled={b.status !== "ready" && b.status !== "exported"}
+                      onClick={() => exportQrSheetForBatch(b.id, b.batchNumber)}
                     >
                       <Printer className="size-3.5" /> Print
                     </Button>
@@ -616,34 +630,18 @@ function CodeBankTab() {
   const products = useQuery({
     queryKey: ["products", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,name")
-        .eq("company_id", companyId!)
-        .order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => listProducts(companyId!),
   });
 
   const batches = useQuery({
     queryKey: ["batches", companyId],
     enabled: !!companyId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("batches")
-        .select("id,batch_number,product_id")
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => listBatches(companyId!, 200),
   });
 
   const visibleBatches = useMemo(() => {
     if (filterProduct === "all") return batches.data ?? [];
-    return (batches.data ?? []).filter((b: any) => b.product_id === filterProduct);
+    return (batches.data ?? []).filter((b: any) => b.productId === filterProduct);
   }, [batches.data, filterProduct]);
 
   useEffect(() => {
@@ -654,34 +652,32 @@ function CodeBankTab() {
   }, [filterProduct, visibleBatches, filterBatch]);
 
   const codes = useQuery({
-    queryKey: ["codes-bank", companyId, filterProduct, filterBatch, flaggedOnly, search],
+    queryKey: ["codes-bank", companyId, filterProduct, filterBatch, flaggedOnly],
     enabled: !!companyId,
-    queryFn: async () => {
-      let q = supabase
-        .from("codes")
-        .select(
-          `
-          id, code_string, scan_count, flagged, review_status, last_scanned_at,
-          created_at, product_id, batch_id, company_id,
-          exported_at, print_count,
-          products(name),
-          batches(batch_number)
-        `,
-        )
-        .eq("company_id", companyId!);
-
-      if (filterProduct !== "all") q = q.eq("product_id", filterProduct);
-      if (filterBatch !== "all") q = q.eq("batch_id", filterBatch);
-      if (flaggedOnly) q = q.eq("flagged", true);
-      if (search.trim()) {
-        q = q.ilike("code_string", `%${search.replace(/[^A-Z0-9-]/gi, "")}%`);
-      }
-
-      const { data, error } = await q.order("created_at", { ascending: false }).limit(500);
-      if (error) throw error;
-      return (data ?? []) as unknown as CodeWithExtras[];
+    queryFn: async (): Promise<CodeWithExtras[]> => {
+      const list = await listCodes(companyId!, {
+        productId: filterProduct === "all" ? undefined : filterProduct,
+        batchId: filterBatch === "all" ? undefined : filterBatch,
+        flaggedOnly: flaggedOnly || undefined,
+        limitN: 500,
+      });
+      const productNames = new Map((products.data ?? []).map((p) => [p.id, p.name]));
+      const batchNumbers = new Map((batches.data ?? []).map((b) => [b.id, b.batchNumber]));
+      return list.map((c) => ({
+        ...c,
+        productName: productNames.get(c.productId) ?? "—",
+        batchNumber: batchNumbers.get(c.batchId) ?? "—",
+      }));
     },
   });
+
+  const searchClean = search.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const visibleCodes = useMemo(() => {
+    if (!searchClean) return codes.data ?? [];
+    return (codes.data ?? []).filter((c) =>
+      c.codeString.toUpperCase().replace(/[^A-Z0-9]/g, "").includes(searchClean),
+    );
+  }, [codes.data, searchClean]);
 
   return (
     <div className="space-y-4">
@@ -719,7 +715,7 @@ function CodeBankTab() {
               <SelectItem value="all">All batches</SelectItem>
               {visibleBatches.map((b: any) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.batch_number}
+                  {b.batchNumber}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -756,7 +752,7 @@ function CodeBankTab() {
       <div className="panel overflow-hidden">
         {codes.isLoading ? (
           <div className="h-96 animate-pulse" />
-        ) : !codes.data?.length ? (
+        ) : !visibleCodes.length ? (
           <div className="p-12">
             <EmptyState
               title="No codes match"
@@ -779,32 +775,32 @@ function CodeBankTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {codes.data.map((c: any) => (
+                {visibleCodes.map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-mono text-xs">
-                      {c.code_string}
+                      {c.codeString}
                       {c.flagged && (
                         <span className="ml-2 inline-flex align-middle">
                           <AlertTriangle className="size-3.5 text-invalid" />
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{c.products?.name ?? "—"}</TableCell>
+                    <TableCell>{c.productName ?? "—"}</TableCell>
                     <TableCell className="font-mono text-[11px] text-muted-foreground">
-                      {c.batches?.batch_number ?? "—"}
+                      {c.batchNumber ?? "—"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {c.scan_count.toLocaleString()}
+                      {(c.scanCount ?? 0).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{c.print_count ?? 0}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.printCount ?? 0}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {c.exported_at ? new Date(c.exported_at).toLocaleDateString() : "—"}
+                      {c.exportedAt ? new Date(c.exportedAt).toLocaleDateString() : "—"}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={c.flagged ? "escalated" : "approved"} />
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={c.review_status} />
+                      <StatusBadge status={c.reviewStatus} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -828,18 +824,11 @@ function CodeBankTab() {
 
 async function exportCsvForBatch(batchId: string, batchNumber: string, fallbackQty: number) {
   try {
-    toast.loading(`Fetching ${fallbackQty.toLocaleString()} codes…`, {
-      id: "csv",
-    });
-    const { data, error } = await supabase
-      .from("codes")
-      .select("code_string")
-      .eq("batch_id", batchId)
-      .order("code_string");
-    if (error) throw error;
+    toast.loading(`Fetching ${fallbackQty.toLocaleString()} codes…`, { id: "csv" });
+    const strings = await listBatchCodeStrings(batchId);
 
     const lines = ["code_string"];
-    for (const row of data ?? []) lines.push(row.code_string);
+    for (const s of strings) lines.push(s);
 
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -848,106 +837,41 @@ async function exportCsvForBatch(batchId: string, batchNumber: string, fallbackQ
     a.download = `asemi-${batchNumber}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Downloaded ${(data?.length ?? 0).toLocaleString()} codes`, {
-      id: "csv",
-    });
+    try {
+      await fnMarkCodesExported(batchId);
+    } catch {
+      /* non-critical: print_count / exported_at are best-effort */
+    }
+    toast.success(`Downloaded ${strings.length.toLocaleString()} codes`, { id: "csv" });
   } catch (err) {
     console.error(err);
-    toast.error(err instanceof Error ? err.message : "CSV export failed", {
-      id: "csv",
-    });
+    toast.error(err instanceof Error ? err.message : "CSV export failed", { id: "csv" });
   }
 }
 
 async function exportQrSheetForBatch(batchId: string, batchNumber: string) {
+  const loadId = toast.loading(`Generating print files for ${batchNumber}…`);
   try {
-    const loadId = toast.loading(`Generating QR images for ${batchNumber}…`);
-    const { data, error } = await supabase
-      .from("codes")
-      .select("code_string")
-      .eq("batch_id", batchId)
-      .order("code_string")
-      .limit(500);
-    if (error) throw error;
-
-    const rows = data ?? [];
-    if (!rows.length) {
-      toast.error("No codes found in batch", { id: loadId });
-      return;
-    }
-
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const qrDataUris: { code: string; uri: string; url: string }[] = [];
-    for (const r of rows) {
-      const url = `${origin}/v/${r.code_string}`;
-      const uri = await QRCode.toDataURL(url, {
-        margin: 1,
-        width: 180,
-        errorCorrectionLevel: "M",
-      });
-      qrDataUris.push({ code: r.code_string, uri, url });
-    }
-
-    try {
-      await (supabase.rpc as any)("mark_codes_exported", { _batch_id: batchId });
-    } catch {
-      /* non-critical: print_count / exported_at are best-effort */
-    }
-
-    const cells = qrDataUris.map(
-      (q) => `
-      <td class="cell">
-        <div class="card">
-          <img src="${q.uri}" alt="QR" />
-          <div class="code">${q.code}</div>
-          <div class="url">${q.url.replace(/^https?:\/\//, "")}</div>
-        </div>
-      </td>`,
+    const res = await fnExportBatch(batchId);
+    const win = window.open(res.pdfUrl, "_blank");
+    toast.success(
+      `Print files ready — ${res.totalCodes.toLocaleString()} codes` +
+        (res.pdfCapped ? ` (PDF capped at ${res.pdfCodes.toLocaleString()}; full CSV also ready)` : ""),
+      { id: loadId },
     );
-
-    const htmlRows: string[] = [];
-    for (let i = 0; i < cells.length; i += 4) {
-      htmlRows.push(`<tr>${cells.slice(i, i + 4).join("")}</tr>`);
-    }
-
-    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>Batch ${batchNumber} — QR Codes</title>
-    <style>
-      @page { size: A4; margin: 10mm; }
-      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; color: #111; margin: 0; }
-      h1 { font-size: 14px; margin: 0 0 2mm; letter-spacing: .02em; font-weight: 600; }
-      .subtitle { font-size: 10px; color: #666; margin-bottom: 5mm; }
-      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      td.cell { padding: 3mm; vertical-align: top; }
-      .card { border: 1px solid #ddd; border-radius: 6px; padding: 4mm 2mm 3mm; text-align: center; }
-      .card img { width: 36mm; height: 36mm; display: block; margin: 0 auto 2mm; }
-      .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 600; letter-spacing: .04em; }
-      .url { font-size: 8px; color: #888; margin-top: 1mm; word-break: break-all; }
-    </style></head>
-    <body>
-      <h1>Asemi — Batch ${batchNumber}</h1>
-      <div class="subtitle">${qrDataUris.length.toLocaleString()} verification codes · Generated ${new Date().toLocaleString()}</div>
-      <table>${htmlRows.join("")}</table>
-      <script>window.onload = function() { setTimeout(function() { window.print(); }, 300); }</script>
-    </body></html>`;
-
-    const win = window.open("", "_blank");
-    if (win) {
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-      toast.success("QR sheet ready — check the print dialog", { id: loadId });
-    } else {
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
+    if (!win) {
       const a = document.createElement("a");
-      a.href = url;
-      a.download = `asemi-${batchNumber}-qr.html`;
+      a.href = res.pdfUrl;
+      a.download = `asemi-${batchNumber}-labels.pdf`;
       a.click();
-      URL.revokeObjectURL(url);
-      toast.success("QR sheet downloaded as HTML", { id: loadId });
     }
+    // Offer the CSV too.
+    const csvLink = document.createElement("a");
+    csvLink.href = res.csvUrl;
+    csvLink.download = `asemi-${batchNumber}.csv`;
+    csvLink.click();
   } catch (err) {
     console.error(err);
-    toast.error(err instanceof Error ? err.message : "QR export failed");
+    toast.error(err instanceof Error ? err.message : "Export failed", { id: loadId });
   }
 }

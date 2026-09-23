@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/roles/$(request.auth.uid));
+    }
+
+    function ownsCompany(companyId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/companies/$(companyId))
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid;
+    }
+
+    // ---- roles: users can read their own doc; only functions write ----
+    match /roles/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if false;
+    }
+
+    // ---- companies ----
+    match /companies/{companyId} {
+      allow read: if ownsCompany(companyId) || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (
+        ownsCompany(companyId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['name', 'email', 'phone', 'address', 'category', 'logoUrl', 'documentUrl']
+        )
+        // Protected columns (mirror of the old SQL trigger): status,
+        // countryCode, freeCodesUsed, totalCodesGenerated, batchSeq,
+        // adminNote, aiConfidence, aiFlags, approvedAt, ownerId
+      );
+      allow delete: if false;
+
+      // ---- wallet summary (single doc): read own; writes via functions ----
+      match /wallet/summary {
+        allow read: if ownsCompany(companyId) || isAdmin();
+        allow write: if false;
+      }
+
+      // ---- invoices: read own; writes via functions ----
+      match /invoices/{invoiceId} {
+        allow read: if ownsCompany(companyId) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // ---- products: full owner CRUD, admin read ----
+    match /products/{productId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.companyId == request.auth.uid;
+      allow update: if signedIn() && resource.data.companyId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.companyId == request.auth.uid;
+    }
+
+    // ---- batches: reads only; Cloud Functions write ----
+    match /batches/{batchId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ---- codes: reads only; Cloud Functions write ----
+    match /codes/{codeId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow write: if false;
+
+      match /scans/{scanId} {
+        allow read: if isAdmin()
+          || (signedIn() && get(/databases/$(database)/documents/codes/$(codeId)).data.companyId == request.auth.uid);
+        allow write: if false;
+      }
+    }
+
+    // ---- scans collection-group (analytics) ----
+    match /{path=**}/scans/{scanId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ---- reports: anyone can file; admin triages; owners read theirs ----
+    match /reports/{reportId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.companyId != null && ownsCompany(resource.data.companyId));
+      allow create: if request.resource.data.keys().hasOnly(
+          ['codeId', 'companyId', 'codeString', 'contact', 'message', 'reviewed', 'createdAt']
+        )
+        && request.resource.data.codeString is string
+        && request.resource.data.message is string
+        && (!('reviewed' in request.resource.data) || request.resource.data.reviewed == false);
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reviewed']);
+      allow delete: if false;
+    }
+  }
+}

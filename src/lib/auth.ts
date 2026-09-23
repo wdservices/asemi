@@ -1,14 +1,53 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { fb as supabase, getMockSession } from "@/integrations/firebase/client";
-import type { Tables } from "@/integrations/firebase/types";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { requireAuth, requireDb } from "./firebase";
+import type { Company } from "./db";
 
-export type Company = Tables<"companies">;
+/** Resolve the current uid, waiting for Firebase Auth to restore session. */
+export function getCurrentUserId(): Promise<string | null> {
+  const auth = requireAuth();
+  if (auth.currentUser) return Promise.resolve(auth.currentUser.uid);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      unsub();
+      resolve(auth.currentUser?.uid ?? null);
+    }, 8000);
+    const unsub = onAuthStateChanged(
+      auth,
+      (u) => {
+        clearTimeout(timer);
+        unsub();
+        resolve(u?.uid ?? null);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
+
+export type { Company };
+
+export interface SessionUser {
+  id: string;
+  email: string | null;
+}
+
+export interface Session {
+  user: SessionUser;
+}
 
 export function useSession() {
   return useQuery({
     queryKey: ["session"],
-    queryFn: async () => (await supabase.auth.getSession()).data.session,
+    queryFn: async (): Promise<Session | null> => {
+      const user = requireAuth().currentUser;
+      if (!user) return null;
+      return { user: { id: user.uid, email: user.email } };
+    },
     staleTime: 60_000,
   });
 }
@@ -19,11 +58,8 @@ export function useIsAdmin() {
     queryKey: ["is-admin", session?.user.id],
     enabled: !!session,
     queryFn: async () => {
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: session!.user.id,
-        _role: "admin",
-      });
-      return !!data;
+      const snap = await getDoc(doc(requireDb(), "roles", session!.user.id));
+      return snap.exists() && snap.data()?.["role"] === "admin";
     },
   });
 }
@@ -34,13 +70,8 @@ export function useMyCompany() {
     queryKey: ["my-company", session?.user.id],
     enabled: !!session,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("owner_id", session!.user.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      const { getCompany } = await import("./db");
+      return getCompany(session!.user.id);
     },
   });
 }
@@ -51,55 +82,17 @@ export function useSignOut() {
   return async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await signOut(requireAuth());
     navigate({ to: "/auth", replace: true });
   };
 }
 
-export interface DemoUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "company" | "admin";
-}
-export const DEMO_USERS: DemoUser[] = [
-  {
-    id: "usr_company_demo_001",
-    name: "Demo Company User",
-    email: "company@asemi.demo",
-    role: "company",
-  },
-  { id: "usr_admin_demo_001", name: "Demo Admin", email: "admin@asemi.demo", role: "admin" },
-  {
-    id: "usr_pending_003",
-    name: "Demo Pending Company (Ivory Dental)",
-    email: "pending@asemi.demo",
-    role: "company",
-  },
-  {
-    id: "usr_needsinfo_004",
-    name: "Demo Needs-Info Company (Malomo Foods)",
-    email: "needsinfo@asemi.demo",
-    role: "company",
-  },
-];
-
 export function getSignedInUserId(): string | null {
-  return getMockSession()?.user.id ?? null;
-}
-
-export function useDemoSignIn() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  return async (userId: string) => {
-    const match = DEMO_USERS.find((u) => u.id === userId);
-    const roles = match?.role === "admin" ? ["admin"] : undefined;
-    await supabase.auth.signInAs(userId, match?.email, roles);
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await queryClient.invalidateQueries();
-    navigate({ to: "/dashboard", replace: true });
-  };
+  try {
+    return requireAuth().currentUser?.uid ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export const CATEGORIES = [

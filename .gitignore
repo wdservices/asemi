@@ -19,6 +19,9 @@ dist-ssr
 # Env files
 .env
 .env.*
+scripts/service-account.json
+functions/service-account.json
+*-service-account.json
 
 # Wrangler / Cloudflare
 .wrangler/

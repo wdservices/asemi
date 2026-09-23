@@ -1,9 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { fb as supabase } from "@/integrations/firebase/client";
+import { useEffect, useState } from "react";
 import { useIsAdmin, useSession } from "@/lib/auth";
+import {
+  fnAdminApproveCompany,
+  fnAdminRejectCompany,
+  fnAdminRequestInfo,
+  formatMoney,
+  listCompaniesByStatus,
+  platformMetrics,
+  resolveDocUrl,
+  type Company,
+} from "@/lib/db";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatNaira } from "@/lib/pricing";
 import { ShieldAlert, Search, Download, Check, X, MessageSquare, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,31 +43,16 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminApprovals,
 });
 
-type CompanyRow = {
-  id: string;
-  name: string;
-  category: string;
-  registration_number: string;
-  status: string;
-  ai_confidence: number | null;
-  ai_flags: unknown;
-  document_url: string | null;
-  created_at: string;
-  email: string;
-  address: string;
-  phone: string;
-  owner_id: string;
-};
+type CompanyRow = Company;
 
 type PlatformMetrics = {
-  pending_companies: number;
-  needs_info_companies: number;
-  approved_companies: number;
-  rejected_companies: number;
-  total_codes: number;
-  total_companies: number;
-  total_scans_30d: number;
-  total_revenue: number;
+  pending: number;
+  needsInfo: number;
+  approved: number;
+  totalCompanies: number;
+  totalCodes: number;
+  totalRevenue: number;
+  revenueCurrency: string;
 };
 
 function AdminApprovals() {
@@ -115,24 +108,13 @@ function ApprovalsContent() {
 
   const metrics = useQuery({
     queryKey: ["platform-metrics"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("platform_metrics");
-      if (error) throw error;
-      return data as unknown as PlatformMetrics;
-    },
+    queryFn: platformMetrics,
+    staleTime: 60_000,
   });
 
   const companies = useQuery({
     queryKey: ["admin-approvals-queue"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("*")
-        .in("status", ["pending", "needs_info"])
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data as CompanyRow[];
-    },
+    queryFn: () => listCompaniesByStatus(["pending", "needs_info"]),
   });
 
   const m = metrics.data;
@@ -141,7 +123,7 @@ function ApprovalsContent() {
     const q = search.toLowerCase();
     return (
       c.name.toLowerCase().includes(q) ||
-      c.registration_number.toLowerCase().includes(q) ||
+      c.registrationNumber.toLowerCase().includes(q) ||
       c.email.toLowerCase().includes(q)
     );
   });
@@ -150,18 +132,14 @@ function ApprovalsContent() {
     if (!dialogState.company || !dialogState.mode) return;
     setDialogState((s) => ({ ...s, busy: true }));
     try {
-      const rpc =
-        dialogState.mode === "approve"
-          ? "admin_approve_company"
-          : dialogState.mode === "reject"
-            ? "admin_reject_company"
-            : "admin_request_info";
-
-      const args: any = { _company_id: dialogState.company.id };
-      if (dialogState.note) args._note = dialogState.note;
-
-      const { error } = await (supabase.rpc as any)(rpc, args);
-      if (error) throw error;
+      const note = dialogState.note || null;
+      if (dialogState.mode === "approve") {
+        await fnAdminApproveCompany(dialogState.company.id, note);
+      } else if (dialogState.mode === "reject") {
+        await fnAdminRejectCompany(dialogState.company.id, note);
+      } else {
+        await fnAdminRequestInfo(dialogState.company.id, note);
+      }
       toast.success(
         dialogState.mode === "approve"
           ? "Company approved"
@@ -199,28 +177,28 @@ function ApprovalsContent() {
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         <StatCard
           label="Pending review"
-          value={(m?.pending_companies ?? 0).toLocaleString()}
+          value={(m?.pending ?? 0).toLocaleString()}
           icon={<ShieldAlert className="size-4 text-caution" />}
         />
         <StatCard
           label="Needs info"
-          value={(m?.needs_info_companies ?? 0).toLocaleString()}
+          value={(m?.needsInfo ?? 0).toLocaleString()}
           icon={<MessageSquare className="size-4 text-cyan" />}
         />
         <StatCard
           label="Approved"
-          value={(m?.approved_companies ?? 0).toLocaleString()}
+          value={(m?.approved ?? 0).toLocaleString()}
           icon={<Check className="size-4 text-genuine" />}
         />
         <StatCard
           label="Total companies"
-          value={(m?.total_companies ?? 0).toLocaleString()}
+          value={(m?.totalCompanies ?? 0).toLocaleString()}
           icon={<Building2 className="size-4" />}
         />
         <StatCard
           label="Platform codes"
-          value={(m?.total_codes ?? 0).toLocaleString()}
-          hint={`Revenue: ${formatNaira(m?.total_revenue ?? 0)}`}
+          value={(m?.totalCodes ?? 0).toLocaleString()}
+          hint={`Revenue: ${formatMoney(m?.totalRevenue ?? 0, m?.revenueCurrency ?? "USD")}`}
         />
       </div>
 
@@ -312,7 +290,7 @@ function ApprovalsContent() {
             {dialogState.company && (
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{dialogState.company.name}</span> ·{" "}
-                {dialogState.company.registration_number}
+                {dialogState.company.registrationNumber}
               </p>
             )}
           </DialogHeader>
@@ -388,14 +366,10 @@ function ApprovalRow({
   onRequestInfo: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const aiFlags = company.ai_flags;
+  const aiFlags = company.aiFlags;
   const flags: string[] = Array.isArray(aiFlags)
-    ? (aiFlags as unknown[]).map((f) => String(f))
-    : typeof aiFlags === "object" && aiFlags !== null
-      ? Object.entries(aiFlags as Record<string, unknown>)
-          .map(([k, v]) => (v === true || v ? k : null))
-          .filter((v): v is string => v !== null)
-      : [];
+    ? aiFlags.map((f) => `${f.type}: ${f.detail}`)
+    : [];
 
   return (
     <div className="p-5">
@@ -404,26 +378,26 @@ function ApprovalRow({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-display text-base font-semibold">{company.name}</h3>
             <StatusBadge status={company.status} />
-            {company.ai_confidence !== null && company.ai_confidence !== undefined && (
+            {company.aiConfidence !== null && company.aiConfidence !== undefined && (
               <span
                 className={cn(
                   "inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
-                  company.ai_confidence >= 0.85
+                  company.aiConfidence >= 0.85
                     ? "bg-genuine/10 text-genuine"
-                    : company.ai_confidence >= 0.6
+                    : company.aiConfidence >= 0.6
                       ? "bg-caution/15 text-caution-foreground"
                       : "bg-invalid/10 text-invalid",
                 )}
               >
-                AI: {Math.round(company.ai_confidence * 100)}%
+                AI: {Math.round(company.aiConfidence * 100)}%
               </span>
             )}
           </div>
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span>{company.category}</span>
-            <span className="font-mono">{company.registration_number}</span>
+            <span className="font-mono">{company.registrationNumber}</span>
             <span>{company.email}</span>
-            <span>{new Date(company.created_at).toLocaleDateString()}</span>
+            <span>{new Date(company.createdAt).toLocaleDateString()}</span>
           </div>
           {flags.length > 0 && (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -454,18 +428,37 @@ function ApprovalRow({
         </div>
       </div>
 
-      {expanded && company.document_url && (
-        <div className="mt-4">
-          <div className="overflow-hidden rounded-xl border">
-            <iframe
-              src={company.document_url}
-              title={`${company.name} registration document`}
-              className="h-[520px] w-full bg-muted/30"
-              sandbox="allow-same-origin allow-scripts"
-            />
-          </div>
-        </div>
+      {expanded && company.documentUrl && (
+        <DocPreview path={company.documentUrl} name={company.name} />
       )}
+    </div>
+  );
+}
+
+function DocPreview({ path, name }: { path: string; name: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    resolveDocUrl(path).then((u) => {
+      if (live) setUrl(u);
+    });
+    return () => {
+      live = false;
+    };
+  }, [path]);
+  if (!url) {
+    return <p className="mt-4 text-xs text-muted-foreground">Loading document…</p>;
+  }
+  return (
+    <div className="mt-4">
+      <div className="overflow-hidden rounded-xl border">
+        <iframe
+          src={url}
+          title={`${name} registration document`}
+          className="h-[520px] w-full bg-muted/30"
+          sandbox="allow-same-origin allow-scripts"
+        />
+      </div>
     </div>
   );
 }
