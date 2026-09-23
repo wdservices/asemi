@@ -56,9 +56,9 @@ export function ProductTagPreview({
       setDownloading(true);
       const dataUrl = await renderTagToCanvas({
         codeString,
-        productName,
-        brandName,
-        batchNumber,
+        ...(productName ? { productName } : {}),
+        ...(brandName ? { brandName } : {}),
+        ...(batchNumber ? { batchNumber } : {}),
         style,
         scale: 3, // High-res 300 DPI equivalent
       });
@@ -91,9 +91,9 @@ export function ProductTagPreview({
       setDownloading(true);
       await downloadSingleTagPdf({
         codeString,
-        productName,
-        brandName,
-        batchNumber,
+        ...(productName ? { productName } : {}),
+        ...(brandName ? { brandName } : {}),
+        ...(batchNumber ? { batchNumber } : {}),
         style,
       });
       toast.success(`Downloaded print-ready PDF proof for ${codeString}`);
@@ -110,9 +110,9 @@ export function ProductTagPreview({
       setDownloading(true);
       const svg = await generateTagSvg({
         codeString,
-        productName,
-        brandName,
-        batchNumber,
+        ...(productName ? { productName } : {}),
+        ...(brandName ? { brandName } : {}),
+        ...(batchNumber ? { batchNumber } : {}),
         style,
       });
       downloadSingleTagSvg(svg, `asemi-tag-${codeString}-${style}.svg`);

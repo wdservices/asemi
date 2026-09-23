@@ -1,10 +1,11 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Frosted Registry design system — Asemi product authentication */
+/* Asemi dashboard design system — calm blue workspace */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -57,8 +58,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-display:
-    "Inter", "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --ease-registry: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-stamp: stamp 520ms var(--ease-registry) both;
@@ -103,7 +104,7 @@
   --popover-foreground: oklch(0.235 0.04 260);
   --ink: oklch(0.235 0.04 260);
   --surface: oklch(0.985 0.005 245);
-  --primary: oklch(0.235 0.04 260);
+  --primary: oklch(0.48 0.18 250);
   --primary-foreground: oklch(0.985 0.005 245);
   --secondary: oklch(0.945 0.01 245);
   --secondary-foreground: oklch(0.235 0.04 260);
@@ -121,7 +122,7 @@
   --genuine: oklch(0.55 0.13 158);
   --genuine-foreground: oklch(0.985 0.005 245);
   /* hsl(38 92% 42%) */
-  --caution: oklch(0.68 0.16 70);
+  --caution: oklch(0.72 0.14 55);
   --caution-foreground: oklch(0.235 0.04 260);
   /* hsl(198 58% 46%) */
   --cyan: oklch(0.63 0.11 220);
@@ -135,7 +136,7 @@
   --chart-5: oklch(0.52 0.19 27);
   --sidebar: oklch(0.985 0.005 245 / 0.5);
   --sidebar-foreground: oklch(0.235 0.04 260);
-  --sidebar-primary: oklch(0.235 0.04 260);
+  --sidebar-primary: oklch(0.48 0.18 250);
   --sidebar-primary-foreground: oklch(0.985 0.005 245);
   --sidebar-accent: oklch(1 0 0 / 0.7);
   --sidebar-accent-foreground: oklch(0.235 0.04 260);

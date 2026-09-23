@@ -162,9 +162,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
           ? "Admin clearance authenticated. Redirecting to regulatory console…"
           : "Signed in. Redirecting to dashboard…",
       );
-      setTimeout(() => {
-        if (onSuccess) onSuccess(role);
-      }, 600);
+      if (onSuccess) onSuccess(role);
     } catch (err) {
       console.error(err);
       setErrorMessage(friendlyAuthError(err));
