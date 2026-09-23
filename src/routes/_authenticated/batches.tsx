@@ -101,9 +101,18 @@ function BatchesPage() {
           description="Create, download, and track every verification code in one place."
         />
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-background/70 p-3"><p className="text-xs text-muted-foreground">Fast creation</p><p className="mt-1 text-sm font-semibold">Generate in seconds</p></div>
-          <div className="rounded-xl bg-background/70 p-3"><p className="text-xs text-muted-foreground">Flexible exports</p><p className="mt-1 text-sm font-semibold">QR, CSV, and labels</p></div>
-          <div className="rounded-xl bg-background/70 p-3"><p className="text-xs text-muted-foreground">Always organized</p><p className="mt-1 text-sm font-semibold">History and code bank</p></div>
+          <div className="rounded-xl bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Fast creation</p>
+            <p className="mt-1 text-sm font-semibold">Generate in seconds</p>
+          </div>
+          <div className="rounded-xl bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Flexible exports</p>
+            <p className="mt-1 text-sm font-semibold">QR, CSV, and labels</p>
+          </div>
+          <div className="rounded-xl bg-background/70 p-3">
+            <p className="text-xs text-muted-foreground">Always organized</p>
+            <p className="mt-1 text-sm font-semibold">History and code bank</p>
+          </div>
         </div>
       </div>
       <div>
@@ -1741,8 +1750,8 @@ function CodeBankTab() {
                               productName: c.productName || "Product",
                               batchNumber: c.batchNumber,
                               productId: c.productId,
-          quantity: b?.quantity ?? 0,
-          brandName: companyName,
+                              quantity: b?.quantity ?? 0,
+                              brandName: companyName,
                             });
                           }}
                           className="h-8 gap-1 text-xs border border-transparent hover:border-amber-500/30"

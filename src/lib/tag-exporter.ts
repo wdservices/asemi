@@ -410,7 +410,11 @@ export async function downloadSingleTagPdf(options: {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(113, 113, 122);
-  doc.text(`Design: ${style === "circle" ? "Circular Tag (30mm Ø)" : "Rectangular Label (50×25mm)"}`, 8, 14);
+  doc.text(
+    `Design: ${style === "circle" ? "Circular Tag (30mm Ø)" : "Rectangular Label (50×25mm)"}`,
+    8,
+    14,
+  );
 
   // Render high-res tag image
   const dataUrl = await renderTagToCanvas({

@@ -8,8 +8,7 @@ export const Route = createFileRoute("/docs")({
       { title: "Documentation — Asemi" },
       {
         name: "description",
-        content:
-          "Product documentation for the Asemi product authentication platform.",
+        content: "Product documentation for the Asemi product authentication platform.",
       },
     ],
   }),
@@ -47,21 +46,27 @@ function DocsPage() {
             </div>
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
               <p>
-                <strong className="text-[#1a1a1e]">Step 1: Register your brand.</strong>{" "}
-                Visit <Link to="/auth" search={{ mode: "register" }} className="underline text-[#b8962e] font-medium">the registration page</Link>{" "}
-                and provide your company name, operating country, industry category, and an authorized
-                work email. Business registration documents and tax IDs are optional.
+                <strong className="text-[#1a1a1e]">Step 1: Register your brand.</strong> Visit{" "}
+                <Link
+                  to="/auth"
+                  search={{ mode: "register" }}
+                  className="underline text-[#b8962e] font-medium"
+                >
+                  the registration page
+                </Link>{" "}
+                and provide your company name, operating country, industry category, and an
+                authorized work email. Business registration documents and tax IDs are optional.
               </p>
               <p>
-                <strong className="text-[#1a1a1e]">Step 2: Account verification.</strong>{" "}
-                After registration, your account enters a pending review state. Our team verifies your
+                <strong className="text-[#1a1a1e]">Step 2: Account verification.</strong> After
+                registration, your account enters a pending review state. Our team verifies your
                 business details within 1-2 business days. During this time, you have access to 20
                 free verification codes.
               </p>
               <p>
-                <strong className="text-[#1a1a1e]">Step 3: Access your dashboard.</strong>{" "}
-                Once approved, log in to access your manufacturer dashboard where you can list
-                products, generate code batches, manage your code bank, and view analytics.
+                <strong className="text-[#1a1a1e]">Step 3: Access your dashboard.</strong> Once
+                approved, log in to access your manufacturer dashboard where you can list products,
+                generate code batches, manage your code bank, and view analytics.
               </p>
             </div>
           </section>
@@ -80,14 +85,14 @@ function DocsPage() {
                 at no additional cost.
               </p>
               <p>
-                Codes are generated in batches linked to a specific product. When generating a batch,
-                you specify the product, quantity, lot number, and manufacturing/expiry dates for
-                full traceability.
+                Codes are generated in batches linked to a specific product. When generating a
+                batch, you specify the product, quantity, lot number, and manufacturing/expiry dates
+                for full traceability.
               </p>
               <p>
-                <strong className="text-[#1a1a1e]">Pricing:</strong> Progressive volume-based pricing
-                applies automatically. The first 20 codes are free. Rates decrease as your lifetime
-                code volume increases across defined pricing tiers.
+                <strong className="text-[#1a1a1e]">Pricing:</strong> Progressive volume-based
+                pricing applies automatically. The first 20 codes are free. Rates decrease as your
+                lifetime code volume increases across defined pricing tiers.
               </p>
             </div>
           </section>
