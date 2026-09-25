@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMyCompany, type Company, CATEGORIES } from "@/lib/auth";
+import { useMyCompany, useSession, type Company, CATEGORIES } from "@/lib/auth";
 import {
   countCodesForProduct,
   createProduct,
@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PackagePlus, Pencil, Trash2, Package, Upload, X, ImagePlus, Hash } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export const Route = createFileRoute("/_authenticated/products")({
   head: () => ({ meta: [{ title: "Products — Asemi" }] }),
@@ -55,7 +55,12 @@ type ProductWithCount = Product & {
 };
 
 function ProductsPage() {
-  const { data: company } = useMyCompany() as { data: Company | null | undefined };
+  const { data: session, isPending: sessionPending } = useSession();
+  const {
+    data: company,
+    isPending: companyPending,
+    isError: companyError,
+  } = useMyCompany() as { data: Company | null | undefined; isPending: boolean; isError: boolean };
   const companyId = company?.id;
   const queryClient = useQueryClient();
 
@@ -66,6 +71,10 @@ function ProductsPage() {
   const products = useQuery({
     queryKey: ["products", companyId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: async (): Promise<ProductWithCount[]> => {
       const list = await listProducts(companyId!);
       return Promise.all(
@@ -100,23 +109,46 @@ function ProductsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <PageHeader
         title="Products"
         description="Manage the products you protect with Asemi verification codes."
         action={
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} className="bg-blue-600 hover:bg-blue-700">
             <PackagePlus className="size-4" /> New product
           </Button>
         }
       />
 
-      {products.isLoading ? (
+      {sessionPending || companyPending || (!companyId && !companyError) ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="panel h-64 animate-pulse p-5" />
+            <div key={i} className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />
           ))}
         </div>
+      ) : !session || !companyId ? (
+        <EmptyState
+          title="Sign in required"
+          description="Please sign in to manage your products."
+        />
+      ) : products.isPending ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />
+          ))}
+        </div>
+      ) : products.isError ? (
+        <EmptyState
+          title="Couldn't load products"
+          description={
+            products.error instanceof Error ? products.error.message : "Failed to load products."
+          }
+          action={
+            <Button onClick={() => products.refetch()} className="bg-blue-600 hover:bg-blue-700">
+              Retry
+            </Button>
+          }
+        />
       ) : !products.data?.length ? (
         <EmptyState
           title="No products yet"
@@ -271,10 +303,14 @@ function ProductDialog({
     setSaving(false);
   }
 
-  function populateFromEdit() {
+  // Sync the form every time the dialog opens or its target changes.
+  // (Radix doesn't call onOpenChange(true) on programmatic open, so populating
+  // there leaves the form blank — the bug reported.)
+  useEffect(() => {
+    if (!open) return;
     if (editing) {
-      setName(editing.name);
-      setCategory(editing.category ?? "");
+      setName(editing.name ?? "");
+      setCategory(editing.category ?? CATEGORIES[0] ?? "");
       setDescription(editing.description ?? "");
       setSku(editing.sku ?? "");
       setRegulatoryNumber(editing.regulatoryNumber ?? "");
@@ -282,19 +318,13 @@ function ProductDialog({
       setMfgDate(editing.mfgDate ?? "");
       setExpiryDate(editing.expiryDate ?? "");
       setImages(editing.imageUrls ?? []);
+      setUploading(false);
+      setSaving(false);
     } else {
       resetForm();
     }
-  }
-
-  function handleOpenChange(o: boolean) {
-    if (!o) {
-      onOpenChange(false);
-      return;
-    }
-    populateFromEdit();
-    onOpenChange(true);
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing]);
 
   async function handleImageFiles(files: FileList | null) {
     if (!files || !companyId) return;
@@ -356,7 +386,7 @@ function ProductDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
@@ -454,7 +484,7 @@ function ProductDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Upload up to 10 images. Stored in your product-images bucket.
+              Upload up to 10 images. Stored securely in the cloud.
             </p>
           </div>
 

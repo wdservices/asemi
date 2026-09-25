@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
@@ -29,82 +29,17 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
   onOpenVerifier,
   onEnterDashboard,
 }) => {
-  // Auto-detect visitor's country currency based on regional location / timezone
-  const [pricingCurrency] = useState<"NGN" | "USD">(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      const lang = typeof navigator !== "undefined" ? navigator.language : "";
-      if (
-        tz.toLowerCase().includes("lagos") ||
-        tz.toLowerCase().includes("nigeria") ||
-        tz.toLowerCase().includes("africa/lagos") ||
-        tz.toLowerCase().includes("west_central_africa") ||
-        lang.includes("en-NG") ||
-        lang.includes("NG")
-      ) {
-        return "NGN";
-      }
-      return "USD";
-    } catch {
-      return "USD";
-    }
-  });
-  const [calculatorVolume, setCalculatorVolume] = useState<number>(25000);
-
-  // Pricing calculator values
-  const calculateEstimate = (vol: number, curr: "NGN" | "USD") => {
-    // 20 free codes
-    const paidVol = Math.max(0, vol - 20);
-    const symbol = curr === "NGN" ? "₦" : "$";
-
-    if (curr === "NGN") {
-      let cost = 0;
-      let remaining = paidVol;
-      const b1 = Math.min(remaining, 5000);
-      cost += b1 * 50;
-      remaining -= b1;
-      const b2 = Math.min(remaining, 15000);
-      cost += b2 * 35;
-      remaining -= b2;
-      const b3 = Math.min(remaining, 80000);
-      cost += b3 * 25;
-      remaining -= b3;
-      const b4 = Math.min(remaining, 400000);
-      cost += b4 * 18;
-      remaining -= b4;
-      cost += remaining * 12;
-      return { cost, symbol, perUnit: (cost / vol).toFixed(2) };
-    } else {
-      let cost = 0;
-      let remaining = paidVol;
-      const b1 = Math.min(remaining, 5000);
-      cost += b1 * 0.15;
-      remaining -= b1;
-      const b2 = Math.min(remaining, 15000);
-      cost += b2 * 0.1;
-      remaining -= b2;
-      const b3 = Math.min(remaining, 80000);
-      cost += b3 * 0.08;
-      remaining -= b3;
-      const b4 = Math.min(remaining, 400000);
-      cost += b4 * 0.06;
-      remaining -= b4;
-      cost += remaining * 0.05;
-      return { cost, symbol, perUnit: (cost / vol).toFixed(3) };
-    }
-  };
-
-  const estimate = calculateEstimate(calculatorVolume, pricingCurrency);
-
   return (
     <div className="bg-[#fafaf8] text-[#2b2b32] selection:bg-[#c9a84c] selection:text-white">
       {/* Navigation Header */}
       <nav className="border-b border-[#e2ded5] bg-white/90 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="max-w-[1180px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#1a1a1e] text-white flex items-center justify-center font-bold text-base">
-              a
-            </div>
+            <img
+              src="/asemi_logo.png"
+              alt="Asemi logo"
+              className="w-8 h-8 rounded-lg bg-white object-contain ring-1 ring-slate-200"
+            />
             <span className="font-bold text-xl tracking-tight text-[#1a1a1e]">Asemi</span>
           </div>
 
@@ -114,9 +49,6 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             </a>
             <a href="#how" className="hover:text-[#1a1a1e] transition-colors">
               Protocol
-            </a>
-            <a href="#pricing" className="hover:text-[#1a1a1e] transition-colors">
-              Pricing
             </a>
             <Link to="/faq" className="hover:text-[#1a1a1e] transition-colors">
               FAQ
@@ -337,96 +269,15 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
         </div>
       </section>
 
-      {/* Pricing Section with Interactive Calculator */}
-      <section id="pricing" className="px-6 py-20 border-b border-[#e2ded5]">
-        <div className="max-w-[1180px] mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
-            <div className="space-y-2 max-w-lg">
-              <span className="text-[11px] font-mono text-[#c9a84c] uppercase tracking-wider font-bold">
-                Volume-Tiered Pricing
-              </span>
-              <h2 className="text-3xl font-bold tracking-tight text-[#1a1a1e]">
-                Transparent brackets. No recurring subscriptions.
-              </h2>
-              <p className="text-sm text-[#6e6e7a]">
-                Pay per generated code. The more your brand produces, the lower the unit price per
-                code drops.
-              </p>
-            </div>
-
-            {/* Region / Currency Indicator (auto-detected, selector moved to billing portal) */}
-            <div className="flex items-center gap-2 bg-[#f0ece4] px-3 py-1.5 border border-[#e2ded5] self-start sm:self-auto font-mono text-xs text-[#1a1a1e]">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>
-                {pricingCurrency === "NGN"
-                  ? "Localized for Nigeria (₦ NGN)"
-                  : "Localized in US Dollars ($ USD)"}
-              </span>
-            </div>
-          </div>
-
-          {/* Interactive Calculator Box */}
-          <div className="bg-white border border-[#e2ded5] p-8 mb-12 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-              <div className="md:col-span-7 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label
-                    htmlFor="volume-slider"
-                    className="text-xs font-mono uppercase font-bold text-[#6e6e7a]"
-                  >
-                    Estimate Codes Volume
-                  </label>
-                  <span className="font-mono text-lg font-bold text-[#1a1a1e]">
-                    {calculatorVolume.toLocaleString()} codes
-                  </span>
-                </div>
-
-                <input
-                  id="volume-slider"
-                  type="range"
-                  min={500}
-                  max={500000}
-                  step={500}
-                  value={calculatorVolume}
-                  onChange={(e) => setCalculatorVolume(parseInt(e.target.value))}
-                  className="w-full accent-[#1a1a1e] cursor-pointer"
-                />
-
-                <div className="flex justify-between text-[11px] font-mono text-[#78716c]">
-                  <span>500</span>
-                  <span>50,000</span>
-                  <span>100,000</span>
-                  <span>500,000</span>
-                </div>
-              </div>
-
-              <div className="md:col-span-5 bg-[#fafaf8] border border-[#e2ded5] p-6 text-center">
-                <div className="text-xs font-mono uppercase text-[#78716c]">Total Investment</div>
-                <div className="text-3xl font-bold text-[#1a1a1e] mt-1 font-mono">
-                  {estimate.symbol}
-                  {estimate.cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
-                <div className="text-xs font-mono text-[#2e8b57] mt-1">
-                  Average {estimate.symbol}
-                  {estimate.perUnit} / unit
-                </div>
-
-                <button onClick={onOpenRegisterModal} className="btn btn-fill w-full mt-4">
-                  <span>Start With 20 Free Codes</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="border-t border-[#e2ded5] bg-white px-6 py-12 text-xs font-mono text-[#78716c]">
         <div className="max-w-[1180px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-[#1a1a1e] text-white flex items-center justify-center font-bold text-xs">
-              a
-            </div>
+            <img
+              src="/asemi_logo.png"
+              alt="Asemi logo"
+              className="w-6 h-6 rounded-md bg-white object-contain ring-1 ring-slate-200"
+            />
             <span className="font-bold text-[#1a1a1e]">Asemi Authentication Engine</span>
           </div>
 

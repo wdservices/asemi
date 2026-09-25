@@ -9,12 +9,10 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { CustomCursor } from "@/components/CustomCursor";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
@@ -41,9 +39,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -101,9 +96,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/asemi_logo.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,
@@ -132,9 +127,15 @@ function RootComponent() {
 
   useEffect(() => {
     if (!firebaseAuth) return;
-    const unsub = onAuthStateChanged(firebaseAuth, () => {
+    // Only sync the session cache — never invalidate the whole router/caches
+    // (that was causing seconds-long stalls on every navigation).
+    const unsub = onAuthStateChanged(firebaseAuth, (u) => {
+      queryClient.setQueryData(
+        ["session"],
+        u ? { user: { id: u.uid, email: u.email } } : null,
+      );
+      // Refresh route guards without refetching every dashboard query.
       router.invalidate();
-      queryClient.invalidateQueries();
     });
     return unsub;
   }, [router, queryClient]);
@@ -143,7 +144,6 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <CustomCursor />
       <Toaster />
     </QueryClientProvider>
   );

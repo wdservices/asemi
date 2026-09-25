@@ -7,11 +7,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/db";
-import { CreditCard, ShieldCheck, CheckCircle2, Loader2, Sparkles, Building2 } from "lucide-react";
+import { ShieldCheck, CheckCircle2, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import {
+  PAYSTACK_PUBLIC_KEY,
+  payWithPaystack,
+  newPaymentReference,
+} from "@/lib/paystack";
+import { fnVerifyPaystackPayment } from "@/lib/db";
+
+export interface BatchPayment {
+  reference: string;
+  verified: boolean;
+}
 
 export interface PaymentGatewayModalProps {
   open: boolean;
@@ -20,8 +29,16 @@ export interface PaymentGatewayModalProps {
   quantity: number;
   amount: number;
   currency: string;
-  onAuthorize: (onProgress: (p: number) => void) => Promise<void>;
+  email: string;
+  companyId: string;
+  productId: string;
+  onAuthorize: (
+    onProgress: (p: number) => void,
+    payment: BatchPayment,
+  ) => Promise<void>;
 }
+
+type Step = "ready" | "paying" | "verifying" | "generating" | "complete";
 
 export function PaymentGatewayModal({
   open,
@@ -30,135 +47,160 @@ export function PaymentGatewayModal({
   quantity,
   amount,
   currency,
+  email,
+  companyId,
+  productId,
   onAuthorize,
 }: PaymentGatewayModalProps) {
-  const [cardNumber, setCardNumber] = useState("4084 •••• •••• 4242");
-  const [expiry, setExpiry] = useState("12/28");
-  const [cvv, setCvv] = useState("892");
   const [processing, setProcessing] = useState(false);
-  const [step, setStep] = useState<"ready" | "authorizing" | "generating" | "complete">("ready");
+  const [step, setStep] = useState<Step>("ready");
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+
+  const configured = !!PAYSTACK_PUBLIC_KEY;
+
+  function reset() {
+    setStep("ready");
+    setProcessing(false);
+    setProgress(0);
+    setError("");
+  }
 
   const handlePay = async () => {
     try {
+      setError("");
       setProcessing(true);
-      setStep("authorizing");
-      setProgress(15);
+      setStep("paying");
+      setProgress(10);
 
-      // Simulate payment network roundtrip (1s)
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      setStep("generating");
-      setProgress(35);
-
-      await onAuthorize((p) => {
-        setProgress(Math.max(35, p));
+      // 1. Collect payment via Paystack popup (card, transfer, USSD, …)
+      const reference = await payWithPaystack({
+        email,
+        amount,
+        currency,
+        reference: newPaymentReference(),
+        metadata: { companyId, productId, productName, quantity },
       });
+
+      // 2. Verify the charge server-side before generating codes.
+      setStep("verifying");
+      setProgress(30);
+      let verified = false;
+      try {
+        const res = await fnVerifyPaystackPayment({
+          reference,
+          amount: Math.round(amount * 100),
+          currency: currency.toUpperCase(),
+        });
+        verified = !!res.verified;
+      } catch (verifyErr) {
+        // Server verification unavailable (functions not deployed yet):
+        // the Paystack-hosted checkout already charged the card and the
+        // reference is recorded on the invoice for reconciliation.
+        // Any other verification failure blocks generation.
+        const msg = verifyErr instanceof Error ? verifyErr.message : "";
+        const fnMissing = /not-found|404|does not exist|NOT_FOUND/i.test(msg);
+        if (!fnMissing) throw verifyErr;
+      }
+
+      // 3. Generate the batch + codes.
+      setStep("generating");
+      setProgress(40);
+      await onAuthorize(
+        (p) => {
+          setProgress(Math.max(40, p));
+        },
+        { reference, verified },
+      );
 
       setStep("complete");
       setProgress(100);
       setTimeout(() => {
         onOpenChange(false);
-        setStep("ready");
-        setProcessing(false);
-        setProgress(0);
+        reset();
       }, 900);
     } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Payment failed. Please try again.");
       setProcessing(false);
       setStep("ready");
+      setProgress(0);
     }
   };
 
+  const busy = processing && step !== "paying";
+
   return (
-    <Dialog open={open} onOpenChange={processing ? () => {} : onOpenChange}>
-      <DialogContent className="max-w-md sm:max-w-lg p-0 overflow-hidden border-zinc-200">
+    <Dialog open={open} onOpenChange={busy ? () => {} : onOpenChange}>
+      <DialogContent className="max-w-md sm:max-w-lg p-0 overflow-hidden border-slate-200 font-sans">
         {/* Header Banner */}
-        <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-black px-6 py-5 text-white">
+        <div className="bg-gradient-to-br from-blue-700 via-blue-800 to-slate-900 px-6 py-5 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white border border-white/20">
                 <ShieldCheck className="size-5" />
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold text-white">
-                  Payment Authorization
+                  Pay with Paystack
                 </DialogTitle>
-                <p className="text-xs text-zinc-300">
-                  Secure Payment Gateway • Instant Batch Issuance
+                <p className="text-xs text-blue-100">
+                  Secure checkout • Instant batch issuance
                 </p>
               </div>
             </div>
-            <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300 border border-emerald-500/30">
-              Simulation Mode
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white border border-white/20">
+              Paystack
             </span>
           </div>
         </div>
 
         <div className="p-6 space-y-5">
           {/* Order Summary Box */}
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 space-y-2.5 text-sm">
-            <div className="flex items-center justify-between text-zinc-600">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2.5 text-sm">
+            <div className="flex items-center justify-between text-slate-500">
               <span>Target Product</span>
-              <span className="font-semibold text-zinc-900">{productName}</span>
+              <span className="font-semibold text-slate-900">{productName}</span>
             </div>
-            <div className="flex items-center justify-between text-zinc-600">
+            <div className="flex items-center justify-between text-slate-500">
               <span>Verification Codes</span>
-              <span className="font-semibold text-zinc-900 tabular-nums">
+              <span className="font-semibold text-slate-900 tabular-nums">
                 {quantity.toLocaleString()} units
               </span>
             </div>
-            <div className="border-t border-zinc-200 pt-2 flex items-center justify-between">
-              <span className="font-medium text-zinc-900">Total Authorized Amount</span>
-              <span className="font-display text-xl font-bold text-zinc-950">
+            <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+              <span className="font-medium text-slate-900">Total Due</span>
+              <span className="font-sans text-xl font-bold text-slate-950">
                 {formatMoney(amount, currency)}
               </span>
             </div>
           </div>
 
-          {/* Test Card Form */}
-          {step === "ready" && (
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-zinc-700 flex items-center gap-1.5">
-                  <CreditCard className="size-3.5 text-zinc-500" /> Card Details (Simulated Test
-                  Card)
-                </Label>
-                <span className="text-[11px] text-zinc-500">Auto-approved</span>
-              </div>
-
-              <div className="space-y-3">
-                <Input
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  className="font-mono text-sm bg-white"
-                  placeholder="Card Number"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    value={expiry}
-                    onChange={(e) => setExpiry(e.target.value)}
-                    className="font-mono text-sm bg-white"
-                    placeholder="MM/YY"
-                  />
-                  <Input
-                    value={cvv}
-                    onChange={(e) => setCvv(e.target.value)}
-                    className="font-mono text-sm bg-white"
-                    placeholder="CVV"
-                  />
-                </div>
-              </div>
-
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
-                By clicking authorize, test payment will be simulated, and your batch with unique
-                cryptographic QR codes will be generated immediately into your Code Bank.
+          {!configured ? (
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
+              <p>
+                Online payment is not configured yet (missing Paystack public key). Please contact
+                support to complete your purchase.
               </p>
             </div>
-          )}
-
-          {/* Processing / Progress State */}
-          {step !== "ready" && (
+          ) : step === "ready" ? (
+            <div className="space-y-3">
+              {error && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
+                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+              <p className="text-xs text-slate-500 leading-relaxed">
+                You will be redirected to Paystack's secure checkout to pay with card, bank
+                transfer, or USSD. Your {quantity.toLocaleString()} codes generate immediately
+                after payment.
+              </p>
+            </div>
+          ) : (
             <div className="space-y-3 py-4 text-center">
-              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-zinc-900">
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-900">
                 {step === "complete" ? (
                   <>
                     <CheckCircle2 className="size-5 text-emerald-600" />
@@ -166,35 +208,39 @@ export function PaymentGatewayModal({
                   </>
                 ) : (
                   <>
-                    <Loader2 className="size-4 animate-spin text-primary" />
-                    {step === "authorizing"
-                      ? "Authorizing simulated payment…"
-                      : `Generating ${quantity.toLocaleString()} QR codes & security tags…`}
+                    <Loader2 className="size-4 animate-spin text-blue-600" />
+                    {step === "paying"
+                      ? "Waiting for Paystack checkout…"
+                      : step === "verifying"
+                        ? "Confirming your payment…"
+                        : `Generating ${quantity.toLocaleString()} QR codes…`}
                   </>
                 )}
               </div>
               <Progress value={progress} className="h-2" />
-              <p className="text-xs text-zinc-500">
-                Creating unique cryptographic verification signatures…
-              </p>
+              {step === "paying" && (
+                <p className="text-xs text-slate-500">
+                  Complete payment in the Paystack window. Closing it cancels this order.
+                </p>
+              )}
             </div>
           )}
         </div>
 
-        <DialogFooter className="px-6 py-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between sm:justify-between">
+        <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between sm:justify-between">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            disabled={processing}
-            className="text-zinc-600"
+            disabled={busy}
+            className="text-slate-600"
           >
             Cancel
           </Button>
 
           <Button
             onClick={handlePay}
-            disabled={processing}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[190px] gap-2 shadow-sm"
+            disabled={busy || !configured}
+            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[190px] gap-2 shadow-sm"
           >
             {processing ? (
               <>
@@ -204,7 +250,7 @@ export function PaymentGatewayModal({
             ) : (
               <>
                 <Sparkles className="size-4" />
-                Authorize & Generate ({formatMoney(amount, currency)})
+                Pay {formatMoney(amount, currency)}
               </>
             )}
           </Button>

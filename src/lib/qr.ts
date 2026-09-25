@@ -266,35 +266,29 @@ export async function renderTagToCanvas(options: TagRenderOptions): Promise<stri
     ctx.font = `600 ${11 * scale}px "JetBrains Mono", monospace`;
     ctx.fillText("asemi.io/verify", w / 2, qrY + qrSize + 18 * scale);
 
-    // 4. Scratch-off Layer Representation
-    const scratchY = qrY + qrSize + 28 * scale;
-    const scratchW = w - 40 * scale;
-    const scratchH = 46 * scale;
-    const scratchX = (w - scratchW) / 2;
+    // 4. Verification code panel — printed openly
+    const panelY = qrY + qrSize + 28 * scale;
+    const panelW = w - 40 * scale;
+    const panelH = 46 * scale;
+    const panelX = (w - panelW) / 2;
 
-    // Scratch metallic texture
-    const scratchGrad = ctx.createLinearGradient(scratchX, scratchY, scratchX + scratchW, scratchY);
-    scratchGrad.addColorStop(0, "#9ca3af");
-    scratchGrad.addColorStop(0.3, "#e5e7eb");
-    scratchGrad.addColorStop(0.7, "#9ca3af");
-    scratchGrad.addColorStop(1, "#6b7280");
-    ctx.fillStyle = scratchGrad;
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.roundRect(scratchX, scratchY, scratchW, scratchH, 4 * scale);
+    ctx.roundRect(panelX, panelY, panelW, panelH, 4 * scale);
     ctx.fill();
-    ctx.strokeStyle = "#4b5563";
+    ctx.strokeStyle = "#3f3f46";
     ctx.lineWidth = 1 * scale;
     ctx.stroke();
 
-    // Scratch instruction text
-    ctx.fillStyle = "#1f2937";
+    // Panel label
+    ctx.fillStyle = "#52525b";
     ctx.font = `bold ${9 * scale}px sans-serif`;
-    ctx.fillText("Scrape the layer to verify authenticity", w / 2, scratchY + 16 * scale);
+    ctx.fillText("SCAN TO VERIFY AUTHENTICITY", w / 2, panelY + 16 * scale);
 
-    // The Unique Code displayed inside scratch strip
+    // The unique code, displayed openly
     ctx.fillStyle = "#0f172a";
     ctx.font = `bold ${12 * scale}px "JetBrains Mono", monospace`;
-    ctx.fillText(codeString, w / 2, scratchY + 34 * scale);
+    ctx.fillText(codeString, w / 2, panelY + 34 * scale);
 
     // 5. Bottom Anti-Counterfeit Notice
     ctx.fillStyle = "#111827";
@@ -519,12 +513,6 @@ export async function generateTagSvg(options: TagRenderOptions): Promise<string>
       <stop offset="75%" stop-color="#fff8cb" />
       <stop offset="100%" stop-color="#c19225" />
     </linearGradient>
-    <linearGradient id="scratch-grad-${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#9ca3af" />
-      <stop offset="30%" stop-color="#e5e7eb" />
-      <stop offset="70%" stop-color="#9ca3af" />
-      <stop offset="100%" stop-color="#6b7280" />
-    </linearGradient>
     <clipPath id="rect-clip-${uid}">
       <rect x="0" y="0" width="${w}" height="${h}" rx="16" ry="16" />
     </clipPath>
@@ -560,11 +548,10 @@ ${raysSvg}    </g>
     <!-- Verification URL -->
     <text x="${w / 2}" y="250" fill="#222222" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600" text-anchor="middle">asemi.io/verify</text>
 
-    <!-- 4. Scratch-off Layer Representation -->
-    <rect x="20" y="260" width="240" height="46" rx="4" fill="url(#scratch-grad-${uid})" stroke="#4b5563" stroke-width="1" />
-    <text x="${w / 2}" y="276" fill="#1f2937" font-size="9" font-weight="bold" text-anchor="middle">Scrape the layer to verify authenticity</text>
+    <!-- 4. Verification code panel — printed openly -->
+    <rect x="20" y="260" width="240" height="46" rx="4" fill="#ffffff" stroke="#3f3f46" stroke-width="1" />
+    <text x="${w / 2}" y="276" fill="#52525b" font-size="9" font-weight="bold" text-anchor="middle">SCAN TO VERIFY AUTHENTICITY</text>
 
-    <rect x="36" y="282" width="208" height="20" rx="3" fill="rgba(255,255,255,0.75)" />
     <text x="${w / 2}" y="296" fill="#0f172a" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="bold" text-anchor="middle">${safeCode}</text>
 
     <!-- 5. Anti-Counterfeit Notice -->

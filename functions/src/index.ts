@@ -871,3 +871,54 @@ export const oncompanydocuploaded = onObjectFinalized(
       });
   },
 );
+
+ // ---------------------------------------------------------------------------
+// verifypaystack (callable, authenticated) — confirm a Paystack charge
+// server-side before codes are generated. Set PAYSTACK_SECRET_KEY via:
+//   firebase functions:secrets:set PAYSTACK_SECRET_KEY
+// ---------------------------------------------------------------------------
+
+export const verifypaystack = onCall(async (req) => {
+  uidOf(req);
+  const reference = String(req.data?.reference || "").trim();
+  const expectedAmount = Number(req.data?.amount);
+  const expectedCurrency = String(req.data?.currency || "").toUpperCase();
+  if (!reference) {
+    throw new HttpsError("invalid-argument", "Payment reference is required.");
+  }
+
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Paystack is not configured on the server (missing PAYSTACK_SECRET_KEY).",
+    );
+  }
+
+  const res = await fetch(
+    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+    { headers: { Authorization: `Bearer ${secret}` } },
+  );
+  if (!res.ok) {
+    throw new HttpsError("unavailable", "Could not reach Paystack. Please try again.");
+  }
+  const body = (await res.json()) as {
+    data?: { status?: string; reference?: string; amount?: number; currency?: string };
+  };
+  const data = body?.data;
+  if (!data || data.status !== "success") {
+    throw new HttpsError("failed-precondition", "Payment was not successful.");
+  }
+  if (expectedCurrency && String(data.currency || "").toUpperCase() !== expectedCurrency) {
+    throw new HttpsError("failed-precondition", "Payment currency mismatch.");
+  }
+  if (Number.isFinite(expectedAmount) && Number(data.amount) !== expectedAmount) {
+    throw new HttpsError("failed-precondition", "Payment amount mismatch.");
+  }
+  return {
+    verified: true,
+    reference: String(data.reference || reference),
+    amount: Number(data.amount),
+    currency: String(data.currency || "").toUpperCase(),
+  };
+});

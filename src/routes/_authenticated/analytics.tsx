@@ -86,12 +86,20 @@ function AnalyticsPage() {
   const products = useQuery({
     queryKey: ["products", companyId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: () => listProducts(companyId!),
   });
 
   const scans = useQuery({
     queryKey: ["analytics-scans", companyId, since, productId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const all = await listCompanyScans(companyId!, since);
       return productId === "all" ? all : all.filter((s) => s.productId === productId);
@@ -101,6 +109,10 @@ function AnalyticsPage() {
   const flaggedCodes = useQuery({
     queryKey: ["analytics-flagged", companyId, since, productId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: async (): Promise<FlaggedRow[]> => {
       const codes = await listCodes(companyId!, {
         productId: productId === "all" ? undefined : productId,
@@ -259,11 +271,28 @@ function AnalyticsPage() {
         </div>
       </div>
 
-      {scans.isLoading ? (
+      {scans.isPending ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="panel h-28 animate-pulse p-5" />
           ))}
+        </div>
+      ) : scans.isError ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <p className="font-sans text-lg font-bold text-slate-900">Couldn't load scan data</p>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+            {scans.error instanceof Error ? scans.error.message : "Failed to load scans."}
+          </p>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+            This usually means the Firestore scans index isn't deployed yet. Run{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">
+              firebase deploy --only firestore:indexes
+            </code>{" "}
+            from the repo root, then retry.
+          </p>
+          <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => scans.refetch()}>
+            Retry
+          </Button>
         </div>
       ) : totalScans === 0 ? (
         <EmptyState

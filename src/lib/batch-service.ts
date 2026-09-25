@@ -10,7 +10,7 @@ import {
   addDoc,
 } from "firebase/firestore";
 import { requireDb } from "@/lib/firebase";
-import { formatMoney } from "@/lib/db";
+import { getCountryByCode } from "@/lib/countries";
 
 const CHARSET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
@@ -82,48 +82,41 @@ export function calculateBatchPrice(
   countryCode: string = "NG",
   freeAvailable: number = 0,
 ): ClientCalculatePriceResult {
-  const isNg = countryCode.toUpperCase() === "NG";
-  const currency = isNg ? "NGN" : "USD";
-  const symbol = isNg ? "₦" : "$";
+  // Currency is locked to the company's registration country (matches billing).
+  const info = getCountryByCode(countryCode || "NG");
+  const isNg = info.code.toUpperCase() === "NG";
+  const isUsd = info.currency.toUpperCase() === "USD";
+  const currency = isNg ? "NGN" : info.currency;
+  const symbol = isNg ? "₦" : info.currencySymbol;
 
   const free = Math.min(qty, freeAvailable);
   const paid = qty - free;
 
-  // Progressive volume brackets (matching transparent brackets)
+  // Progressive volume brackets (matching billing page brackets)
   // NGN: 1-5k: ₦50, 5k-20k: ₦35, 20k-100k: ₦25, 100k-500k: ₦18, 500k+: ₦12
   // USD: 1-5k: $0.15, 5k-20k: $0.10, 20k-100k: $0.08, 100k-500k: $0.06, 500k+: $0.05
+  // Other: base ratePerCode scaled 1 / 0.7 / 0.55 / 0.4 / 0.3
+  const tiers = isNg
+    ? [50, 35, 25, 18, 12]
+    : isUsd
+      ? [0.15, 0.1, 0.08, 0.06, 0.05]
+      : [
+          info.ratePerCode,
+          info.ratePerCode * 0.7,
+          info.ratePerCode * 0.55,
+          info.ratePerCode * 0.4,
+          info.ratePerCode * 0.3,
+        ];
+  const limits = [5000, 15000, 80000, 400000];
+
   let cost = 0;
   let remaining = paid;
-
-  if (isNg) {
-    const b1 = Math.min(remaining, 5000);
-    cost += b1 * 50;
-    remaining -= b1;
-    const b2 = Math.min(remaining, 15000);
-    cost += b2 * 35;
-    remaining -= b2;
-    const b3 = Math.min(remaining, 80000);
-    cost += b3 * 25;
-    remaining -= b3;
-    const b4 = Math.min(remaining, 400000);
-    cost += b4 * 18;
-    remaining -= b4;
-    cost += remaining * 12;
-  } else {
-    const b1 = Math.min(remaining, 5000);
-    cost += b1 * 0.15;
-    remaining -= b1;
-    const b2 = Math.min(remaining, 15000);
-    cost += b2 * 0.1;
-    remaining -= b2;
-    const b3 = Math.min(remaining, 80000);
-    cost += b3 * 0.08;
-    remaining -= b3;
-    const b4 = Math.min(remaining, 400000);
-    cost += b4 * 0.06;
-    remaining -= b4;
-    cost += remaining * 0.05;
+  for (let i = 0; i < limits.length; i++) {
+    const take = Math.min(remaining, limits[i] ?? 0);
+    cost += take * (tiers[i] ?? 0);
+    remaining -= take;
   }
+  cost += remaining * (tiers[4] ?? 0);
 
   const price = Math.round(cost * 100) / 100;
   const effectiveRate = paid > 0 ? Math.round((price / paid) * 100) / 100 : 0;
@@ -164,6 +157,8 @@ export interface GenerateBatchParams {
   lotNumber?: string | null;
   mfgDate?: string | null;
   expiryDate?: string | null;
+  paymentReference?: string | null;
+  paymentVerified?: boolean;
   onProgress?: (percent: number) => void;
 }
 
@@ -190,6 +185,8 @@ export async function createBatchWithCodes(
     lotNumber = null,
     mfgDate = null,
     expiryDate = null,
+    paymentReference = null,
+    paymentVerified = false,
     onProgress,
   } = params;
 
@@ -230,6 +227,9 @@ export async function createBatchWithCodes(
     expiryDate,
     coaDocName: null,
     coaDocUrl: null,
+    paymentReference,
+    paymentVerified,
+    paymentGateway: paymentReference ? "paystack" : "none",
     exportedAt: null,
     createdAt: serverTimestamp(),
   };
@@ -281,7 +281,7 @@ export async function createBatchWithCodes(
     console.warn("Could not update company batch sequence:", err);
   }
 
-  // 6. Record Simulated Invoice
+  // 6. Record Invoice
   try {
     const invoicesRef = collection(db, "companies", companyId, "invoices");
     await addDoc(invoicesRef, {
@@ -291,6 +291,9 @@ export async function createBatchWithCodes(
       codesApplied: quantity,
       currency,
       status: "paid",
+      paymentGateway: paymentReference ? "paystack" : "none",
+      paymentReference,
+      paymentVerified,
       description: `Batch ${batchNumber} — ${quantity.toLocaleString()} codes for ${productName}`,
       createdAt: serverTimestamp(),
     });

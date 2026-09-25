@@ -190,14 +190,20 @@ export function ProductTagPreview({
               asemi.io/verify
             </p>
 
-            {/* Scratch layer banner (Exactly as on photo) */}
-            <div className="mt-2 w-full rounded-md border border-zinc-500 bg-gradient-to-r from-zinc-400 via-zinc-200 to-zinc-400 px-2 py-1 shadow-inner text-zinc-900">
-              <p className="text-[9px] font-bold tracking-tight text-zinc-800 uppercase">
-                Scrape the layer to verify authenticity
+            {/* Verification code — printed openly, taps through to Asemi */}
+            <div className="mt-2 w-full rounded-md border border-zinc-800/25 bg-white/90 px-2 py-1.5 shadow-sm">
+              <p className="text-[9px] font-bold tracking-widest text-zinc-600 uppercase">
+                Scan to verify authenticity
               </p>
-              <div className="mt-0.5 font-mono text-xs font-black tracking-wider text-zinc-950 bg-white/70 rounded px-1.5 py-0.5">
+              <a
+                href={verifyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-0.5 block rounded bg-white px-1.5 py-0.5 font-mono text-xs font-black tracking-wider text-zinc-950 underline decoration-zinc-300 underline-offset-2 hover:decoration-zinc-600"
+                title="Open verification page"
+              >
                 {codeString}
-              </div>
+              </a>
             </div>
 
             {/* Bottom Caution / Anti-Counterfeit Notice */}
@@ -267,7 +273,15 @@ export function ProductTagPreview({
             </div>
 
             <div className="mt-1 bg-white/90 border border-zinc-800 rounded px-1.5 py-0.5 shadow-sm">
-              <span className="font-mono text-[10px] font-black text-zinc-950">{codeString}</span>
+              <a
+                href={verifyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-[10px] font-black text-zinc-950 underline decoration-zinc-300 underline-offset-2 hover:decoration-zinc-600"
+                title="Open verification page"
+              >
+                {codeString}
+              </a>
             </div>
           </div>
         </div>

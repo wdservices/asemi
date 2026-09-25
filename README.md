@@ -114,16 +114,6 @@ Company and Admin dashboards: standard dashboard layout (sidebar nav, data table
 
 Consumer verification page: mobile-first, single-purpose, near-instant load, large clear genuine/not-genuine state.
 
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/65604b5f-7588-459f-aa7f-566b9caef6a1).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
 ## Development
 
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).

@@ -81,7 +81,7 @@ export const CountrySelectDropdown: React.FC<CountrySelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`relative w-full flex items-center justify-between gap-2 pl-11 pr-3 h-[52px] text-[15px] bg-zinc-50/70 hover:bg-zinc-50 focus:bg-white border rounded-2xl transition-all text-left font-sans cursor-pointer outline-none ${
           isOpen
-            ? "border-zinc-950 bg-white ring-4 ring-[#c9a84c]/20 shadow-lg"
+            ? "border-zinc-950 bg-white ring-4 ring-[#2563eb]/20 shadow-lg"
             : "border-zinc-200 hover:border-zinc-400"
         }`}
         aria-haspopup="listbox"
@@ -240,7 +240,7 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center justify-between gap-2 px-4 h-[52px] text-[15px] bg-zinc-50/70 hover:bg-zinc-50 border rounded-2xl transition-all text-left font-sans cursor-pointer outline-none ${
           isOpen
-            ? "border-zinc-950 bg-white ring-4 ring-[#c9a84c]/20 shadow-lg"
+            ? "border-zinc-950 bg-white ring-4 ring-[#2563eb]/20 shadow-lg"
             : "border-zinc-200 hover:border-zinc-400"
         }`}
         aria-haspopup="listbox"

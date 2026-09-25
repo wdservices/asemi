@@ -387,13 +387,63 @@ export async function listCompanyScans(
   // NOTE: single equality filter only — time-filtered + sorted client-side so
   // no collection-group composite index is required.
   const since = new Date(sinceIso).toISOString();
-  const snap = await getDocs(
-    query(collectionGroup(requireDb(), "scans"), where("companyId", "==", companyId), limit(maxN)),
+  try {
+    const snap = await getDocs(
+      query(collectionGroup(requireDb(), "scans"), where("companyId", "==", companyId), limit(maxN)),
+    );
+    return snap.docs
+      .map((d) => ser<Scan>(d.id, d.data()))
+      .filter((s) => (s.scannedAt || "") >= since)
+      .sort((a, b) => (b.scannedAt || "").localeCompare(a.scannedAt || ""));
+  } catch (err) {
+    if (!isMissingIndexError(err)) throw err;
+    // Fallback when the collection-group index isn't deployed yet: read each
+    // code's scans subcollection directly (plain reads need no index).
+    return listCompanyScansFallback(companyId, since, maxN);
+  }
+}
+
+/** Firestore "index required" errors (code 9 / failed-precondition). */
+function isMissingIndexError(err: unknown): boolean {
+  const code = (err as { code?: string })?.code ?? "";
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return (
+    code === "failed-precondition" ||
+    /FAILED_PRECONDITION|requires .* index|COLLECTION_GROUP_ASC/i.test(msg)
   );
-  return snap.docs
-    .map((d) => ser<Scan>(d.id, d.data()))
-    .filter((s) => (s.scannedAt || "") >= since)
-    .sort((a, b) => (b.scannedAt || "").localeCompare(a.scannedAt || ""));
+}
+
+async function listCompanyScansFallback(
+  companyId: string,
+  sinceIso: string,
+  maxN: number,
+): Promise<Scan[]> {
+  const codes = await listCodes(companyId, { limitN: 500 });
+  const out: Scan[] = [];
+  // Read in small parallel chunks to avoid hammering Firestore.
+  for (let i = 0; i < codes.length; i += 25) {
+    const chunk = codes.slice(i, i + 25);
+    const results = await Promise.all(
+      chunk.map(async (c) => {
+        try {
+          return await getDocs(query(collection(requireDb(), "codes", c.id, "scans"), limit(200)));
+        } catch {
+          return null;
+        }
+      }),
+    );
+    for (const snap of results) {
+      if (!snap) continue;
+      for (const d of snap.docs) {
+        const s = ser<Scan>(d.id, d.data());
+        if ((s.scannedAt || "") >= sinceIso) out.push(s);
+        if (out.length >= maxN) break;
+      }
+      if (out.length >= maxN) break;
+    }
+    if (out.length >= maxN) break;
+  }
+  return out.sort((a, b) => (b.scannedAt || "").localeCompare(a.scannedAt || "")).slice(0, maxN);
 }
 
 // ---------------------------------------------------------------------------
@@ -517,13 +567,21 @@ export async function platformMetrics(): Promise<PlatformMetrics> {
     revenue += Number(d.data()["lifetimeSpent"] || 0);
     if (d.data()["currency"]) revenueCurrency = String(d.data()["currency"]);
   }
-  const scansSnap = await getDocs(
-    query(
-      collectionGroup(requireDb(), "scans"),
-      where("scannedAt", ">=", Timestamp.fromDate(new Date(Date.now() - 30 * 864e5))),
-      limit(5000),
-    ),
-  );
+  const scansSnap = await (async () => {
+    try {
+      return await getDocs(
+        query(
+          collectionGroup(requireDb(), "scans"),
+          where("scannedAt", ">=", Timestamp.fromDate(new Date(Date.now() - 30 * 864e5))),
+          limit(5000),
+        ),
+      );
+    } catch (err) {
+      // Index not deployed yet — report 0 rather than failing the whole page.
+      if (!isMissingIndexError(err)) throw err;
+      return { size: 0 };
+    }
+  })();
   return {
     pending: companies.filter((c) => c.status === "pending").length,
     needsInfo: companies.filter((c) => c.status === "needs_info").length,
@@ -583,15 +641,21 @@ export async function listCodeScans(codeId: string, maxN = 100): Promise<Scan[]>
 }
 
 export async function platformScans(sinceIso: string, maxN = 5000): Promise<Scan[]> {
-  const snap = await getDocs(
-    query(
-      collectionGroup(requireDb(), "scans"),
-      where("scannedAt", ">=", Timestamp.fromDate(new Date(sinceIso))),
-      orderBy("scannedAt", "asc"),
-      limit(maxN),
-    ),
-  );
-  return snap.docs.map((d) => ser<Scan>(d.id, d.data()));
+  try {
+    const snap = await getDocs(
+      query(
+        collectionGroup(requireDb(), "scans"),
+        where("scannedAt", ">=", Timestamp.fromDate(new Date(sinceIso))),
+        orderBy("scannedAt", "asc"),
+        limit(maxN),
+      ),
+    );
+    return snap.docs.map((d) => ser<Scan>(d.id, d.data()));
+  } catch (err) {
+    // Index not deployed yet — return empty rather than failing the page.
+    if (!isMissingIndexError(err)) throw err;
+    return [];
+  }
 }
 
 export async function nameMaps(ids: {
@@ -710,6 +774,19 @@ export const fnAdminReviewReport = (reportId: string, reviewed: boolean) =>
   callFn("adminreviewreport", { reportId, reviewed });
 export const fnTopupWallet = (companyId: string, amount: number, reference?: string) =>
   callFn("topupwallet", { companyId, amount, reference });
+
+export interface PaystackVerifyResult {
+  verified: boolean;
+  reference: string;
+  amount: number;
+  currency: string;
+}
+
+export const fnVerifyPaystackPayment = (input: {
+  reference: string;
+  amount: number;
+  currency: string;
+}) => callFn<PaystackVerifyResult>("verifypaystack", input);
 export const fnMarkCodesExported = (batchId: string) => callFn("markcodesexported", { batchId });
 export const fnSetCodeReview = (codeId: string, status: "reviewed" | "escalated") =>
   callFn("setcodereview", { codeId, status });
@@ -805,11 +882,10 @@ export function formatMoney(amount: number, currency = "USD"): string {
 // ---------------------------------------------------------------------------
 
 export async function uploadProductImage(companyId: string, file: File): Promise<string> {
-  const ext = file.name.split(".").pop() || "png";
-  const key = `${companyId}/img-${Date.now()}.${ext}`;
-  const storageRef = ref(requireStorage(), `product-images/${key}`);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  // Product images & brand logos go to Cloudinary (unsigned preset, no secret).
+  const { uploadImageToCloudinary } = await import("./cloudinary");
+  const res = await uploadImageToCloudinary(file, `asemi/${companyId}/products`);
+  return res.url;
 }
 
 export async function uploadCompanyDoc(companyId: string, file: File): Promise<string> {

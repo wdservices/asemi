@@ -78,6 +78,10 @@ function ProfilePage() {
   const productCount = useQuery({
     queryKey: ["profile-product-count", companyId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: () => countCollection("products", companyId!),
   });
 

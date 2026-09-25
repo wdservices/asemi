@@ -42,7 +42,7 @@ export interface AuthCardProps {
 
 const labelCls = "block text-[13px] font-semibold text-zinc-800 tracking-tight mb-2";
 const inputCls =
-  "w-full h-[52px] bg-zinc-50/70 hover:bg-zinc-50 focus:bg-white border border-zinc-200 hover:border-zinc-300 focus:border-zinc-950 focus:ring-4 focus:ring-[#c9a84c]/20 rounded-2xl pl-11 pr-4 text-[16px] text-zinc-950 placeholder:text-zinc-400 placeholder:text-[15px] outline-none transition-all duration-200 font-sans";
+  "w-full h-[52px] bg-zinc-50/70 hover:bg-zinc-50 focus:bg-white border border-zinc-200 hover:border-zinc-300 focus:border-zinc-950 focus:ring-4 focus:ring-[#2563eb]/20 rounded-2xl pl-11 pr-4 text-[16px] text-zinc-950 placeholder:text-zinc-400 placeholder:text-[15px] outline-none transition-all duration-200 font-sans";
 const iconCls =
   "w-[18px] h-[18px] text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none";
 
@@ -266,14 +266,16 @@ export const AuthCard: React.FC<AuthCardProps> = ({
       } max-h-[min(92vh,820px)]`}
     >
       {/* Gold hairline */}
-      <div className="h-[3px] shrink-0 bg-gradient-to-r from-[#8f7530] via-[#e8cf8a] to-[#8f7530]" />
+      <div className="h-[3px] shrink-0 bg-gradient-to-r from-[#1d4ed8] via-[#bfdbfe] to-[#1d4ed8]" />
 
       {/* Header — brand left, ledger + close right (no overlap) */}
       <div className="shrink-0 flex items-center justify-between gap-3 px-6 sm:px-8 pt-5 pb-4 bg-gradient-to-b from-zinc-50 to-white border-b border-zinc-100">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-2xl bg-zinc-950 grid place-items-center shadow-lg shadow-zinc-950/20 shrink-0">
-            <span className="text-white font-bold text-lg leading-none">a</span>
-          </div>
+          <img
+            src="/asemi_logo.png"
+            alt="Asemi logo"
+            className="w-10 h-10 rounded-2xl bg-white object-contain shadow-lg ring-1 ring-slate-200 shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-[15px] font-bold text-zinc-950 tracking-tight leading-tight truncate">
               Asemi Gateway
@@ -284,7 +286,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-[#8f7530] bg-[#faf5e6] px-3 py-1.5 rounded-full border border-[#e8dcc0]">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-[#1d4ed8] bg-[#eff6ff] px-3 py-1.5 rounded-full border border-[#bfdbfe]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="whitespace-nowrap">256-Bit Ledger</span>
           </div>
@@ -293,7 +295,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="w-9 h-9 grid place-items-center rounded-full bg-zinc-100 hover:bg-zinc-950 text-zinc-500 hover:text-white transition-all cursor-pointer"
+              className="w-9 h-9 grid place-items-center rounded-full bg-zinc-100 hover:bg-blue-600 text-zinc-500 hover:text-white transition-all cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -305,8 +307,8 @@ export const AuthCard: React.FC<AuthCardProps> = ({
       <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-7">
         {/* Title */}
         <div className="mb-5 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950 text-white font-mono text-[10px] uppercase tracking-[0.16em] mb-3">
-            <ShieldCheck className="w-3 h-3 text-[#c9a84c]" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600 text-white font-mono text-[10px] uppercase tracking-[0.16em] mb-3">
+            <ShieldCheck className="w-3 h-3 text-[#2563eb]" />
             <span>{isRegister ? "Manufacturer onboarding" : "Manufacturer portal"}</span>
           </div>
           <h2 className="text-[26px] sm:text-[30px] font-bold text-zinc-950 tracking-tight leading-tight">
@@ -333,7 +335,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
             }}
             className={`flex items-center justify-center gap-2 py-2.5 px-3 text-center text-sm font-semibold rounded-full transition-all cursor-pointer ${
               !isRegister
-                ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/20"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                 : "text-zinc-500 hover:text-zinc-900"
             }`}
           >
@@ -349,7 +351,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
             }}
             className={`flex items-center justify-center gap-2 py-2.5 px-3 text-center text-sm font-semibold rounded-full transition-all cursor-pointer ${
               isRegister
-                ? "bg-zinc-950 text-white shadow-lg shadow-zinc-950/20"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                 : "text-zinc-500 hover:text-zinc-900"
             }`}
           >
@@ -483,11 +485,11 @@ export const AuthCard: React.FC<AuthCardProps> = ({
               id="btn-submit-unified-login"
               type="submit"
               disabled={submitting}
-              className="group w-full h-[52px] px-4 bg-zinc-950 hover:bg-black text-white text-[15px] font-semibold rounded-2xl shadow-xl shadow-zinc-950/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-70 active:scale-[0.99]"
+              className="group w-full h-[52px] px-4 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-70 active:scale-[0.99]"
             >
               {submitting ? (
                 <>
-                  <Sparkles className="w-[18px] h-[18px] animate-spin text-[#c9a84c]" />
+                  <Sparkles className="w-[18px] h-[18px] animate-spin text-[#2563eb]" />
                   <span>Verifying credentials…</span>
                 </>
               ) : (
@@ -506,7 +508,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                   setActiveMode("register");
                   setErrorMessage("");
                 }}
-                className="font-semibold text-zinc-950 underline underline-offset-2 decoration-[#c9a84c] cursor-pointer"
+                className="font-semibold text-zinc-950 underline underline-offset-2 decoration-[#2563eb] cursor-pointer"
               >
                 Register your brand
               </button>
@@ -607,7 +609,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
             </div>
 
             {regCategory === "Other" && (
-              <div className="bg-amber-50/60 p-4 border border-amber-200/70 rounded-2xl space-y-2">
+              <div className="bg-blue-50/60 p-4 border border-blue-200/70 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <label
                     htmlFor="reg-custom-category"
@@ -615,7 +617,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                   >
                     Custom industry / product category *
                   </label>
-                  <span className="text-[10px] font-mono text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-semibold shrink-0">
+                  <span className="text-[10px] font-mono text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full font-semibold shrink-0">
                     Custom
                   </span>
                 </div>
@@ -626,7 +628,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                   placeholder="e.g. Artisanal soaps, craft drinks, pet food"
                   value={regCustomCategory}
                   onChange={(e) => setRegCustomCategory(e.target.value)}
-                  className="w-full h-[52px] bg-white border border-amber-200 focus:border-zinc-950 focus:ring-4 focus:ring-[#c9a84c]/20 rounded-2xl px-4 text-[16px] text-zinc-950 placeholder:text-zinc-400 outline-none transition-all"
+                  className="w-full h-[52px] bg-white border border-blue-200 focus:border-zinc-950 focus:ring-4 focus:ring-[#2563eb]/20 rounded-2xl px-4 text-[16px] text-zinc-950 placeholder:text-zinc-400 outline-none transition-all"
                 />
               </div>
             )}
@@ -754,7 +756,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
                 I agree to the{" "}
                 <Link
                   to="/terms"
-                  className="font-semibold text-zinc-950 underline underline-offset-2 decoration-[#c9a84c] hover:text-[#8f7530]"
+                  className="font-semibold text-zinc-950 underline underline-offset-2 decoration-[#2563eb] hover:text-[#1d4ed8]"
                 >
                   Terms and Conditions
                 </Link>{" "}
@@ -763,12 +765,12 @@ export const AuthCard: React.FC<AuthCardProps> = ({
             </div>
 
             {/* Free codes benefit banner */}
-            <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-gradient-to-r from-amber-50 to-[#faf3dd] border border-amber-200/80 rounded-2xl">
-              <span className="flex items-center gap-2 text-sm font-medium text-amber-900">
+            <div className="flex items-center justify-between gap-3 px-4 py-3.5 bg-gradient-to-r from-amber-50 to-[#faf3dd] border border-blue-200/80 rounded-2xl">
+              <span className="flex items-center gap-2 text-sm font-medium text-blue-900">
                 <Gift className="w-[18px] h-[18px] shrink-0" />
                 <span>20 complimentary tags on registration</span>
               </span>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider bg-amber-950 text-amber-100 px-2.5 py-1 rounded-full shrink-0">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider bg-blue-950 text-blue-100 px-2.5 py-1 rounded-full shrink-0">
                 Free tier
               </span>
             </div>
@@ -777,11 +779,11 @@ export const AuthCard: React.FC<AuthCardProps> = ({
               id="btn-submit-brand-registration"
               type="submit"
               disabled={submitting}
-              className="group w-full h-[54px] px-4 bg-zinc-950 hover:bg-black text-white text-[15px] font-semibold rounded-2xl shadow-xl shadow-zinc-950/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-70 active:scale-[0.99]"
+              className="group w-full h-[54px] px-4 bg-blue-600 hover:bg-blue-700 text-white text-[15px] font-semibold rounded-2xl shadow-xl shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-70 active:scale-[0.99]"
             >
               {aiAnalyzing ? (
                 <>
-                  <Sparkles className="w-[18px] h-[18px] animate-spin text-[#c9a84c]" />
+                  <Sparkles className="w-[18px] h-[18px] animate-spin text-[#2563eb]" />
                   <span>Provisioning secure vault…</span>
                 </>
               ) : submitting ? (

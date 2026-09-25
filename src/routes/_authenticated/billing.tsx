@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useMyCompany, type Company } from "@/lib/auth";
 import { formatMoney, listBatches, listInvoices } from "@/lib/db";
-import { getCountryByCode, COUNTRIES, type CountryInfo } from "@/lib/countries";
+import { getCountryByCode, type CountryInfo } from "@/lib/countries";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,8 +13,6 @@ import {
   Sparkles,
   ArrowRight,
   Calculator,
-  Globe,
-  Check,
   CheckCircle2,
   Package,
   Layers,
@@ -138,55 +136,58 @@ function BillingPage() {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
 
-  // Retrieve country selected by user during registration
+  // Country chosen at registration locks the billing currency everywhere:
+  // Nigeria -> NGN (₦). No multi-currency selector.
   const registeredCountryCode = company?.countryCode || "NG";
   const registeredCountry = useMemo(
     () => getCountryByCode(registeredCountryCode),
     [registeredCountryCode],
   );
-
-  // Selector defaults automatically to country's currency: Nigeria -> NGN (₦), USA -> USD ($)
-  const [selectedCurrency, setSelectedCurrency] = useState<string>(() => {
-    if (registeredCountryCode.toUpperCase() === "NG") return "NGN";
-    if (registeredCountryCode.toUpperCase() === "US") return "USD";
-    return registeredCountry.currency || "NGN";
-  });
-
-  // Sync when company data becomes available
-  useEffect(() => {
-    if (company?.countryCode) {
-      if (company.countryCode.toUpperCase() === "NG") {
-        setSelectedCurrency("NGN");
-      } else if (company.countryCode.toUpperCase() === "US") {
-        setSelectedCurrency("USD");
-      } else {
-        const c = getCountryByCode(company.countryCode);
-        setSelectedCurrency(c.currency || "USD");
-      }
-    }
-  }, [company?.countryCode]);
-
-  const activeCountryInfo = useMemo(() => {
-    const match = COUNTRIES.find((c) => c.currency === selectedCurrency);
-    return match || registeredCountry;
-  }, [selectedCurrency, registeredCountry]);
+  const currency = registeredCountry.currency;
+  const activeCountryInfo = registeredCountry;
 
   // Volume slider state (defaults to 25,000 codes like interactive calculator)
   const [calculatorVolume, setCalculatorVolume] = useState<number>(25000);
 
   const estimate = useMemo(() => {
-    return calculateBracketEstimate(calculatorVolume, selectedCurrency, activeCountryInfo);
-  }, [calculatorVolume, selectedCurrency, activeCountryInfo]);
+    return calculateBracketEstimate(calculatorVolume, currency, activeCountryInfo);
+  }, [calculatorVolume, currency, activeCountryInfo]);
+
+  // Tier-1..3 unit rates for the worked 25,000-code example below.
+  const tierRates = useMemo(() => {
+    if (currency === "NGN") return [50, 35, 25];
+    if (currency === "USD") return [0.15, 0.1, 0.08];
+    const base = activeCountryInfo.ratePerCode;
+    return [base, base * 0.7, base * 0.55];
+  }, [currency, activeCountryInfo]);
+
+  const exampleEstimate = useMemo(() => {
+    return calculateBracketEstimate(25000, currency, activeCountryInfo);
+  }, [currency, activeCountryInfo]);
+
+  const money = (n: number) =>
+    `${estimate.symbol}${n.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   const invoices = useQuery({
     queryKey: ["invoices", companyId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: () => listInvoices(companyId!),
   });
 
   const batches = useQuery({
     queryKey: ["batches", companyId],
     enabled: !!companyId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
     queryFn: () => listBatches(companyId!, 200),
   });
 
@@ -206,57 +207,6 @@ function BillingPage() {
   const freeUsed = company?.freeCodesUsed ?? 0;
   const freeRemain = Math.max(0, 20 - freeUsed);
 
-  // Common international currency options for the selector
-  const currencyOptions = useMemo(() => {
-    const list: { code: string; label: string; symbol: string; flag: string }[] = [];
-
-    // 1. Registered country currency (Primary)
-    list.push({
-      code: registeredCountry.currency,
-      label: `${registeredCountry.name} (${registeredCountry.currency})`,
-      symbol: registeredCountry.currencySymbol,
-      flag: registeredCountry.flag,
-    });
-
-    // 2. USD (International standard) if not already first
-    if (registeredCountry.currency !== "USD") {
-      list.push({
-        code: "USD",
-        label: "United States (USD)",
-        symbol: "$",
-        flag: "🇺🇸",
-      });
-    }
-
-    // 3. NGN (Nigeria) if not already added
-    if (registeredCountry.currency !== "NGN") {
-      list.push({
-        code: "NGN",
-        label: "Nigeria (NGN)",
-        symbol: "₦",
-        flag: "🇳🇬",
-      });
-    }
-
-    // 4. Regional African and international hubs
-    const additional = ["GHS", "KES", "ZAR", "GBP", "EUR"];
-    for (const cur of additional) {
-      if (!list.some((item) => item.code === cur)) {
-        const found = COUNTRIES.find((c) => c.currency === cur);
-        if (found) {
-          list.push({
-            code: found.currency,
-            label: `${found.name} (${found.currency})`,
-            symbol: found.currencySymbol,
-            flag: found.flag,
-          });
-        }
-      }
-    }
-
-    return list;
-  }, [registeredCountry]);
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -271,7 +221,7 @@ function BillingPage() {
         }
       />
 
-      {/* Main Interactive Volume Calculator with Currency Selector */}
+      {/* Main Interactive Volume Calculator — currency locked to registration country */}
       <Card className="border-2 border-primary/20 shadow-sm overflow-hidden">
         <CardHeader className="border-b bg-muted/30 pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -285,34 +235,19 @@ function BillingPage() {
               </CardDescription>
             </div>
 
-            {/* CURRENCY SELECTOR (Moved here from landing page, auto-picked by country during registration) */}
+            {/* Locked billing region — set once at registration, cannot be changed */}
             <div className="flex flex-col sm:items-end gap-1.5">
-              <span className="text-[11px] font-mono text-muted-foreground uppercase flex items-center gap-1">
-                <Globe className="size-3" /> Select Currency / Region
-              </span>
-              <div className="flex flex-wrap items-center gap-1.5 bg-background p-1 border rounded-lg shadow-inner">
-                {currencyOptions.map((opt) => (
-                  <button
-                    key={opt.code}
-                    type="button"
-                    onClick={() => setSelectedCurrency(opt.code)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-semibold rounded-md transition-all ${
-                      selectedCurrency === opt.code
-                        ? "bg-zinc-950 text-white shadow-sm dark:bg-zinc-100 dark:text-zinc-950"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    }`}
-                    title={opt.label}
-                  >
-                    <span>{opt.flag}</span>
-                    <span>{opt.code}</span>
-                    <span className="opacity-75 font-normal">({opt.symbol})</span>
-                    {selectedCurrency === opt.code && <Check className="size-3 ml-0.5" />}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-inner">
+                <span className="text-base">{registeredCountry.flag}</span>
+                <span className="text-xs font-mono font-semibold">
+                  {registeredCountry.name} ({registeredCountry.currency})
+                </span>
+                <span className="text-xs font-mono text-muted-foreground">
+                  ({registeredCountry.currencySymbol})
+                </span>
               </div>
               <p className="text-[10px] text-muted-foreground font-mono">
-                {registeredCountry.name} detected from registration •{" "}
-                {registeredCountry.currencySymbol} {registeredCountry.currency}
+                Billing region locked at registration
               </p>
             </div>
           </div>
@@ -502,14 +437,13 @@ function BillingPage() {
         </Card>
       </div>
 
-      {/* Pricing Tiers Table for Selected Currency */}
+      {/* Pricing Tiers Table for your billing currency */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Calculator className="size-4 text-primary" /> Volume Pricing Brackets (
-                {selectedCurrency})
+                <Calculator className="size-4 text-primary" /> Volume Pricing Brackets ({currency})
               </CardTitle>
               <CardDescription>
                 Unit rates automatically adjust across progressive volume brackets.
@@ -527,7 +461,7 @@ function BillingPage() {
                 <tr>
                   <th className="px-4 py-3">Volume Tier Bracket</th>
                   <th className="px-4 py-3">Code Range</th>
-                  <th className="px-4 py-3 text-right">Unit Rate ({selectedCurrency})</th>
+                  <th className="px-4 py-3 text-right">Unit Rate ({currency})</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -545,13 +479,10 @@ function BillingPage() {
           </div>
 
           <div className="rounded-xl border bg-muted/30 p-5">
-            <p className="eyebrow mb-2">
-              Progressive Tier Calculation Example ({selectedCurrency})
-            </p>
+            <p className="eyebrow mb-2">Progressive Tier Calculation Example ({currency})</p>
             <p className="text-sm text-muted-foreground">
               A batch of <span className="font-medium text-foreground">25,000 codes</span> under the{" "}
-              <span className="font-semibold text-foreground">{selectedCurrency}</span> pricing
-              schedule:
+              <span className="font-semibold text-foreground">{currency}</span> pricing schedule:
             </p>
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
@@ -560,71 +491,29 @@ function BillingPage() {
               </div>
               <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
                 <span className="text-muted-foreground">
-                  First 5,000 paid codes @{" "}
-                  {selectedCurrency === "NGN"
-                    ? "₦50.00"
-                    : selectedCurrency === "USD"
-                      ? "$0.15"
-                      : `${estimate.symbol}${activeCountryInfo.ratePerCode.toFixed(2)}`}
+                  First 5,000 paid codes @ {money(tierRates[0] ?? 0)}
                 </span>
-                <span className="font-mono font-medium">
-                  {selectedCurrency === "NGN"
-                    ? "₦250,000.00"
-                    : selectedCurrency === "USD"
-                      ? "$750.00"
-                      : `${estimate.symbol}${(5000 * activeCountryInfo.ratePerCode).toFixed(2)}`}
-                </span>
+                <span className="font-mono font-medium">{money(5000 * (tierRates[0] ?? 0))}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
                 <span className="text-muted-foreground">
-                  Next 15,000 paid codes @{" "}
-                  {selectedCurrency === "NGN"
-                    ? "₦35.00"
-                    : selectedCurrency === "USD"
-                      ? "$0.10"
-                      : `${estimate.symbol}${(activeCountryInfo.ratePerCode * 0.7).toFixed(2)}`}
+                  Next 15,000 paid codes @ {money(tierRates[1] ?? 0)}
                 </span>
-                <span className="font-mono font-medium">
-                  {selectedCurrency === "NGN"
-                    ? "₦525,000.00"
-                    : selectedCurrency === "USD"
-                      ? "$1,500.00"
-                      : `${estimate.symbol}${(15000 * activeCountryInfo.ratePerCode * 0.7).toFixed(2)}`}
-                </span>
+                <span className="font-mono font-medium">{money(15000 * (tierRates[1] ?? 0))}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
                 <span className="text-muted-foreground">
-                  Remaining 4,980 codes @{" "}
-                  {selectedCurrency === "NGN"
-                    ? "₦25.00"
-                    : selectedCurrency === "USD"
-                      ? "$0.08"
-                      : `${estimate.symbol}${(activeCountryInfo.ratePerCode * 0.55).toFixed(2)}`}
+                  Remaining 4,980 codes @ {money(tierRates[2] ?? 0)}
                 </span>
-                <span className="font-mono font-medium">
-                  {selectedCurrency === "NGN"
-                    ? "₦124,500.00"
-                    : selectedCurrency === "USD"
-                      ? "$398.40"
-                      : `${estimate.symbol}${(4980 * activeCountryInfo.ratePerCode * 0.55).toFixed(2)}`}
-                </span>
+                <span className="font-mono font-medium">{money(4980 * (tierRates[2] ?? 0))}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm">
                 <span className="font-semibold text-foreground">
-                  Total for 25,000 codes (average{" "}
-                  {selectedCurrency === "NGN"
-                    ? "₦35.98"
-                    : selectedCurrency === "USD"
-                      ? "$0.106"
-                      : `${estimate.symbol}${estimate.perUnit}`}{" "}
-                  / unit)
+                  Total for 25,000 codes (average {estimate.symbol}
+                  {exampleEstimate.perUnit} / unit)
                 </span>
                 <span className="font-display text-xl font-bold font-mono text-foreground">
-                  {selectedCurrency === "NGN"
-                    ? "₦899,500.00"
-                    : selectedCurrency === "USD"
-                      ? "$2,648.40"
-                      : `${estimate.symbol}${estimate.cost.toFixed(2)}`}
+                  {money(exampleEstimate.cost)}
                 </span>
               </div>
             </div>
@@ -677,7 +566,7 @@ function BillingPage() {
                         {inv.codesApplied > 0 ? `${inv.codesApplied.toLocaleString()} codes` : "—"}
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
-                        {formatMoney(inv.amount, inv.currency || selectedCurrency)}
+                        {formatMoney(inv.amount, inv.currency || currency)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <StatusBadge status={inv.status === "paid" ? "approved" : inv.status} />

@@ -1,11 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Asemi dashboard design system — calm blue workspace */
+/* Asemi design system — clean blue workspace, single global font (Inter) */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -57,9 +57,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-display:
-    "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --ease-registry: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-stamp: stamp 520ms var(--ease-registry) both;
@@ -94,54 +93,53 @@
 
 :root {
   --radius: 0.75rem;
-  /* hsl(212 38% 96%) */
-  --background: oklch(0.967 0.008 245);
-  /* hsl(215 42% 13%) */
-  --foreground: oklch(0.235 0.04 260);
-  --card: oklch(0.99 0.004 245);
-  --card-foreground: oklch(0.235 0.04 260);
-  --popover: oklch(0.995 0.003 245);
-  --popover-foreground: oklch(0.235 0.04 260);
-  --ink: oklch(0.235 0.04 260);
-  --surface: oklch(0.985 0.005 245);
-  --primary: oklch(0.48 0.18 250);
-  --primary-foreground: oklch(0.985 0.005 245);
-  --secondary: oklch(0.945 0.01 245);
-  --secondary-foreground: oklch(0.235 0.04 260);
-  --muted: oklch(0.94 0.01 245);
-  /* hsl(215 22% 46%) */
-  --muted-foreground: oklch(0.53 0.04 255);
-  --accent: oklch(0.93 0.012 240);
-  --accent-foreground: oklch(0.235 0.04 260);
+  /* Blue-tinted workspace background */
+  --background: oklch(0.968 0.007 250);
+  --foreground: oklch(0.22 0.035 260);
+  --card: oklch(0.995 0.002 250);
+  --card-foreground: oklch(0.22 0.035 260);
+  --popover: oklch(0.995 0.002 250);
+  --popover-foreground: oklch(0.22 0.035 260);
+  --ink: oklch(0.22 0.035 260);
+  --surface: oklch(0.985 0.004 250);
+  /* Primary: modern blue */
+  --primary: oklch(0.55 0.17 255);
+  --primary-foreground: oklch(0.985 0.005 250);
+  --secondary: oklch(0.945 0.01 250);
+  --secondary-foreground: oklch(0.22 0.035 260);
+  --muted: oklch(0.94 0.01 250);
+  --muted-foreground: oklch(0.52 0.04 255);
+  --accent: oklch(0.93 0.02 250);
+  --accent-foreground: oklch(0.22 0.035 260);
   /* hsl(0 68% 44%) */
-  --destructive: oklch(0.52 0.19 27);
-  --destructive-foreground: oklch(0.985 0.005 245);
-  --invalid: oklch(0.52 0.19 27);
-  --invalid-foreground: oklch(0.985 0.005 245);
-  /* hsl(152 62% 33%) */
-  --genuine: oklch(0.55 0.13 158);
-  --genuine-foreground: oklch(0.985 0.005 245);
-  /* hsl(38 92% 42%) */
-  --caution: oklch(0.72 0.14 55);
-  --caution-foreground: oklch(0.235 0.04 260);
-  /* hsl(198 58% 46%) */
-  --cyan: oklch(0.63 0.11 220);
-  --border: oklch(0.235 0.04 260 / 0.08);
-  --input: oklch(0.235 0.04 260 / 0.14);
-  --ring: oklch(0.63 0.11 220);
-  --chart-1: oklch(0.63 0.11 220);
-  --chart-2: oklch(0.55 0.13 158);
-  --chart-3: oklch(0.68 0.16 70);
-  --chart-4: oklch(0.235 0.04 260);
-  --chart-5: oklch(0.52 0.19 27);
-  --sidebar: oklch(0.985 0.005 245 / 0.5);
-  --sidebar-foreground: oklch(0.235 0.04 260);
-  --sidebar-primary: oklch(0.48 0.18 250);
-  --sidebar-primary-foreground: oklch(0.985 0.005 245);
-  --sidebar-accent: oklch(1 0 0 / 0.7);
-  --sidebar-accent-foreground: oklch(0.235 0.04 260);
-  --sidebar-border: oklch(0.235 0.04 260 / 0.08);
-  --sidebar-ring: oklch(0.63 0.11 220);
+  --destructive: oklch(0.55 0.19 27);
+  --destructive-foreground: oklch(0.985 0.005 250);
+  --invalid: oklch(0.55 0.19 27);
+  --invalid-foreground: oklch(0.985 0.005 250);
+  /* success green */
+  --genuine: oklch(0.55 0.13 160);
+  --genuine-foreground: oklch(0.985 0.005 250);
+  /* warning amber kept subtle — used sparingly */
+  --caution: oklch(0.65 0.12 75);
+  --caution-foreground: oklch(0.35 0.06 60);
+  /* info blue-teal */
+  --cyan: oklch(0.6 0.12 230);
+  --border: oklch(0.22 0.035 260 / 0.09);
+  --input: oklch(0.22 0.035 260 / 0.14);
+  --ring: oklch(0.55 0.17 255);
+  --chart-1: oklch(0.55 0.17 255);
+  --chart-2: oklch(0.55 0.13 160);
+  --chart-3: oklch(0.6 0.12 230);
+  --chart-4: oklch(0.45 0.08 280);
+  --chart-5: oklch(0.55 0.19 27);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.35 0.03 255);
+  --sidebar-primary: oklch(0.55 0.17 255);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.95 0.015 255);
+  --sidebar-accent-foreground: oklch(0.22 0.035 260);
+  --sidebar-border: oklch(0.22 0.035 260 / 0.08);
+  --sidebar-ring: oklch(0.55 0.17 255);
 }
 
 @layer base {
@@ -261,61 +259,26 @@
 }
 
 /* ==========================================================================
-   Asemi Authoritative Prototype Styles: Cursor, Buttons & Motion
+   Global font + subtle button motion (blue theme, no custom cursor)
    ========================================================================== */
 
-:root {
-  --white: #ffffff;
-  --offwhite: #fafaf8;
-  --linen: #f5f0e8;
-  --cream1: #ede8df;
-  --cream2: #e8e2d9;
-  --card: #f0ece4;
-  --hover: #ede8df;
-  --divider: #e0dbd2;
-  --gold: #c9a84c;
-  --gold-deep: #b8962e;
-  --charcoal: #1a1a1e;
-  --body: #2b2b32;
-  --label: #6e6e7a;
-  --secondary: #45454f;
-  --red: #c0392b;
-  --amber: #d4830a;
-  --green: #2e8b57;
+html {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* Grain overlay matching prototype */
-#grain {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9998;
-  opacity: 0.035;
-  mix-blend-mode: multiply;
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
-/* Universal Button Click & Tactile Motion */
-button,
-.btn,
-[role="button"],
-a[role="button"] {
-  transition:
-    transform 0.14s cubic-bezier(0.32, 0.72, 0, 1),
-    box-shadow 0.16s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
-  user-select: none;
-}
-
-/* Tactile button press compression */
+/* Subtle tactile press for all buttons */
 button:active:not(:disabled),
 .btn:active:not(:disabled),
 [role="button"]:active:not([aria-disabled="true"]) {
-  transform: scale(0.965);
+  transform: scale(0.97);
 }
 
-/* Authoritative Prototype Button Classes: .btn, .btn-fill, .btn-ghost */
+/* Legacy .btn helpers kept for compatibility — now blue */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -339,125 +302,25 @@ button:active:not(:disabled),
   font-size: 11px;
 }
 
-/* .btn-fill: Sliding Gold Curtain from bottom on hover + tactile click */
 .btn-fill {
-  background: var(--charcoal);
-  color: var(--linen);
-  border: 1px solid var(--charcoal);
+  background: oklch(0.55 0.17 255);
+  color: white;
+  border: 1px solid oklch(0.55 0.17 255);
 }
 
-.btn-fill span,
-.btn-fill > * {
-  position: relative;
-  z-index: 2;
+.btn-fill:hover {
+  background: oklch(0.5 0.17 255);
 }
 
-.btn-fill::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--gold-deep);
-  transform: translateY(101%);
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-  z-index: 1;
-}
-
-.btn-fill:hover::before {
-  transform: translateY(0);
-}
-
-.btn-fill:active::before {
-  background: #a38224;
-}
-
-/* .btn-ghost: Animated Underline Expanding from left */
 .btn-ghost {
-  border: 1px solid var(--charcoal);
-  color: var(--charcoal);
+  border: 1px solid oklch(0.22 0.035 260 / 0.15);
+  color: oklch(0.22 0.035 260);
   background: transparent;
-  position: relative;
 }
 
-.btn-ghost span,
-.btn-ghost > * {
-  position: relative;
-  z-index: 2;
-}
-
-.btn-ghost::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 100%;
-  height: 2px;
-  background: var(--gold-deep);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-  z-index: 1;
-}
-
-.btn-ghost:hover::after {
-  transform: scaleX(1);
-}
-
-.btn-ghost:active {
-  background: rgba(26, 26, 30, 0.04);
-}
-
-/* ==========================================================================
-   Custom mouse pointer effect (dot + trailing ring)
-   ========================================================================== */
+/* Hide any legacy cursor/grain nodes if still rendered */
 #cursor-dot,
-#cursor-ring {
-  display: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  body,
-  body button,
-  body a,
-  body [role="button"],
-  body .btn {
-    cursor: none !important;
-  }
-  body input,
-  body textarea,
-  body select {
-    cursor: auto;
-  }
-
-  #cursor-dot {
-    display: block;
-    position: fixed;
-    left: -100px;
-    top: -100px;
-    width: 6px;
-    height: 6px;
-    background: #1a1a1e;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 9999;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  #cursor-ring {
-    display: block;
-    position: fixed;
-    left: -100px;
-    top: -100px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(26, 26, 30, 0.25);
-    pointer-events: none;
-    z-index: 9999;
-    transform: translate(-50%, -50%);
-    opacity: 0;
-    transition:
-      opacity 0.2s,
-      transform 0.15s ease-out;
-  }
+#cursor-ring,
+#grain {
+  display: none !important;
 }

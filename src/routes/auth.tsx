@@ -35,25 +35,29 @@ function AuthPage() {
   const initialMode = search.mode || "login";
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const uid = await getCurrentUserId();
-      if (uid) {
+      if (uid && !cancelled) {
         navigate({ to: "/dashboard", replace: true });
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (
-    <main className="ambient-bg min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="min-h-screen bg-slate-50 font-sans flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-2xl flex flex-col items-center">
         {/* Navigation & Branding Header */}
         <div className="w-full flex items-center justify-between mb-6 px-1 relative z-20">
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 font-mono text-xs text-[#78716c] hover:text-[#1a1a1e] transition-colors"
+            className="inline-flex items-center gap-1.5 font-sans text-xs font-medium text-slate-500 hover:text-blue-700 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Registry</span>
+            <span>Return to home</span>
           </Link>
           <Logo />
         </div>
@@ -62,10 +66,11 @@ function AuthPage() {
         <AuthCard
           initialMode={initialMode}
           onSuccess={(role) => {
+            // Replace history so back-button doesn't return to login (feels instant).
             if (role === "ADMIN") {
-              navigate({ to: "/admin" });
+              navigate({ to: "/admin", replace: true });
             } else {
-              navigate({ to: "/dashboard" });
+              navigate({ to: "/dashboard", replace: true });
             }
           }}
           isModal={false}

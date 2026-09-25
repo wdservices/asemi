@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Logo({ className, compact }: { className?: string; compact?: boolean }) {
@@ -7,13 +6,15 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
     <Link
       to="/"
       className={cn(
-        "inline-flex items-center gap-2 font-display font-semibold text-foreground",
+        "inline-flex items-center gap-2 font-sans font-bold text-foreground",
         className,
       )}
     >
-      <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-        <ShieldCheck className="size-4" />
-      </span>
+      <img
+        src="/asemi_logo.png"
+        alt="Asemi logo"
+        className="size-9 shrink-0 rounded-xl bg-white object-contain shadow-sm ring-1 ring-slate-200"
+      />
       {!compact && <span className="text-lg tracking-tight">Asemi</span>}
     </Link>
   );
@@ -31,12 +32,14 @@ export function StatCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="panel p-5">
+    <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
       <div className="flex items-start justify-between gap-3">
-        <p className="eyebrow">{label}</p>
-        {icon && <span className="text-muted-foreground">{icon}</span>}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </p>
+        {icon && <span className="text-blue-600">{icon}</span>}
       </div>
-      <p className="mt-2 font-display text-3xl font-semibold tracking-tight">{value}</p>
+      <p className="mt-2 font-sans text-3xl font-bold tracking-tight">{value}</p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -77,12 +80,12 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        <h1 className="font-sans text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+        {description && <p className="mt-1 max-w-xl text-sm text-slate-500">{description}</p>}
       </div>
-      {action}
+      {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
     </div>
   );
 }
@@ -97,9 +100,9 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="panel flex flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="font-display text-lg font-semibold">{title}</p>
-      {description && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>}
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center">
+      <p className="font-sans text-lg font-semibold text-slate-900">{title}</p>
+      {description && <p className="mt-1 max-w-sm text-sm text-slate-500">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

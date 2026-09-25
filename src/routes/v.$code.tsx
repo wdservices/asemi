@@ -222,6 +222,10 @@ function Card({
       : tone === "caution"
         ? "bg-caution text-caution-foreground"
         : "bg-invalid text-invalid-foreground";
+  const verifyHref =
+    typeof window !== "undefined" && code
+      ? `${window.location.origin}/v/${encodeURIComponent(code.replace(/\s/g, ""))}`
+      : undefined;
   return (
     <div
       className={`animate-stamp rounded-3xl p-7 shadow-frost-lg ${bg}`}
@@ -231,7 +235,18 @@ function Card({
       <Icon className="size-14" strokeWidth={1.75} />
       <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight">{title}</h1>
       <p className="mt-2 text-sm opacity-90">{subtitle}</p>
-      {code && <p className="mt-4 font-mono text-sm tracking-widest opacity-80">{code}</p>}
+      {code &&
+        (verifyHref ? (
+          <a
+            href={verifyHref}
+            className="mt-4 block font-mono text-sm tracking-widest opacity-90 underline underline-offset-4 hover:opacity-100"
+            title="Open verification page for this code"
+          >
+            {code}
+          </a>
+        ) : (
+          <p className="mt-4 font-mono text-sm tracking-widest opacity-80">{code}</p>
+        ))}
     </div>
   );
 }
