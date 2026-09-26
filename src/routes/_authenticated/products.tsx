@@ -68,8 +68,11 @@ function ProductsPage() {
   const [editing, setEditing] = useState<ProductWithCount | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductWithCount | null>(null);
 
+  // NOTE: distinct key from ["products", companyId] (used across the app for
+  // plain products) — the shapes differ (this adds codes_count) and sharing a
+  // key crashes this page when the plain cache lands first.
   const products = useQuery({
-    queryKey: ["products", companyId],
+    queryKey: ["products-with-counts", companyId],
     enabled: !!companyId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
@@ -91,6 +94,7 @@ function ProductsPage() {
       await deleteProduct(id);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products-with-counts", companyId] });
       queryClient.invalidateQueries({ queryKey: ["products", companyId] });
       toast.success("Product deleted");
       setDeleteTarget(null);
@@ -194,9 +198,9 @@ function ProductsPage() {
                 )}
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-2">
-                    <StatusBadge status={p.codes_count > 0 ? "ready" : "none"} />
+                    <StatusBadge status={(p.codes_count ?? 0) > 0 ? "ready" : "none"} />
                     <span className="text-xs text-muted-foreground">
-                      {p.codes_count.toLocaleString()} codes
+                      {(p.codes_count ?? 0).toLocaleString()} codes
                     </span>
                   </div>
                   <div className="flex gap-1">
@@ -228,7 +232,7 @@ function ProductsPage() {
                           <AlertDialogTitle>Delete this product?</AlertDialogTitle>
                           <AlertDialogDescription>
                             This will permanently remove <strong>{p.name}</strong> and its
-                            associated {p.codes_count.toLocaleString()} codes. Scans and batches
+                            associated {(p.codes_count ?? 0).toLocaleString()} codes. Scans and batches
                             linked to this product will also be deleted. This action cannot be
                             undone.
                           </AlertDialogDescription>
@@ -375,6 +379,7 @@ function ProductDialog({
         await createProduct(companyId, payload);
         toast.success("Product created");
       }
+      queryClient.invalidateQueries({ queryKey: ["products-with-counts", companyId] });
       queryClient.invalidateQueries({ queryKey: ["products", companyId] });
       onOpenChange(false);
     } catch (err) {

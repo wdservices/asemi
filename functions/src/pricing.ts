@@ -135,11 +135,15 @@ export function calculatePrice(
   totalCodesGenerated: number,
   freeCodesUsed: number,
 ): PriceQuote {
+  // Defensive: older company docs may lack these counters — NaN here would
+  // silently price everything at 0. Every company gets 20 free codes.
+  const total = Number.isFinite(totalCodesGenerated) ? totalCodesGenerated : 0;
+  const used = Number.isFinite(freeCodesUsed) ? freeCodesUsed : 0;
   const region = regionFor(countryCode);
-  const free = Math.min(qty, Math.max(0, FREE_CODES - freeCodesUsed));
+  const free = Math.min(qty, Math.max(0, FREE_CODES - used));
   const remaining = qty - free;
   // Free codes do NOT consume tier brackets.
-  const paidSoFar = Math.max(0, totalCodesGenerated - freeCodesUsed);
+  const paidSoFar = Math.max(0, total - used);
 
   if (paidSoFar + remaining > CONTACT_SALES_THRESHOLD) {
     return {

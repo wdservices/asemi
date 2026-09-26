@@ -6,6 +6,7 @@ export interface BatchExportOptions {
   batchNumber: string;
   productName: string;
   brandName?: string;
+  logoUrl?: string;
   codes: string[];
   style: "rectangle" | "circle";
   pageSize?: "a4" | "letter";
@@ -22,6 +23,7 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
     batchNumber,
     productName,
     brandName = "Asemi",
+    logoUrl,
     codes,
     style,
     pageSize = "a4",
@@ -49,7 +51,7 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
   const isCircle = style === "circle";
 
   // Grid configuration:
-  // Rectangle: 3 cols x 3 rows = 9 tags/page (48mm x 65mm each)
+  // Rectangle: 3 cols x 3 rows = 9 tags/page (48mm x 55mm each)
   // Circle: 3 cols x 4 rows = 12 tags/page (46mm x 46mm each)
   const cols = 3;
   const rows = isCircle ? 4 : 3;
@@ -57,7 +59,7 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
   const totalPages = Math.ceil(maxExportCodes.length / tagsPerPage);
 
   const tagWidth = isCircle ? 46 : 48;
-  const tagHeight = isCircle ? 46 : 65;
+  const tagHeight = isCircle ? 46 : 55;
 
   const totalGridWidth = cols * tagWidth;
   const totalGridHeight = rows * tagHeight;
@@ -191,6 +193,7 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
         codeString: code,
         productName,
         brandName,
+        ...(logoUrl ? { logoUrl } : {}),
         batchNumber,
         style,
         scale: 3, // 300+ DPI crispness
@@ -218,7 +221,8 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
  * CorelDRAW, or industrial laser/die plotters.
  */
 export async function downloadBatchSvg(options: BatchExportOptions): Promise<void> {
-  const { batchNumber, productName, brandName = "Asemi", codes, style, onProgress } = options;
+  const { batchNumber, productName, brandName = "Asemi", logoUrl, codes, style, onProgress } =
+    options;
 
   if (!codes.length) {
     throw new Error("No codes provided for SVG export");
@@ -248,7 +252,7 @@ export async function downloadBatchSvg(options: BatchExportOptions): Promise<voi
   const isCircle = style === "circle";
   const cols = 3;
   const tagW = isCircle ? 360 : 280;
-  const tagH = isCircle ? 360 : 380;
+  const tagH = isCircle ? 360 : 320;
   const gap = 30;
   const sheetRows = Math.ceil(maxExportCodes.length / cols);
   const sheetW = cols * tagW + (cols + 1) * gap;
@@ -308,7 +312,7 @@ ASEMI PROFESSIONAL SECURITY PRINT SPECIFICATIONS & DIE-CUT GUIDE
 Batch ID: ${batchNumber}
 Product: ${productName}
 Brand: ${brandName}
-Design Style: ${isCircle ? "Circular Tamper-Evident Badge (30mm Medallion)" : "Holographic Rectangular Seal (50x25mm Packaging Sticker)"}
+Design Style: ${isCircle ? "Circular Tamper-Evident Badge (30mm Medallion)" : "Holographic Rectangular Seal (28x32mm Packaging Sticker)"}
 Tag Volume: ${maxExportCodes.length} units
 Generation Timestamp: ${new Date().toISOString()}
 
@@ -339,7 +343,8 @@ PRINTING INSTRUCTIONS:
  * Downloads a ZIP file containing rendered high-resolution PNG tags for the given codes.
  */
 export async function downloadTagsZip(options: BatchExportOptions): Promise<void> {
-  const { batchNumber, productName, brandName = "Asemi", codes, style, onProgress } = options;
+  const { batchNumber, productName, brandName = "Asemi", logoUrl, codes, style, onProgress } =
+    options;
   const zip = new JSZip();
   const folder = zip.folder(`asemi-${batchNumber}-${style}-tags`);
 
@@ -377,6 +382,7 @@ export async function downloadSingleTagPdf(options: {
   productName?: string;
   brandName?: string;
   batchNumber?: string;
+  logoUrl?: string;
   style: "rectangle" | "circle";
 }): Promise<void> {
   const {
@@ -384,6 +390,7 @@ export async function downloadSingleTagPdf(options: {
     productName = "Product Authentication",
     brandName = "Asemi",
     batchNumber = "SINGLE",
+    logoUrl,
     style,
   } = options;
 
@@ -410,20 +417,21 @@ export async function downloadSingleTagPdf(options: {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(113, 113, 122);
-  doc.text(`Design: ${style === "circle" ? "Circular Tag (30mm Ø)" : "Rectangular Label (50×25mm)"}`, 8, 14);
+  doc.text(`Design: ${style === "circle" ? "Circular Tag (30mm Ø)" : "Rectangular Label (28×32mm)"}`, 8, 14);
 
   // Render high-res tag image
   const dataUrl = await renderTagToCanvas({
     codeString,
     productName,
     brandName,
+    ...(logoUrl ? { logoUrl } : {}),
     batchNumber,
     style,
     scale: 3,
   });
 
   const tagW = style === "circle" ? 64 : 64;
-  const tagH = style === "circle" ? 64 : 86;
+  const tagH = style === "circle" ? 64 : 73;
   const x = (pw - tagW) / 2;
   const y = (ph - tagH) / 2 + 4;
 
@@ -458,10 +466,11 @@ export async function printTagSheet(options: {
   batchNumber: string;
   productName: string;
   brandName?: string;
+  logoUrl?: string;
   codes: string[];
   style: "rectangle" | "circle";
 }): Promise<void> {
-  const { batchNumber, productName, brandName = "Asemi", codes, style } = options;
+  const { batchNumber, productName, brandName = "Asemi", logoUrl, codes, style } = options;
   const printCodes = codes.slice(0, 48); // 1-2 standard sticker sheet pages
 
   // Render all tags to data URLs
@@ -471,6 +480,7 @@ export async function printTagSheet(options: {
       codeString: c,
       productName,
       brandName,
+      ...(logoUrl ? { logoUrl } : {}),
       batchNumber,
       style,
       scale: 2,
@@ -530,6 +540,7 @@ export async function printTagSheet(options: {
       page-break-inside: avoid;
     }
     .tag-cell img {
+      width: 30mm;
       max-width: 100%;
       height: auto;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);

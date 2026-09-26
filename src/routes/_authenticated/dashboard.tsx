@@ -19,6 +19,7 @@ import {
   Flag,
   Package,
   ArrowRight,
+  Gift,
 } from "lucide-react";
 import {
   LineChart,
@@ -362,10 +363,14 @@ function DashboardOverview() {
           icon={<TrendingUp className="size-4" />}
         />
         <StatCard
-          label="Flagged scans"
-          value={s.flagged.toLocaleString()}
-          hint="Review in Analytics"
-          icon={<Flag className="size-4" />}
+          label="Free codes remaining"
+          value={`${freeRemain}/20`}
+          hint={
+            freeRemain > 0
+              ? "Applied automatically to your next batch"
+              : "All used — future codes are paid"
+          }
+          icon={<Gift className="size-4" />}
         />
       </div>
 
@@ -541,7 +546,7 @@ function DashboardOverview() {
                   recentBatches.data.map((b: any) => (
                     <tr key={b.id} className="hover:bg-slate-50/60">
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700">
-                        {b.batchNumber}
+                        {b.batchNumber ?? "—"}
                       </td>
                       <td className="px-4 py-3">{b.productName}</td>
                       <td className="px-4 py-3 text-right tabular-nums">

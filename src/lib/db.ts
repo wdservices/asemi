@@ -90,15 +90,18 @@ export interface Batch {
   companyId: string;
   productId: string;
   productName: string;
-  batchNumber: string;
+  batchNumber: string | null;
   quantity: number;
   amountCharged: number;
   currency: string;
   tagFormat?: "circle" | "rectangle";
   freeCodesApplied: number;
-  status: "generating" | "ready" | "exported" | "failed";
+  status: "awaiting_payment" | "generating" | "ready" | "exported" | "failed";
   generationProgress: number;
   exportStatus?: { state: string; progress: number; codes?: number } | null;
+  paymentReference?: string | null;
+  paymentVerified?: boolean;
+  paystackAuthorizationUrl?: string | null;
   lotNumber: string | null;
   mfgDate: string | null;
   expiryDate: string | null;
@@ -138,21 +141,16 @@ export interface Scan {
   scannedAt: string;
 }
 
-export interface Wallet {
-  creditBalance: number;
-  lifetimeTopup: number;
-  lifetimeSpent: number;
-  currency: string;
-}
-
 export interface Invoice {
   id: string;
   kind: "purchase" | "topup";
   reference: string;
+  batchId?: string | null;
   amount: number;
   codesApplied: number;
   currency: string;
   status: string;
+  paymentGateway?: string | null;
   description: string;
   createdAt: string;
 }
@@ -447,20 +445,8 @@ async function listCompanyScansFallback(
 }
 
 // ---------------------------------------------------------------------------
-// Wallet & invoices
+// Invoices (real batch purchases — no wallet)
 // ---------------------------------------------------------------------------
-
-export async function getWallet(companyId: string): Promise<Wallet | null> {
-  const snap = await getDoc(doc(requireDb(), "companies", companyId, "wallet", "summary"));
-  if (!snap.exists()) return null;
-  const d = snap.data();
-  return {
-    creditBalance: Number(d["creditBalance"] || 0),
-    lifetimeTopup: Number(d["lifetimeTopup"] || 0),
-    lifetimeSpent: Number(d["lifetimeSpent"] || 0),
-    currency: String(d["currency"] || "USD"),
-  };
-}
 
 export async function listInvoices(companyId: string, n = 100): Promise<Invoice[]> {
   const snap = await getDocs(
@@ -710,26 +696,40 @@ export interface PriceQuoteResult {
 export const fnCalculatePrice = (quantity: number) =>
   callFn<PriceQuoteResult>("calculateprice", { quantity });
 
-export interface GenerateBatchResult {
+export interface InitializeBatchResult {
   batchId: string;
-  batchNumber: string;
-  quantity: number;
-  price: number;
+  reference: string;
+  authorizationUrl: string;
+  amount: number;
   currency: string;
   free: number;
-  status: string;
 }
 
-export const fnGenerateBatchPaid = (input: {
+export const fnInitializeBatchPayment = (input: {
   productId: string;
   quantity: number;
+  tagFormat?: "circle" | "rectangle";
   lotNumber?: string | null;
   mfgDate?: string | null;
   expiryDate?: string | null;
   coaDocName?: string | null;
   coaDocUrl?: string | null;
-  resumeBatchId?: string;
-}) => callFn<GenerateBatchResult>("generatebatchpaid", input);
+}) => callFn<InitializeBatchResult>("initializebatchpayment", input);
+
+export interface VerifyTransactionResult {
+  verified: boolean;
+  batchId: string;
+  status: string;
+  alreadyFulfilled: boolean;
+  amount?: number;
+  currency?: string;
+}
+
+export const fnVerifyPaystackTransaction = (reference: string) =>
+  callFn<VerifyTransactionResult>("verifypaystacktransaction", { reference });
+
+export const fnResumeBatchGeneration = (batchId: string) =>
+  callFn<{ batchId: string; status: string }>("resumebatchgeneration", { batchId });
 
 export interface VerifyResult {
   status: "genuine" | "genuine_repeated" | "invalid";
@@ -772,21 +772,6 @@ export const fnAdminRequestInfo = (companyId: string, note?: string | null) =>
   callFn("adminrequestinfo", { companyId, note: note ?? null });
 export const fnAdminReviewReport = (reportId: string, reviewed: boolean) =>
   callFn("adminreviewreport", { reportId, reviewed });
-export const fnTopupWallet = (companyId: string, amount: number, reference?: string) =>
-  callFn("topupwallet", { companyId, amount, reference });
-
-export interface PaystackVerifyResult {
-  verified: boolean;
-  reference: string;
-  amount: number;
-  currency: string;
-}
-
-export const fnVerifyPaystackPayment = (input: {
-  reference: string;
-  amount: number;
-  currency: string;
-}) => callFn<PaystackVerifyResult>("verifypaystack", input);
 export const fnMarkCodesExported = (batchId: string) => callFn("markcodesexported", { batchId });
 export const fnSetCodeReview = (codeId: string, status: "reviewed" | "escalated") =>
   callFn("setcodereview", { codeId, status });

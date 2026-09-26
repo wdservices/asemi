@@ -17,10 +17,24 @@ export interface ProductTagProps {
   productName?: string;
   brandName?: string;
   batchNumber?: string;
-  style?: "rectangle" | "circle";
+  logoUrl?: string;
   showActions?: boolean;
   className?: string;
   size?: "sm" | "md" | "lg";
+}
+
+function BrandInitials({ name }: { name: string }) {
+  const initials = name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <div className="h-10 px-3 rounded-xl bg-emerald-800 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+      {initials || "AS"}
+    </div>
+  );
 }
 
 export function ProductTagPreview({
@@ -28,7 +42,7 @@ export function ProductTagPreview({
   productName = "Product Authentication",
   brandName = "Asemi Security",
   batchNumber,
-  style = "rectangle",
+  logoUrl,
   showActions = true,
   className = "",
   size = "md",
@@ -41,7 +55,8 @@ export function ProductTagPreview({
 
   useEffect(() => {
     let active = true;
-    generateQrDataUrl(verifyUrl, { width: 220, margin: 1 })
+    // Render at 2x display size so the QR stays razor-sharp for cameras.
+    generateQrDataUrl(verifyUrl, { width: 480, margin: 1 })
       .then((url) => {
         if (active) setQrUrl(url);
       })
@@ -59,12 +74,13 @@ export function ProductTagPreview({
         ...(productName ? { productName } : {}),
         ...(brandName ? { brandName } : {}),
         ...(batchNumber ? { batchNumber } : {}),
-        style,
+        ...(logoUrl ? { logoUrl } : {}),
+        style: "rectangle",
         scale: 3, // High-res 300 DPI equivalent
       });
-      const filename = `asemi-tag-${codeString}-${style}.png`;
+      const filename = `asemi-tag-${codeString}-rectangle.png`;
       downloadDataUrl(dataUrl, filename);
-      toast.success(`Downloaded ${style} tag for ${codeString}`);
+      toast.success(`Downloaded tag for ${codeString}`);
     } catch (err) {
       console.error(err);
       toast.error("Failed to generate tag image");
@@ -94,7 +110,8 @@ export function ProductTagPreview({
         ...(productName ? { productName } : {}),
         ...(brandName ? { brandName } : {}),
         ...(batchNumber ? { batchNumber } : {}),
-        style,
+        ...(logoUrl ? { logoUrl } : {}),
+        style: "rectangle",
       });
       toast.success(`Downloaded print-ready PDF proof for ${codeString}`);
     } catch (err) {
@@ -113,9 +130,10 @@ export function ProductTagPreview({
         ...(productName ? { productName } : {}),
         ...(brandName ? { brandName } : {}),
         ...(batchNumber ? { batchNumber } : {}),
-        style,
+        ...(logoUrl ? { logoUrl } : {}),
+        style: "rectangle",
       });
-      downloadSingleTagSvg(svg, `asemi-tag-${codeString}-${style}.svg`);
+      downloadSingleTagSvg(svg, `asemi-tag-${codeString}-rectangle.svg`);
       toast.success(`Downloaded vector SVG for ${codeString}`);
     } catch (err) {
       console.error(err);
@@ -130,162 +148,63 @@ export function ProductTagPreview({
 
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>
-      {style === "rectangle" ? (
-        /* ================= HOLOGRAPHIC RECTANGLE TAG (Matches User Photo) ================= */
-        <div
-          className={`relative ${scaleClass} select-none overflow-hidden rounded-2xl border-2 border-[#b8932c] shadow-[0_12px_36px_rgba(184,147,44,0.35)] font-sans transition-transform hover:scale-[1.01]`}
-          style={{
-            background:
-              "radial-gradient(circle at 50% 35%, #fff9d6 0%, #ecd37a 28%, #c59728 65%, #926f16 100%)",
-          }}
-        >
-          {/* Holographic dynamic radial rays overlay */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
-            style={{
-              backgroundImage:
-                "repeating-conic-gradient(from 0deg, rgba(255,255,255,0.8) 0deg 10deg, transparent 10deg 20deg)",
-            }}
-          />
-          {/* Metallic shimmer hairline */}
-          <div className="pointer-events-none absolute inset-1 rounded-xl border border-white/60" />
-
-          {/* Tag Content */}
-          <div className="relative z-10 flex flex-col items-center px-4 py-3.5 text-center">
-            {/* Brand Logo & Name */}
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <div className="h-6 px-2 rounded-md bg-emerald-800 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-                AS
-              </div>
-              <span className="font-serif italic font-extrabold text-[15px] tracking-tight text-zinc-950">
-                {brandName}
-              </span>
-              <span className="text-[9px] font-bold text-zinc-800 -mt-2">®</span>
-            </div>
-
-            {/* Product Name if present */}
-            {productName && (
-              <p className="text-[10px] uppercase font-bold tracking-wider text-zinc-800/80 mb-2 truncate max-w-[90%]">
-                {productName}
-              </p>
+      {/* Plain printable verification label — no holographic patterns so it
+          prints cleanly on real holographic sticker stock. Pops with a soft
+          drop shadow behind it. */}
+      <div
+        className={`relative ${scaleClass} select-none overflow-hidden rounded-2xl border border-slate-300 bg-white font-sans shadow-[0_20px_45px_rgba(15,23,42,0.28)] transition-transform hover:scale-[1.01]`}
+      >
+        {/* Tag Content */}
+        <div className="relative z-10 flex flex-col items-center px-4 py-3.5 text-center">
+          {/* Product logo header */}
+          <div className="mb-1.5 flex min-h-[40px] items-center justify-center">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Product logo"
+                className="h-10 max-w-[140px] rounded-lg bg-white object-contain px-1 shadow-sm ring-1 ring-slate-200"
+              />
+            ) : (
+              <BrandInitials name={brandName} />
             )}
+          </div>
 
-            {/* QR Code Plaque */}
-            <div className="relative rounded-xl bg-white p-2 border-2 border-[#caa33a] shadow-md">
-              {qrUrl ? (
-                <img
-                  src={qrUrl}
-                  alt={`QR for ${codeString}`}
-                  className="w-28 h-28 object-contain"
-                />
-              ) : (
-                <div className="w-28 h-28 bg-zinc-100 animate-pulse flex items-center justify-center text-xs text-zinc-400">
-                  Loading QR…
-                </div>
-              )}
-            </div>
-
-            {/* Domain text */}
-            <p className="mt-1.5 font-mono text-[10px] font-semibold text-zinc-900 tracking-tight">
-              asemi.io/verify
+          {/* Product name */}
+          {productName && (
+            <p className="mb-2 max-w-[92%] truncate text-[13px] font-bold tracking-tight text-zinc-950">
+              {productName}
             </p>
+          )}
 
-            {/* Verification code — printed openly, taps through to Asemi */}
-            <div className="mt-2 w-full rounded-md border border-zinc-800/25 bg-white/90 px-2 py-1.5 shadow-sm">
-              <p className="text-[9px] font-bold tracking-widest text-zinc-600 uppercase">
-                Scan to verify authenticity
-              </p>
-              <a
-                href={verifyUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-0.5 block rounded bg-white px-1.5 py-0.5 font-mono text-xs font-black tracking-wider text-zinc-950 underline decoration-zinc-300 underline-offset-2 hover:decoration-zinc-600"
-                title="Open verification page"
-              >
-                {codeString}
-              </a>
-            </div>
+          {/* QR Code Plaque — smaller, rendered 2x for camera-sharp edges */}
+          <div className="relative rounded-xl border-2 border-slate-300 bg-white p-2 shadow-md">
+            {qrUrl ? (
+              <img
+                src={qrUrl}
+                alt={`QR for ${codeString}`}
+                className="h-24 w-24 object-contain [image-rendering:pixelated]"
+              />
+            ) : (
+              <div className="flex h-24 w-24 animate-pulse items-center justify-center bg-zinc-100 text-xs text-zinc-400">
+                Loading QR…
+              </div>
+            )}
+          </div>
 
-            {/* Bottom Caution / Anti-Counterfeit Notice */}
-            <div className="mt-2.5">
-              <p className="text-[11px] font-extrabold tracking-tight text-zinc-950">
-                Beware of counterfeits
-              </p>
-              <p className="text-[8px] font-medium text-zinc-800">
-                Scan QR or visit verification portal
-              </p>
-            </div>
+          {/* Verification code — printed openly as plain text (not tappable: print can't be tapped) */}
+          <div className="mt-2 w-full rounded-md border border-slate-300 bg-slate-50 px-2 py-1.5 shadow-sm">
+            <p className="text-[11px] font-extrabold tracking-tight text-zinc-950">
+              Beware of counterfeits
+            </p>
+            <p className="mt-0.5 font-mono text-xs font-black tracking-wider text-zinc-950">
+              {codeString}
+            </p>
+            <p className="mt-0.5 text-[8px] font-medium text-zinc-600">
+              Scan QR or visit verification portal
+            </p>
           </div>
         </div>
-      ) : (
-        /* ================= CIRCULAR TAMPER-EVIDENT BADGE ================= */
-        <div
-          className={`relative ${
-            size === "sm"
-              ? "w-[200px] h-[200px]"
-              : size === "lg"
-                ? "w-[300px] h-[300px]"
-                : "w-[250px] h-[250px]"
-          } select-none rounded-full border-4 border-[#77550e] shadow-[0_12px_36px_rgba(184,147,44,0.35)] font-sans overflow-hidden transition-transform hover:scale-[1.01]`}
-          style={{
-            background:
-              "radial-gradient(circle at 50% 50%, #fff7ce 0%, #deb33a 45%, #b2861c 78%, #75540c 100%)",
-          }}
-        >
-          {/* Guilloche concentric lines */}
-          <div className="pointer-events-none absolute inset-2 rounded-full border-2 border-dashed border-white/70" />
-          <div className="pointer-events-none absolute inset-3 rounded-full border border-black/30" />
-
-          {/* Circular SVG curved text */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 200 200">
-            <path id={`curve-top-${codeString}`} d="M 25 100 A 75 75 0 0 1 175 100" fill="none" />
-            <path
-              id={`curve-bottom-${codeString}`}
-              d="M 175 100 A 75 75 0 0 1 25 100"
-              fill="none"
-            />
-            <text className="text-[9px] font-black fill-zinc-950 uppercase tracking-[0.2em]">
-              <textPath href={`#curve-top-${codeString}`} startOffset="50%" textAnchor="middle">
-                ★ GENUINE AUTHENTIC SEAL ★
-              </textPath>
-            </text>
-            <text className="text-[8px] font-bold fill-zinc-950 uppercase tracking-[0.16em]">
-              <textPath href={`#curve-bottom-${codeString}`} startOffset="50%" textAnchor="middle">
-                • SCAN TO VERIFY AUTHENTICITY •
-              </textPath>
-            </text>
-          </svg>
-
-          {/* Center Content */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
-            <div className="relative rounded-xl bg-white p-1.5 border-2 border-[#805e11] shadow-md">
-              {qrUrl ? (
-                <img
-                  src={qrUrl}
-                  alt={`QR for ${codeString}`}
-                  className="w-20 h-20 object-contain"
-                />
-              ) : (
-                <div className="w-20 h-20 bg-zinc-100 animate-pulse flex items-center justify-center text-[10px] text-zinc-400">
-                  QR…
-                </div>
-              )}
-            </div>
-
-            <div className="mt-1 bg-white/90 border border-zinc-800 rounded px-1.5 py-0.5 shadow-sm">
-              <a
-                href={verifyUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-[10px] font-black text-zinc-950 underline decoration-zinc-300 underline-offset-2 hover:decoration-zinc-600"
-                title="Open verification page"
-              >
-                {codeString}
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Action Buttons */}
       {showActions && (
@@ -299,7 +218,7 @@ export function ProductTagPreview({
             title="Download high-resolution PNG"
           >
             {downloading ? (
-              <Sparkles className="size-3.5 animate-spin text-[#c9a84c]" />
+              <Sparkles className="size-3.5 animate-spin text-blue-500" />
             ) : (
               <Download className="size-3.5" />
             )}
@@ -311,10 +230,10 @@ export function ProductTagPreview({
             size="sm"
             disabled={downloading}
             onClick={handleDownloadPdf}
-            className="h-8 gap-1.5 text-xs border-amber-500/40 text-amber-900 dark:text-amber-300 hover:bg-amber-500/10"
+            className="h-8 gap-1.5 text-xs"
             title="Download print-ready PDF proof (300 DPI)"
           >
-            <FileText className="size-3.5 text-[#caa33a]" /> PDF
+            <FileText className="size-3.5" /> PDF
           </Button>
 
           <Button

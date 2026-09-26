@@ -8,6 +8,16 @@ import PDFDocument from "pdfkit";
 import { calculatePrice, regionFor, roundMoney } from "./pricing";
 import { generateUniqueCodeStrings, buildBatchNumber } from "./codes";
 
+// ---------------------------------------------------------------------------
+// Direct pay-per-batch via Paystack (no wallet) — implemented in paystack.ts
+// ---------------------------------------------------------------------------
+export {
+  initializebatchpayment,
+  paystackwebhook,
+  verifypaystacktransaction,
+  resumebatchgeneration,
+} from "./paystack";
+
 initializeApp();
 const db = getFirestore();
 
@@ -92,261 +102,6 @@ export const calculateprice = onCall(async (req) => {
     paid: quote.paid,
     price: roundMoney(quote.price),
     breakdown: quote.breakdown.map((r) => ({ ...r, subtotal: roundMoney(r.subtotal) })),
-  };
-});
-
-// ---------------------------------------------------------------------------
-// generateBatchPaid (callable, authenticated)
-// (1) pricing + wallet deduction + batch/invoice creation in ONE transaction
-// (2) chunked bulk code creation via writeBatch (500/chunk) with progress
-// (3) refund + failed status if generation aborts partway
-// ---------------------------------------------------------------------------
-
-export const generatebatchpaid = onCall({ timeoutSeconds: 3600, memory: "1GiB" }, async (req) => {
-  const uid = uidOf(req);
-  const resumeBatchId: string | undefined = req.data?.resumeBatchId;
-
-  const { id: companyId, data: company } = await getOwnCompany(uid);
-  if (company.status !== "approved") {
-    throw new HttpsError(
-      "failed-precondition",
-      "Company must be approved before generating paid batches.",
-    );
-  }
-
-  let batchId: string;
-  let batchNumber: string;
-  let productId: string;
-  let productName = "";
-  let qty: number;
-  let price = 0;
-  let currency = regionFor(company.countryCode).currency;
-  let free = 0;
-  let lotNumber: string | null = null;
-  let mfgDate: string | null = null;
-  let expiryDate: string | null = null;
-  let coaDocName: string | null = null;
-  let coaDocUrl: string | null = null;
-
-  if (resumeBatchId) {
-    // Resume an interrupted generation from its cursor.
-    const bsnap = await db.collection("batches").doc(resumeBatchId).get();
-    if (!bsnap.exists || bsnap.data()?.companyId !== companyId) {
-      throw new HttpsError("not-found", "Batch not found.");
-    }
-    const b = bsnap.data()!;
-    if (b.status !== "generating" && b.status !== "failed") {
-      throw new HttpsError("failed-precondition", "Only interrupted batches can be resumed.");
-    }
-    batchId = bsnap.id;
-    batchNumber = b.batchNumber;
-    productId = b.productId;
-    productName = b.productName || "";
-    qty = b.quantity;
-    price = b.amountCharged;
-    currency = b.currency;
-    free = b.freeCodesApplied || 0;
-    lotNumber = b.lotNumber ?? null;
-    mfgDate = b.mfgDate ?? null;
-    expiryDate = b.expiryDate ?? null;
-    coaDocName = b.coaDocName ?? null;
-    coaDocUrl = b.coaDocUrl ?? null;
-    await db
-      .collection("batches")
-      .doc(batchId)
-      .update({ status: "generating", failedAt: FieldValue.delete() });
-  } else {
-    productId = String(req.data?.productId || "");
-    qty = assertQty(req.data?.quantity);
-    lotNumber = req.data?.lotNumber ?? null;
-    mfgDate = req.data?.mfgDate ?? null;
-    expiryDate = req.data?.expiryDate ?? null;
-    coaDocName = req.data?.coaDocName ?? null;
-    coaDocUrl = req.data?.coaDocUrl ?? null;
-    if (!productId) throw new HttpsError("invalid-argument", "productId is required.");
-
-    const psnap = await db.collection("products").doc(productId).get();
-    if (!psnap.exists || psnap.data()?.companyId !== companyId) {
-      throw new HttpsError("not-found", "Product not found.");
-    }
-    productName = psnap.data()?.name || "";
-
-    const quote = calculatePrice(
-      qty,
-      company.countryCode,
-      company.totalCodesGenerated,
-      company.freeCodesUsed,
-    );
-    if (quote.requiresQuote) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Volume exceeds 1,000,000 lifetime codes — contact sales for a custom quote.",
-      );
-    }
-    price = roundMoney(quote.price);
-    currency = quote.currency;
-    free = quote.free;
-
-    const batchRef = db.collection("batches").doc();
-    batchId = batchRef.id;
-
-    await db.runTransaction(async (tx) => {
-      const cRef = db.collection("companies").doc(companyId);
-      const wRef = db.collection("companies").doc(companyId).collection("wallet").doc("summary");
-      const [cSnap, wSnap] = await Promise.all([tx.get(cRef), tx.get(wRef)]);
-      const live = cSnap.data() as CompanyDoc;
-      if (live.status !== "approved") {
-        throw new HttpsError(
-          "failed-precondition",
-          "Company must be approved before generating paid batches.",
-        );
-      }
-      const balance = wSnap.exists ? Number(wSnap.data()?.creditBalance || 0) : 0;
-      if (balance < price) {
-        throw new HttpsError(
-          "failed-precondition",
-          `Insufficient wallet balance. Top up ${(price - balance).toFixed(2)} ${currency} more.`,
-        );
-      }
-      const seq = Number(live.batchSeq || 0) + 1;
-      batchNumber = buildBatchNumber(live.name, seq);
-
-      tx.set(
-        wRef,
-        {
-          creditBalance: roundMoney(balance - price),
-          lifetimeSpent: roundMoney(Number(wSnap.data()?.lifetimeSpent || 0) + price),
-          lifetimeTopup: Number(wSnap.data()?.lifetimeTopup || 0),
-          currency,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-      tx.update(cRef, {
-        totalCodesGenerated: (live.totalCodesGenerated || 0) + qty,
-        freeCodesUsed: (live.freeCodesUsed || 0) + free,
-        batchSeq: seq,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      tx.set(batchRef, {
-        companyId,
-        productId,
-        productName,
-        batchNumber,
-        quantity: qty,
-        amountCharged: price,
-        currency,
-        freeCodesApplied: free,
-        status: "generating",
-        generationProgress: 0,
-        lotNumber,
-        mfgDate,
-        expiryDate,
-        coaDocName,
-        coaDocUrl,
-        exportedAt: null,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      tx.set(db.collection("companies").doc(companyId).collection("invoices").doc(), {
-        kind: "purchase",
-        reference: batchNumber,
-        amount: price,
-        codesApplied: qty,
-        currency,
-        status: "paid",
-        description: `Batch ${batchNumber} — ${qty.toLocaleString()} codes for ${productName}`,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-    });
-  }
-
-  // (2) Chunked bulk code creation — resumable via existing-code cursor.
-  try {
-    const existing = await db
-      .collection("codes")
-      .where("batchId", "==", batchId!)
-      .select("codeString")
-      .get();
-    const seen = new Set(existing.docs.map((d) => d.data().codeString as string));
-    let created = seen.size;
-    while (created < qty!) {
-      const take = Math.min(CODE_CHUNK, qty! - created);
-      const strings = generateUniqueCodeStrings(take, seen);
-      const wb = db.batch();
-      for (const s of strings) {
-        const ref = db.collection("codes").doc();
-        wb.set(ref, {
-          batchId: batchId!,
-          productId,
-          companyId,
-          codeString: s,
-          codeLookup: s.replace(/[^A-Z0-9]/gi, "").toUpperCase(),
-          scanCount: 0,
-          flagged: false,
-          reviewStatus: "none",
-          printCount: 0,
-          exportedAt: null,
-          lastScannedAt: null,
-          createdAt: FieldValue.serverTimestamp(),
-        });
-      }
-      await wb.commit();
-      created += take;
-      await db
-        .collection("batches")
-        .doc(batchId!)
-        .update({
-          generationProgress: created / qty!,
-        });
-    }
-    await db.collection("batches").doc(batchId!).update({ status: "ready", generationProgress: 1 });
-  } catch (err) {
-    // (3) Refund the wallet transactionally and mark the batch failed (resumable).
-    try {
-      await db.runTransaction(async (tx) => {
-        const cRef = db.collection("companies").doc(companyId);
-        const wRef = db.collection("companies").doc(companyId).collection("wallet").doc("summary");
-        const [cSnap, wSnap] = await Promise.all([tx.get(cRef), tx.get(wRef)]);
-        const live = cSnap.data() as CompanyDoc;
-        const balance = Number(wSnap.data()?.creditBalance || 0);
-        tx.set(
-          wRef,
-          {
-            creditBalance: roundMoney(balance + price!),
-            lifetimeSpent: roundMoney(
-              Math.max(0, Number(wSnap.data()?.lifetimeSpent || 0) - price!),
-            ),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
-        tx.update(cRef, {
-          totalCodesGenerated: Math.max(0, (live.totalCodesGenerated || 0) - qty!),
-          freeCodesUsed: Math.max(0, (live.freeCodesUsed || 0) - free!),
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-        tx.update(db.collection("batches").doc(batchId!), {
-          status: "failed",
-          failedAt: FieldValue.serverTimestamp(),
-        });
-      });
-    } catch (refundErr) {
-      console.error("Refund after failed generation also failed:", refundErr);
-    }
-    throw new HttpsError(
-      "internal",
-      `Code generation failed partway and was refunded. Resume with resumeBatchId=${batchId}.`,
-    );
-  }
-
-  return {
-    batchId: batchId!,
-    batchNumber: batchNumber!,
-    quantity: qty!,
-    price,
-    currency,
-    free,
-    status: "ready",
   };
 });
 
@@ -507,30 +262,13 @@ export const adminapprovecompany = onCall(async (req) => {
   const cRef = db.collection("companies").doc(companyId);
   const cSnap = await cRef.get();
   if (!cSnap.exists) throw new HttpsError("not-found", "Company not found.");
-  const company = cSnap.data() as CompanyDoc;
-  const region = regionFor(company.countryCode);
 
-  const wRef = cRef.collection("wallet").doc("summary");
-  const batch = db.batch();
-  batch.update(cRef, {
+  await cRef.update({
     status: "approved",
     adminNote: note,
     approvedAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
-  // Creating the wallet here makes approval the only path that mints it.
-  batch.set(
-    wRef,
-    {
-      creditBalance: 0,
-      lifetimeTopup: 0,
-      lifetimeSpent: 0,
-      currency: region.currency,
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
-  await batch.commit();
   return { ok: true, companyId };
 });
 
@@ -570,54 +308,6 @@ export const adminreviewreport = onCall(async (req) => {
   if (!reportId) throw new HttpsError("invalid-argument", "reportId is required.");
   await db.collection("reports").doc(reportId).update({ reviewed });
   return { ok: true, reportId, reviewed };
-});
-
-export const topupwallet = onCall(async (req) => {
-  const uid = uidOf(req);
-  await assertAdmin(uid);
-  const companyId = String(req.data?.companyId || "");
-  const amount = Number(req.data?.amount);
-  const reference = String(req.data?.reference || `TOPUP-${Date.now()}`);
-  if (!companyId) throw new HttpsError("invalid-argument", "companyId is required.");
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new HttpsError("invalid-argument", "amount must be a positive number.");
-  }
-  const cRef = db.collection("companies").doc(companyId);
-  const wRef = cRef.collection("wallet").doc("summary");
-  const result = await db.runTransaction(async (tx) => {
-    const [cSnap, wSnap] = await Promise.all([tx.get(cRef), tx.get(wRef)]);
-    if (!cSnap.exists) throw new HttpsError("not-found", "Company not found.");
-    const currency = wSnap.exists
-      ? String(
-          wSnap.data()?.currency || regionFor((cSnap.data() as CompanyDoc).countryCode).currency,
-        )
-      : regionFor((cSnap.data() as CompanyDoc).countryCode).currency;
-    const balance = wSnap.exists ? Number(wSnap.data()?.creditBalance || 0) : 0;
-    const topup = wSnap.exists ? Number(wSnap.data()?.lifetimeTopup || 0) : 0;
-    tx.set(
-      wRef,
-      {
-        creditBalance: roundMoney(balance + amount),
-        lifetimeTopup: roundMoney(topup + amount),
-        lifetimeSpent: Number(wSnap.data()?.lifetimeSpent || 0),
-        currency,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-    tx.set(cRef.collection("invoices").doc(), {
-      kind: "topup",
-      reference,
-      amount: roundMoney(amount),
-      codesApplied: 0,
-      currency,
-      status: "paid",
-      description: `Wallet top-up ${reference}`,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-    return { creditBalance: roundMoney(balance + amount), currency };
-  });
-  return { ok: true, companyId, ...result };
 });
 
 export const markcodesexported = onCall(async (req) => {
@@ -871,54 +561,4 @@ export const oncompanydocuploaded = onObjectFinalized(
       });
   },
 );
-
- // ---------------------------------------------------------------------------
-// verifypaystack (callable, authenticated) � confirm a Paystack charge
-// server-side before codes are generated. Set PAYSTACK_SECRET_KEY via:
-//   firebase functions:secrets:set PAYSTACK_SECRET_KEY
-// ---------------------------------------------------------------------------
-
-export const verifypaystack = onCall(async (req) => {
-  uidOf(req);
-  const reference = String(req.data?.reference || "").trim();
-  const expectedAmount = Number(req.data?.amount);
-  const expectedCurrency = String(req.data?.currency || "").toUpperCase();
-  if (!reference) {
-    throw new HttpsError("invalid-argument", "Payment reference is required.");
-  }
-
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (!secret) {
-    throw new HttpsError(
-      "failed-precondition",
-      "Paystack is not configured on the server (missing PAYSTACK_SECRET_KEY).",
-    );
-  }
-
-  const res = await fetch(
-    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-    { headers: { Authorization: `Bearer ${secret}` } },
-  );
-  if (!res.ok) {
-    throw new HttpsError("unavailable", "Could not reach Paystack. Please try again.");
-  }
-  const body = (await res.json()) as {
-    data?: { status?: string; reference?: string; amount?: number; currency?: string };
-  };
-  const data = body?.data;
-  if (!data || data.status !== "success") {
-    throw new HttpsError("failed-precondition", "Payment was not successful.");
-  }
-  if (expectedCurrency && String(data.currency || "").toUpperCase() !== expectedCurrency) {
-    throw new HttpsError("failed-precondition", "Payment currency mismatch.");
-  }
-  if (Number.isFinite(expectedAmount) && Number(data.amount) !== expectedAmount) {
-    throw new HttpsError("failed-precondition", "Payment amount mismatch.");
-  }
-  return {
-    verified: true,
-    reference: String(data.reference || reference),
-    amount: Number(data.amount),
-    currency: String(data.currency || "").toUpperCase(),
-  };
-});
+

@@ -48,6 +48,8 @@ export function StatCard({
 const statusStyles: Record<string, string> = {
   approved: "bg-genuine/10 text-genuine",
   pending: "bg-caution/15 text-caution-foreground",
+  awaiting_payment: "bg-caution/15 text-caution-foreground",
+  generating: "bg-cyan/10 text-cyan",
   needs_info: "bg-cyan/10 text-cyan",
   rejected: "bg-invalid/10 text-invalid",
   ready: "bg-genuine/10 text-genuine",

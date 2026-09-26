@@ -19,6 +19,7 @@ import {
   X,
   Receipt,
   QrCode,
+  Gift,
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -175,15 +176,24 @@ function DashboardShell() {
               >
                 <Menu className="size-5" />
               </button>
-              <Link to="/" className="lg:hidden">
+              <span className="lg:hidden">
                 <Logo compact />
-              </Link>
+              </span>
               {company ? (
                 <div className="hidden items-center gap-2 md:flex">
                   <span className="max-w-64 truncate text-sm font-semibold text-slate-900">
                     {company.name}
                   </span>
                   <CompanyPill status={company.status} />
+                  {Math.max(0, 20 - (company.freeCodesUsed ?? 0)) > 0 && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                      title="Free registration codes remaining — applied automatically to your next batch"
+                    >
+                      <Gift className="size-3" />
+                      {Math.max(0, 20 - (company.freeCodesUsed ?? 0))}/20 free
+                    </span>
+                  )}
                 </div>
               ) : companyPending || sessionPending ? (
                 <div className="hidden h-6 w-40 animate-pulse rounded-full bg-slate-100 md:block" />

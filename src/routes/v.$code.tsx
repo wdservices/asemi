@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, AlertTriangle, Flag } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Flag, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +180,28 @@ function VerifyResult() {
                   </p>
                 )}
               </div>
+            </div>
+            {/* Asemi portal promo — tap to open this result on Asemi */}
+            <div className="panel mt-4 p-5 text-center">
+              <img
+                src="/asemi_logo.png"
+                alt="Asemi"
+                className="mx-auto size-10 rounded-xl bg-white object-contain ring-1 ring-slate-200"
+              />
+              <p className="mt-2 text-sm font-semibold text-foreground">Protected by Asemi</p>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">
+                Genuine products carry verifiable Asemi codes. Tap below to open this result in
+                the Asemi verification portal.
+              </p>
+              <Button asChild size="sm" className="mt-3 bg-blue-600 hover:bg-blue-700">
+                <a
+                  href={typeof window !== "undefined" ? window.location.href : `/v/${code}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in Asemi portal <ExternalLink className="ml-1.5 size-3.5" />
+                </a>
+              </Button>
             </div>
           </>
         )}

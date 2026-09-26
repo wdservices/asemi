@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { useMyCompany, type Company } from "@/lib/auth";
 import { formatMoney, listBatches, listInvoices } from "@/lib/db";
-import { getCountryByCode, type CountryInfo } from "@/lib/countries";
+import { getCountryByCode } from "@/lib/countries";
+import { mirrorPrice, serverTierTable } from "@/lib/server-pricing";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,113 +24,41 @@ export const Route = createFileRoute("/_authenticated/billing")({
   component: BillingPage,
 });
 
+const TIER_RANGES = [
+  "1 – 5,000 codes",
+  "5,001 – 20,000 codes",
+  "20,001 – 100,000 codes",
+  "100,001 – 500,000 codes",
+  "500,000+ codes",
+];
+
+/**
+ * Volume estimate for the billing page. Delegates the math to the exact
+ * server mirror (functions/src/pricing.ts via lib/server-pricing) so the
+ * estimate always matches what checkout charges — same tiers, same free
+ * codes, same lifetime position.
+ */
 export function calculateBracketEstimate(
   vol: number,
-  currencyCode: string,
-  countryInfo?: CountryInfo,
+  countryCode: string,
+  totalCodesGenerated = 0,
+  freeCodesUsed = 0,
 ) {
-  const isNg = currencyCode.toUpperCase() === "NGN";
-  const isUsd = currencyCode.toUpperCase() === "USD";
-  const symbol = countryInfo?.currencySymbol || (isNg ? "₦" : "$");
-
-  const paidVol = Math.max(0, vol - 20);
-
-  if (isNg) {
-    let cost = 0;
-    let remaining = paidVol;
-    const b1 = Math.min(remaining, 5000);
-    cost += b1 * 50;
-    remaining -= b1;
-    const b2 = Math.min(remaining, 15000);
-    cost += b2 * 35;
-    remaining -= b2;
-    const b3 = Math.min(remaining, 80000);
-    cost += b3 * 25;
-    remaining -= b3;
-    const b4 = Math.min(remaining, 400000);
-    cost += b4 * 18;
-    remaining -= b4;
-    cost += remaining * 12;
-    return {
-      cost,
-      symbol,
-      currency: "NGN",
-      perUnit: vol > 0 ? (cost / vol).toFixed(2) : "0.00",
-      brackets: [
-        { label: "1 – 5,000 codes", rate: "₦50.00 / code" },
-        { label: "5,001 – 20,000 codes", rate: "₦35.00 / code" },
-        { label: "20,001 – 100,000 codes", rate: "₦25.00 / code" },
-        { label: "100,001 – 500,000 codes", rate: "₦18.00 / code" },
-        { label: "500,000+ codes", rate: "₦12.00 / code" },
-      ],
-    };
-  } else if (isUsd) {
-    let cost = 0;
-    let remaining = paidVol;
-    const b1 = Math.min(remaining, 5000);
-    cost += b1 * 0.15;
-    remaining -= b1;
-    const b2 = Math.min(remaining, 15000);
-    cost += b2 * 0.1;
-    remaining -= b2;
-    const b3 = Math.min(remaining, 80000);
-    cost += b3 * 0.08;
-    remaining -= b3;
-    const b4 = Math.min(remaining, 400000);
-    cost += b4 * 0.06;
-    remaining -= b4;
-    cost += remaining * 0.05;
-    return {
-      cost: Math.round(cost * 100) / 100,
-      symbol,
-      currency: "USD",
-      perUnit: vol > 0 ? (cost / vol).toFixed(3) : "0.000",
-      brackets: [
-        { label: "1 – 5,000 codes", rate: "$0.150 / code" },
-        { label: "5,001 – 20,000 codes", rate: "$0.100 / code" },
-        { label: "20,001 – 100,000 codes", rate: "$0.080 / code" },
-        { label: "100,001 – 500,000 codes", rate: "$0.060 / code" },
-        { label: "500,000+ codes", rate: "$0.050 / code" },
-      ],
-    };
-  } else {
-    // Other country currency scaled from country rate
-    const baseRate = countryInfo?.ratePerCode || 0.1;
-    let cost = 0;
-    let remaining = paidVol;
-    const b1 = Math.min(remaining, 5000);
-    cost += b1 * baseRate;
-    remaining -= b1;
-    const b2 = Math.min(remaining, 15000);
-    cost += b2 * (baseRate * 0.7);
-    remaining -= b2;
-    const b3 = Math.min(remaining, 80000);
-    cost += b3 * (baseRate * 0.55);
-    remaining -= b3;
-    const b4 = Math.min(remaining, 400000);
-    cost += b4 * (baseRate * 0.4);
-    remaining -= b4;
-    cost += remaining * (baseRate * 0.3);
-    return {
-      cost: Math.round(cost * 100) / 100,
-      symbol,
-      currency: currencyCode,
-      perUnit: vol > 0 ? (cost / vol).toFixed(2) : "0.00",
-      brackets: [
-        { label: "1 – 5,000 codes", rate: `${symbol}${baseRate.toFixed(2)} / code` },
-        { label: "5,001 – 20,000 codes", rate: `${symbol}${(baseRate * 0.7).toFixed(2)} / code` },
-        {
-          label: "20,001 – 100,000 codes",
-          rate: `${symbol}${(baseRate * 0.55).toFixed(2)} / code`,
-        },
-        {
-          label: "100,001 – 500,000 codes",
-          rate: `${symbol}${(baseRate * 0.4).toFixed(2)} / code`,
-        },
-        { label: "500,000+ codes", rate: `${symbol}${(baseRate * 0.3).toFixed(2)} / code` },
-      ],
-    };
-  }
+  const r = mirrorPrice(vol, countryCode, totalCodesGenerated, freeCodesUsed);
+  const table = serverTierTable(countryCode);
+  const dp = table.currency === "USD" ? 3 : 2;
+  return {
+    ...r,
+    cost: r.price,
+    perUnit:
+      vol > 0
+        ? (r.price / vol).toFixed(dp)
+        : (0).toFixed(dp),
+    brackets: table.tiers.map((rate, i) => ({
+      label: TIER_RANGES[i] ?? `Tier ${i + 1}`,
+      rate: `${table.symbol}${rate.toFixed(dp)} / code`,
+    })),
+  };
 }
 
 function BillingPage() {
@@ -144,26 +73,36 @@ function BillingPage() {
     [registeredCountryCode],
   );
   const currency = registeredCountry.currency;
-  const activeCountryInfo = registeredCountry;
+
+  // 20 free codes per company from registration; remainder auto-applies.
+  // Lifetime tier position comes from the company doc (same inputs as server).
+  const lifetimePaid = Math.max(
+    0,
+    (company?.totalCodesGenerated ?? 0) - (company?.freeCodesUsed ?? 0),
+  );
+  const freeUsed = company?.freeCodesUsed ?? 0;
+  const freeRemain = Math.max(0, 20 - freeUsed);
 
   // Volume slider state (defaults to 25,000 codes like interactive calculator)
   const [calculatorVolume, setCalculatorVolume] = useState<number>(25000);
 
   const estimate = useMemo(() => {
-    return calculateBracketEstimate(calculatorVolume, currency, activeCountryInfo);
-  }, [calculatorVolume, currency, activeCountryInfo]);
-
-  // Tier-1..3 unit rates for the worked 25,000-code example below.
-  const tierRates = useMemo(() => {
-    if (currency === "NGN") return [50, 35, 25];
-    if (currency === "USD") return [0.15, 0.1, 0.08];
-    const base = activeCountryInfo.ratePerCode;
-    return [base, base * 0.7, base * 0.55];
-  }, [currency, activeCountryInfo]);
+    return calculateBracketEstimate(
+      calculatorVolume,
+      registeredCountryCode,
+      company?.totalCodesGenerated ?? 0,
+      company?.freeCodesUsed ?? 0,
+    );
+  }, [calculatorVolume, registeredCountryCode, company?.totalCodesGenerated, company?.freeCodesUsed]);
 
   const exampleEstimate = useMemo(() => {
-    return calculateBracketEstimate(25000, currency, activeCountryInfo);
-  }, [currency, activeCountryInfo]);
+    return calculateBracketEstimate(
+      25000,
+      registeredCountryCode,
+      company?.totalCodesGenerated ?? 0,
+      company?.freeCodesUsed ?? 0,
+    );
+  }, [registeredCountryCode, company?.totalCodesGenerated, company?.freeCodesUsed]);
 
   const money = (n: number) =>
     `${estimate.symbol}${n.toLocaleString(undefined, {
@@ -203,9 +142,6 @@ function BillingPage() {
   const totalLifetimeCodes = useMemo(() => {
     return (batches.data ?? []).reduce((sum, b) => sum + (b.quantity ?? 0), 0);
   }, [batches.data]);
-
-  const freeUsed = company?.freeCodesUsed ?? 0;
-  const freeRemain = Math.max(0, 20 - freeUsed);
 
   return (
     <div className="space-y-6">
@@ -485,37 +421,38 @@ function BillingPage() {
               <span className="font-semibold text-foreground">{currency}</span> pricing schedule:
             </p>
             <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">First 20 codes (onboarding allowance)</span>
-                <span className="font-medium text-emerald-600 font-mono">FREE (0.00)</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">
-                  First 5,000 paid codes @ {money(tierRates[0] ?? 0)}
-                </span>
-                <span className="font-mono font-medium">{money(5000 * (tierRates[0] ?? 0))}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">
-                  Next 15,000 paid codes @ {money(tierRates[1] ?? 0)}
-                </span>
-                <span className="font-mono font-medium">{money(15000 * (tierRates[1] ?? 0))}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">
-                  Remaining 4,980 codes @ {money(tierRates[2] ?? 0)}
-                </span>
-                <span className="font-mono font-medium">{money(4980 * (tierRates[2] ?? 0))}</span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-                <span className="font-semibold text-foreground">
-                  Total for 25,000 codes (average {estimate.symbol}
-                  {exampleEstimate.perUnit} / unit)
-                </span>
-                <span className="font-display text-xl font-bold font-mono text-foreground">
-                  {money(exampleEstimate.cost)}
-                </span>
-              </div>
+              {exampleEstimate.requiresQuote ? (
+                <p className="text-sm text-muted-foreground">
+                  This volume exceeds 1,000,000 lifetime codes — contact sales for a custom quote.
+                </p>
+              ) : (
+                <>
+                  {exampleEstimate.breakdown.map((row, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-lg border bg-background px-4 py-2.5 text-sm"
+                    >
+                      <span className="text-muted-foreground">
+                        {row.label} — {row.qty.toLocaleString()} codes
+                      </span>
+                      <span
+                        className={`font-mono font-medium ${row.rate === 0 ? "text-emerald-600" : ""}`}
+                      >
+                        {row.rate === 0 ? "FREE (0.00)" : money(row.subtotal)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between rounded-lg border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                    <span className="font-semibold text-foreground">
+                      Total for 25,000 codes (average {exampleEstimate.symbol}
+                      {exampleEstimate.perUnit} / unit)
+                    </span>
+                    <span className="font-display text-xl font-bold font-mono text-foreground">
+                      {money(exampleEstimate.cost)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -569,7 +506,15 @@ function BillingPage() {
                         {formatMoney(inv.amount, inv.currency || currency)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <StatusBadge status={inv.status === "paid" ? "approved" : inv.status} />
+                        <StatusBadge
+                          status={
+                            inv.status === "paid"
+                              ? "approved"
+                              : inv.status === "pending"
+                                ? "awaiting_payment"
+                                : inv.status
+                          }
+                        />
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs text-muted-foreground">
                         {inv.reference ?? "—"}
