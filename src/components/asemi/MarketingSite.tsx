@@ -303,6 +303,17 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             </button>
           </div>
         </div>
+        <div className="max-w-[1180px] mx-auto mt-8 pt-6 border-t border-[#e2ded5] text-center">
+          A product of Bluewaves Technology and Software Development —{" "}
+          <a
+            href="https://www.bwtng.live"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-[#1a1a1e]"
+          >
+            www.bwtng.live
+          </a>
+        </div>
       </footer>
     </div>
   );
