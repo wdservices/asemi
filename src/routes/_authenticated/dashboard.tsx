@@ -140,13 +140,13 @@ function DashboardOverview() {
   if (sessionPending) {
     return (
       <div className="space-y-4 font-sans">
-        <div className="h-9 w-56 animate-pulse rounded-lg bg-slate-200" />
+        <div className="h-9 w-56 animate-pulse rounded-lg bg-zinc-200" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-white shadow-sm" />
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-white shadow-sm" />
           ))}
         </div>
-        <div className="h-72 animate-pulse rounded-2xl bg-white shadow-sm" />
+        <div className="h-72 animate-pulse rounded-xl bg-white shadow-sm" />
       </div>
     );
   }
@@ -157,7 +157,7 @@ function DashboardOverview() {
         title="Session expired"
         description="Please sign in again to view your dashboard."
         action={
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+          <Button asChild className="bg-[#356fd6] hover:bg-[#285fbd]">
             <Link to="/auth">Go to sign in</Link>
           </Button>
         }
@@ -169,13 +169,13 @@ function DashboardOverview() {
   if (companyPending || (!company && !companyError)) {
     return (
       <div className="space-y-4 font-sans">
-        <div className="h-9 w-56 animate-pulse rounded-lg bg-slate-200" />
+        <div className="h-9 w-56 animate-pulse rounded-lg bg-zinc-200" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-white shadow-sm" />
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-white shadow-sm" />
           ))}
         </div>
-        <div className="h-72 animate-pulse rounded-2xl bg-white shadow-sm" />
+        <div className="h-72 animate-pulse rounded-xl bg-white shadow-sm" />
       </div>
     );
   }
@@ -186,13 +186,13 @@ function DashboardOverview() {
     return (
       <div className="space-y-6 font-sans">
         <PageHeader title="Overview" description="A snapshot of your brand on Asemi." />
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
           <p className="font-sans text-lg font-bold">Couldn't load your company</p>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">{msg}</p>
-          <p className="mx-auto mt-1 max-w-xl text-xs text-slate-400">
+          <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">{msg}</p>
+          <p className="mx-auto mt-1 max-w-xl text-xs text-zinc-400">
             Check your connection and Firestore permissions, then retry.
           </p>
-          <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => refetchCompany()}>
+          <Button className="mt-4 bg-[#356fd6] hover:bg-[#285fbd]" onClick={() => refetchCompany()}>
             Retry
           </Button>
         </div>
@@ -206,7 +206,7 @@ function DashboardOverview() {
         title="No company found"
         description="Your account has no company yet. Register your company to unlock the dashboard."
         action={
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+          <Button asChild className="bg-[#356fd6] hover:bg-[#285fbd]">
             <Link to="/profile">Set up company</Link>
           </Button>
         }
@@ -217,10 +217,10 @@ function DashboardOverview() {
   if (stats.isPending) {
     return (
       <div className="space-y-4 font-sans">
-        <div className="h-9 w-56 animate-pulse rounded-lg bg-slate-200" />
+        <div className="h-9 w-56 animate-pulse rounded-lg bg-zinc-200" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-white shadow-sm" />
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-white shadow-sm" />
           ))}
         </div>
       </div>
@@ -237,19 +237,19 @@ function DashboardOverview() {
           title="Overview"
           description={`A snapshot of ${company?.name ?? "your brand"} on Asemi.`}
         />
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
           <p className="font-sans text-lg font-bold">Couldn't load your overview</p>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">{msg}</p>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">{msg}</p>
           {needsIndex && (
-            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+            <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">
               This usually means Firestore composite indexes aren't deployed yet. Run{" "}
-              <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">
+              <code className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-xs">
                 firebase deploy --only firestore:indexes
               </code>{" "}
               from the repo root, then retry.
             </p>
           )}
-          <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => stats.refetch()}>
+          <Button className="mt-4 bg-[#356fd6] hover:bg-[#285fbd]" onClick={() => stats.refetch()}>
             Retry
           </Button>
         </div>
@@ -262,7 +262,7 @@ function DashboardOverview() {
     return (
       <div className="grid gap-4 md:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-28 animate-pulse rounded-2xl bg-white shadow-sm" />
+          <div key={i} className="h-28 animate-pulse rounded-xl bg-white shadow-sm" />
         ))}
       </div>
     );
@@ -279,7 +279,7 @@ function DashboardOverview() {
           title="No products yet"
           description="Add a product first, then request a batch of unique QR codes. Each code links directly to this product on the public verification page."
           action={
-            <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Button asChild className="bg-[#356fd6] hover:bg-[#285fbd]">
               <Link to="/products">
                 <PackagePlus className="mr-2 size-4" /> Create your first product
               </Link>
@@ -303,13 +303,13 @@ function DashboardOverview() {
             <Button
               asChild
               variant="outline"
-              className="border-blue-200 text-blue-700 hover:bg-blue-50"
+              className="border-zinc-300 text-zinc-800 hover:bg-zinc-100"
             >
               <Link to="/batches">
                 <QrCode className="mr-2 size-4" /> New batch
               </Link>
             </Button>
-            <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Button asChild className="bg-[#356fd6] hover:bg-[#285fbd]">
               <Link to="/products">
                 <PackagePlus className="mr-2 size-4" /> New product
               </Link>
@@ -319,8 +319,8 @@ function DashboardOverview() {
       />
 
       {s.scansUnavailable && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-          <p className="text-blue-900">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <p className="text-amber-900">
             <strong>Scan stats unavailable</strong> — Firestore index not deployed yet. Run{" "}
             <code className="rounded bg-white px-1.5 py-0.5 font-mono text-xs">
               firebase deploy --only firestore:indexes
@@ -330,7 +330,7 @@ function DashboardOverview() {
           <Button
             variant="outline"
             size="sm"
-            className="ml-auto border-blue-300 text-blue-700 hover:bg-blue-100"
+            className="ml-auto border-zinc-300 text-zinc-800 hover:bg-zinc-200"
             onClick={() => stats.refetch()}
           >
             Retry
@@ -365,7 +365,7 @@ function DashboardOverview() {
       </div>
 
       {s.flagged > 0 && (
-        <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm">
           <Flag className="size-4 shrink-0 text-red-600" />
           <p className="text-red-900">
             <strong>{s.flagged.toLocaleString()}</strong> suspicious scans need review.
@@ -385,7 +385,7 @@ function DashboardOverview() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Chart */}
-        <Card className="border-slate-200 shadow-sm lg:col-span-2">
+        <Card className="border-zinc-200 shadow-sm lg:col-span-2">
           <CardHeader>
             <CardTitle className="font-sans text-base font-bold">Scans — last 30 days</CardTitle>
           </CardHeader>
@@ -442,9 +442,9 @@ function DashboardOverview() {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center text-center">
-                  <TrendingUp className="size-8 text-slate-300" />
-                  <p className="mt-2 text-sm font-medium text-slate-600">No scans yet</p>
-                  <p className="mt-1 max-w-xs text-xs text-slate-400">
+                  <TrendingUp className="size-8 text-zinc-300" />
+                  <p className="mt-2 text-sm font-medium text-zinc-600">No scans yet</p>
+                  <p className="mt-1 max-w-xs text-xs text-zinc-400">
                     Share your product QR codes — scan activity will appear here.
                   </p>
                 </div>
@@ -455,12 +455,12 @@ function DashboardOverview() {
 
         {/* Quick actions + recent products */}
         <div className="space-y-6">
-          <Card className="border-blue-100 bg-gradient-to-b from-blue-50/80 to-white shadow-sm">
+          <Card className="border-zinc-200 shadow-sm">
             <CardHeader>
               <CardTitle className="font-sans text-base font-bold">Quick actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button asChild className="w-full justify-start bg-blue-600 hover:bg-blue-700">
+              <Button asChild className="w-full justify-start bg-[#356fd6] hover:bg-[#285fbd]">
                 <Link to="/batches">
                   <QrCode className="mr-2 size-4" /> Generate codes
                 </Link>
@@ -468,13 +468,13 @@ function DashboardOverview() {
               <Button
                 asChild
                 variant="outline"
-                className="w-full justify-start border-blue-200 text-blue-700 hover:bg-blue-50"
+                className="w-full justify-start border-zinc-300 text-zinc-800 hover:bg-zinc-100"
               >
                 <Link to="/products">
                   <PackagePlus className="mr-2 size-4" /> Add product
                 </Link>
               </Button>
-              <Button asChild variant="ghost" className="w-full justify-start text-slate-600">
+              <Button asChild variant="ghost" className="w-full justify-start text-zinc-600">
                 <Link to="/analytics">
                   View analytics <ArrowRight className="ml-auto size-4" />
                 </Link>
@@ -482,7 +482,7 @@ function DashboardOverview() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm">
+          <Card className="border-zinc-200 shadow-sm">
             <CardHeader>
               <CardTitle className="font-sans text-base font-bold">Recent products</CardTitle>
             </CardHeader>
@@ -492,24 +492,24 @@ function DashboardOverview() {
                   <Link
                     key={p.id}
                     to="/products"
-                    className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2.5 transition hover:border-blue-200 hover:bg-blue-50/50"
+                    className="flex items-center justify-between rounded-xl border border-zinc-100 px-3 py-2.5 transition hover:border-zinc-300 hover:bg-zinc-50"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-zinc-100 text-zinc-700">
                         <Package className="size-4" />
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium leading-tight">{p.name}</p>
-                        <p className="text-xs text-slate-400">{p.category}</p>
+                        <p className="text-xs text-zinc-400">{p.category}</p>
                       </div>
                     </div>
-                    <p className="shrink-0 text-xs text-slate-400">
+                    <p className="shrink-0 text-xs text-zinc-400">
                       {new Date(p.createdAt).toLocaleDateString()}
                     </p>
                   </Link>
                 ))
               ) : (
-                <p className="py-6 text-center text-sm text-slate-400">No products yet</p>
+                <p className="py-6 text-center text-sm text-zinc-400">No products yet</p>
               )}
             </CardContent>
           </Card>
@@ -517,17 +517,17 @@ function DashboardOverview() {
       </div>
 
       {/* Recent batches */}
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-zinc-200 shadow-sm">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="font-sans text-base font-bold">Recent batches</CardTitle>
-          <Button variant="ghost" asChild size="sm" className="text-blue-700 hover:bg-blue-50">
+          <Button variant="ghost" asChild size="sm" className="text-zinc-800 hover:bg-zinc-100">
             <Link to="/batches">View all →</Link>
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
+          <div className="overflow-x-auto rounded-xl border border-zinc-100">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-400">
+              <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wider text-zinc-400">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Batch</th>
                   <th className="px-4 py-3 font-semibold">Product</th>
@@ -536,11 +536,11 @@ function DashboardOverview() {
                   <th className="px-4 py-3 text-right font-semibold">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-zinc-100">
                 {recentBatches.data?.length ? (
                   recentBatches.data.map((b: any) => (
-                    <tr key={b.id} className="hover:bg-slate-50/60">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700">
+                    <tr key={b.id} className="hover:bg-zinc-50/60">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-zinc-700">
                         {b.batchNumber ?? "—"}
                       </td>
                       <td className="px-4 py-3">{b.productName}</td>
@@ -550,14 +550,14 @@ function DashboardOverview() {
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatMoney(b.amountCharged, b.currency)}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-400">
+                      <td className="px-4 py-3 text-right text-zinc-400">
                         {new Date(b.createdAt).toLocaleDateString()}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-12 text-center text-zinc-400">
                       No batches yet. Request one from the Batches page.
                     </td>
                   </tr>

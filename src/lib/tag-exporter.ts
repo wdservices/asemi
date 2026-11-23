@@ -328,7 +328,7 @@ FILE CONTENTS:
 - master-sheet-${batchNumber}-${style}.svg: Tiled press layout ready for large-format plotters and digital label presses.
 
 PRINTING INSTRUCTIONS:
-1. Colors: CMYK + Metallic Spot Gold simulation or cold-foil holographic backing.
+1. Colors: CMYK with metallic spot gold ink or cold-foil holographic backing.
 2. Die-Cut Layer: Denoted by stroke="#e11d48" (Red Dashed Line). Ensure cutter blade aligns with this boundary.
 3. Substrate:
    - For Rectangular: Silver or gold holographic tamper-evident polyester adhesive film (verification code printed openly below the QR).

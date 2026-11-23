@@ -8,12 +8,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Prove it's real, before they buy it. Every product gets a unique code. Every customer can check it in seconds.",
+          "Prove a product is genuine before it is opened. Asemi gives every unit a unique cryptographic code customers can verify instantly.",
       },
       { property: "og:title", content: "Asemi — Product Authentication" },
       {
         property: "og:description",
-        content: "Prove it's real, before they buy it. Product authentication made simple.",
+        content: "Cryptographic product verification for manufacturers and their customers.",
       },
     ],
   }),

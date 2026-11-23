@@ -28,12 +28,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, isOpen, onClose, onS
   return (
     <div
       id="auth-modal-overlay"
-      className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto font-sans"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#111114]/75 p-2 font-sans backdrop-blur-sm sm:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-2xl my-auto flex justify-center animate-[rise_300ms_cubic-bezier(0.32,0.72,0,1)_both]">
+      <div className="relative my-auto flex w-full max-w-5xl justify-center animate-[rise_220ms_ease-out_both]">
         <AuthCard
           initialMode={mode}
           onSuccess={(role) => {

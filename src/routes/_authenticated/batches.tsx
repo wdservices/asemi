@@ -136,24 +136,33 @@ function BatchesPage() {
         />
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-100">
-            <TabsTrigger value="request" className="font-sans">
-              <FileCode className="mr-2 size-4" /> New batch
+          <TabsList className="grid h-auto w-full max-w-xl grid-cols-3 gap-1 rounded-lg border border-zinc-200 bg-zinc-100 p-1">
+            <TabsTrigger
+              value="request"
+              className="gap-2 rounded-md py-2 font-sans text-zinc-600 shadow-none data-[state=active]:bg-[#1a1a1e] data-[state=active]:text-white data-[state=active]:shadow-none"
+            >
+              <FileCode className="size-4" /> New batch
             </TabsTrigger>
-            <TabsTrigger value="history" className="font-sans">
-              <History className="mr-2 size-4" /> History
+            <TabsTrigger
+              value="history"
+              className="gap-2 rounded-md py-2 font-sans text-zinc-600 shadow-none data-[state=active]:bg-[#1a1a1e] data-[state=active]:text-white data-[state=active]:shadow-none"
+            >
+              <History className="size-4" /> History
             </TabsTrigger>
-            <TabsTrigger value="bank" className="font-sans">
-              <QrCode className="mr-2 size-4" /> Codes
+            <TabsTrigger
+              value="bank"
+              className="gap-2 rounded-md py-2 font-sans text-zinc-600 shadow-none data-[state=active]:bg-[#1a1a1e] data-[state=active]:text-white data-[state=active]:shadow-none"
+            >
+              <QrCode className="size-4" /> Codes
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="request" className="pt-4">
+          <TabsContent value="request" className="pt-6">
             <RequestBatchTab />
           </TabsContent>
-          <TabsContent value="history" className="pt-4">
+          <TabsContent value="history" className="pt-6">
             <BatchHistoryTab />
           </TabsContent>
-          <TabsContent value="bank" className="pt-4">
+          <TabsContent value="bank" className="pt-6">
             <CodeBankTab />
           </TabsContent>
         </Tabs>
@@ -255,10 +264,10 @@ function PaymentReturnHandler({
 
   if (verifying) {
     return (
-      <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-        <Loader2 className="size-8 animate-spin text-blue-600" />
-        <p className="mt-4 font-sans text-lg font-bold text-slate-900">Confirming your payment…</p>
-        <p className="mt-1 max-w-sm text-sm text-slate-500">
+      <div className="flex flex-col items-center rounded-xl border border-zinc-200 bg-white p-12 text-center shadow-sm">
+        <Loader2 className="size-8 animate-spin text-zinc-600" />
+        <p className="mt-4 font-sans text-lg font-bold text-zinc-900">Confirming your payment…</p>
+        <p className="mt-1 max-w-sm text-sm text-zinc-500">
           Reference <span className="font-mono text-xs">{reference}</span>
         </p>
       </div>
@@ -267,10 +276,10 @@ function PaymentReturnHandler({
 
   if (verifyError || !batchId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <p className="font-sans text-lg font-bold text-slate-900">Couldn't confirm payment</p>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">{verifyError}</p>
-        <p className="mx-auto mt-1 max-w-xl text-xs text-slate-400">
+      <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
+        <p className="font-sans text-lg font-bold text-zinc-900">Couldn't confirm payment</p>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">{verifyError}</p>
+        <p className="mx-auto mt-1 max-w-xl text-xs text-zinc-400">
           If you already paid, the confirmation webhook may still land — check Batch history in a
           minute.
         </p>
@@ -287,12 +296,12 @@ function PaymentReturnHandler({
   if (!b || status === "awaiting_payment" || status === "generating") {
     const pct = Math.round((b?.generationProgress ?? 0) * 100);
     return (
-      <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-        <Loader2 className="size-8 animate-spin text-blue-600" />
-        <p className="mt-4 font-sans text-lg font-bold text-slate-900">
+      <div className="flex flex-col items-center rounded-xl border border-zinc-200 bg-white p-12 text-center shadow-sm">
+        <Loader2 className="size-8 animate-spin text-zinc-600" />
+        <p className="mt-4 font-sans text-lg font-bold text-zinc-900">
           Payment confirmed — generating serialized codes…
         </p>
-        <p className="mt-1 max-w-sm text-sm text-slate-500">
+        <p className="mt-1 max-w-sm text-sm text-zinc-500">
           {b?.batchNumber ? (
             <>
               Batch <span className="font-mono font-semibold">{b.batchNumber}</span>
@@ -302,10 +311,10 @@ function PaymentReturnHandler({
           )}{" "}
           {status === "generating" && `· ${pct}%`}
         </p>
-        <div className="mt-4 h-2 w-full max-w-md overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full bg-blue-600 transition-all" style={{ width: `${pct}%` }} />
+        <div className="mt-4 h-2 w-full max-w-md overflow-hidden rounded-full bg-zinc-100">
+          <div className="h-full bg-[#356fd6] transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <Button variant="ghost" className="mt-4 text-xs text-blue-700" onClick={onClear}>
+        <Button variant="ghost" className="mt-4 text-xs text-zinc-800" onClick={onClear}>
           Continue in background →
         </Button>
       </div>
@@ -314,15 +323,15 @@ function PaymentReturnHandler({
 
   if (status === "failed") {
     return (
-      <div className="rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
-        <p className="font-sans text-lg font-bold text-slate-900">Generation hit a snag</p>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+      <div className="rounded-xl border border-red-200 bg-white p-8 text-center shadow-sm">
+        <p className="font-sans text-lg font-bold text-zinc-900">Generation hit a snag</p>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-500">
           Your payment for batch <span className="font-mono">{b.batchNumber ?? batchId}</span> is
           safe — no new charge. Resume to finish generating the codes you already paid for.
         </p>
         <div className="mt-4 flex justify-center gap-2">
           <Button
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-[#356fd6] hover:bg-[#285fbd]"
             disabled={resuming}
             onClick={handleResume}
           >
@@ -346,7 +355,7 @@ function PaymentReturnHandler({
 
   const codeList = codes.data ?? [];
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
       <div className="mx-auto flex max-w-xl flex-col items-center text-center">
         <div className="grid size-16 place-items-center rounded-full bg-emerald-50 text-emerald-600">
           <CheckCircle2 className="size-8" />
@@ -354,16 +363,16 @@ function PaymentReturnHandler({
         <h2 className="mt-4 font-sans text-2xl font-bold tracking-tight">
           Batch {b.batchNumber ?? ""} ready
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-zinc-500">
           {b.quantity.toLocaleString()} serialized unit codes created for{" "}
-          <span className="font-semibold text-slate-900">{b.productName}</span>.
+          <span className="font-semibold text-zinc-900">{b.productName}</span>.
         </p>
 
         {codes.isPending ? (
-          <div className="mt-6 h-10 w-full animate-pulse rounded-xl bg-slate-100" />
+          <div className="mt-6 h-10 w-full animate-pulse rounded-xl bg-zinc-100" />
         ) : (
           <div className="mt-6 grid w-full gap-3 sm:grid-cols-2">
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={onViewCodes}>
+            <Button className="bg-[#356fd6] hover:bg-[#285fbd]" onClick={onViewCodes}>
               <QrCode className="size-4" /> View codes <ArrowRight className="size-4" />
             </Button>
             <Button
@@ -405,7 +414,7 @@ function PaymentReturnHandler({
           </div>
         )}
 
-        <Button variant="ghost" className="mt-4 text-xs text-blue-700" onClick={onClear}>
+        <Button variant="ghost" className="mt-4 text-xs text-zinc-800" onClick={onClear}>
           Request another batch →
         </Button>
       </div>
@@ -519,7 +528,7 @@ function RequestBatchTab() {
   }
 
   if (products.isPending) {
-    return <div className="h-96 animate-pulse rounded-2xl bg-white shadow-sm" />;
+    return <div className="h-96 animate-pulse rounded-xl bg-white shadow-sm" />;
   }
 
   if (!products.data?.length) {
@@ -534,14 +543,14 @@ function RequestBatchTab() {
   const canPay = !!productId && qty > 0 && !!q && !q.requiresQuote && !invalidDateRange && !busy;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
+    <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
       {/* Form */}
-      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+      <div className="min-w-0 space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
             Batch specification
           </p>
-          <span className="text-xs font-medium text-blue-700">Paystack hosted checkout</span>
+          <span className="text-xs font-medium text-zinc-800">Paystack hosted checkout</span>
         </div>
 
         <div className="space-y-1.5">
@@ -555,17 +564,17 @@ function RequestBatchTab() {
                 <SelectItem key={p.id} value={p.id}>
                   <span>{p.name}</span>
                   {p.sku ? (
-                    <span className="ml-2 font-mono text-xs text-slate-400">· {p.sku}</span>
+                    <span className="ml-2 font-mono text-xs text-zinc-400">· {p.sku}</span>
                   ) : null}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-zinc-500">
             {selectedProduct?.sku ? (
               <>
                 SKU{" "}
-                <span className="font-mono font-medium text-slate-700">{selectedProduct.sku}</span>
+                <span className="font-mono font-medium text-zinc-700">{selectedProduct.sku}</span>
                 {" · "}
               </>
             ) : null}
@@ -576,7 +585,7 @@ function RequestBatchTab() {
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Label htmlFor="rb-qty">Serialized unit count *</Label>
-            <span className="text-xs font-medium text-slate-500 tabular-nums">
+            <span className="text-xs font-medium text-zinc-500 tabular-nums">
               {freeRemain > 0 ? (
                 <span className="text-emerald-700">
                   {freeRemain} of 20 complimentary tags available — applied automatically
@@ -594,8 +603,8 @@ function RequestBatchTab() {
                 onClick={() => setQuantity(preset)}
                 className={`rounded-lg border px-2.5 py-1 text-xs font-medium tabular-nums transition ${
                   quantity === preset
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                    ? "border-[#1a1a1e] bg-[#1a1a1e] text-white"
+                    : "border-zinc-200 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-100"
                 }`}
               >
                 {preset.toLocaleString()}
@@ -613,17 +622,17 @@ function RequestBatchTab() {
         </div>
 
         {/* Batch provenance: SKU, Lot #, Manufacture date, Expiry date */}
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+        <div className="min-w-0 space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4 sm:p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-700">
               SKU, provenance &amp; shelf life
             </p>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-zinc-500">
               Indexed per unit &amp; shown on certificates
             </span>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1.5">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="rb-sku" className="text-xs">
                 SKU
               </Label>
@@ -632,10 +641,10 @@ function RequestBatchTab() {
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
                 placeholder="e.g. BRS-0050"
-                className="bg-white font-mono text-xs"
+                className="w-full min-w-0 bg-white font-mono text-xs"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="rb-lot" className="text-xs">
                 Lot number
               </Label>
@@ -644,10 +653,10 @@ function RequestBatchTab() {
                 value={lotNumber}
                 onChange={(e) => setLotNumber(e.target.value)}
                 placeholder="e.g. LOT-2026-04A"
-                className="bg-white font-mono text-xs"
+                className="w-full min-w-0 bg-white font-mono text-xs"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="rb-mfg" className="text-xs">
                 Manufacture date
               </Label>
@@ -656,10 +665,10 @@ function RequestBatchTab() {
                 type="date"
                 value={mfgDate}
                 onChange={(e) => setMfgDate(e.target.value)}
-                className="bg-white text-xs tabular-nums"
+                className="w-full min-w-0 bg-white text-xs tabular-nums"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="rb-exp" className="text-xs">
                 Expiry date
               </Label>
@@ -668,7 +677,7 @@ function RequestBatchTab() {
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="bg-white text-xs tabular-nums"
+                className="w-full min-w-0 bg-white text-xs tabular-nums"
               />
             </div>
           </div>
@@ -680,8 +689,8 @@ function RequestBatchTab() {
         </div>
 
         {/* Label spec summary */}
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
-          <span className="font-semibold text-slate-800">28×32mm serialized sticker:</span> Every
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-500">
+          <span className="font-semibold text-zinc-800">28×32mm serialized sticker:</span> Every
           unit ships print-ready with your product mark, unique QR code, and fallback serial.
         </div>
 
@@ -692,23 +701,23 @@ function RequestBatchTab() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
           <div>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-zinc-500">
               Total:{" "}
-              <strong className="text-slate-900 tabular-nums">
+              <strong className="text-zinc-900 tabular-nums">
                 {q ? formatMoney(q.price, q.currency) : "…"}
               </strong>{" "}
               <span className="text-xs tabular-nums">for {qty.toLocaleString()} codes</span>
             </p>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-zinc-400">
               Codes mint immediately after Paystack confirmation.
             </p>
           </div>
           <Button
             onClick={handleConfirm}
             disabled={!canPay}
-            className="whitespace-nowrap bg-blue-600 hover:bg-blue-700"
+            className="whitespace-nowrap bg-[#356fd6] hover:bg-[#285fbd]"
           >
             {busy ? (
               <>
@@ -724,9 +733,9 @@ function RequestBatchTab() {
       </div>
 
       {/* Server pricing summary */}
-      <div className="min-w-0 space-y-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <div className="min-w-0 space-y-4 overflow-hidden rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
             {q?.source === "local" ? "Estimated price" : "Server price"}
           </p>
           {q && q.source === "local" && (
@@ -736,7 +745,7 @@ function RequestBatchTab() {
             </p>
           )}
           {quote.isPending || !q ? (
-            <div className="mt-2 h-11 w-48 animate-pulse rounded-lg bg-slate-100" />
+            <div className="mt-2 h-11 w-48 animate-pulse rounded-lg bg-zinc-100" />
           ) : quote.isError ? (
             <div className="mt-2 text-sm">
               <p className="font-medium text-red-700">Couldn't fetch price</p>
@@ -745,7 +754,7 @@ function RequestBatchTab() {
               </Button>
             </div>
           ) : q.requiresQuote ? (
-            <p className="mt-2 text-sm font-medium text-slate-700">
+            <p className="mt-2 text-sm font-medium text-zinc-700">
               Volume exceeds 1,000,000 lifetime codes — contact sales for a custom quote.
             </p>
           ) : (
@@ -755,7 +764,7 @@ function RequestBatchTab() {
                   {formatMoney(q.price, q.currency)}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-500 tabular-nums">
+              <p className="mt-1 text-xs text-zinc-500 tabular-nums">
                 {(q.price / Math.max(1, q.paid)).toFixed(2)} {q.currency} per paid code
                 {q.free > 0 && ` · ${q.free} free applied`} · Print labels included
               </p>
@@ -767,10 +776,10 @@ function RequestBatchTab() {
           if (!q || q.requiresQuote || q.breakdown.length === 0) return null;
           const cur = q.currency;
           return (
-            <div className="space-y-1.5 rounded-xl bg-slate-50 p-3 text-xs">
+            <div className="space-y-1.5 rounded-xl bg-zinc-50 p-3 text-xs">
               {q.breakdown.map((row, i) => (
                 <div key={i} className="flex items-center justify-between gap-2">
-                  <span className="truncate text-slate-500">{row.label}</span>
+                  <span className="truncate text-zinc-500">{row.label}</span>
                   <span className="shrink-0 font-mono font-medium tabular-nums">
                     {formatMoney(row.subtotal, cur)}
                   </span>
@@ -780,11 +789,11 @@ function RequestBatchTab() {
           );
         })()}
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-800">
             Live label preview
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-zinc-500">
             28×32mm serialized packaging label for {selectedProduct?.name || companyName}.
           </p>
           <div className="flex justify-center py-3">
@@ -959,7 +968,7 @@ function BatchHistoryTab() {
   }
 
   if (batches.isPending) {
-    return <div className="h-96 animate-pulse rounded-2xl bg-white shadow-sm" />;
+    return <div className="h-96 animate-pulse rounded-xl bg-white shadow-sm" />;
   }
   if (!batches.data?.length) {
     return (
@@ -993,7 +1002,7 @@ function BatchHistoryTab() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -1012,14 +1021,14 @@ function BatchHistoryTab() {
                 const sku = b.sku || skuByProductId.get(b.productId);
                 const expired = isExpiredDate(b.expiryDate);
                 return (
-                  <TableRow key={b.id} className="hover:bg-slate-50/60">
-                    <TableCell className="font-mono text-xs font-semibold text-blue-700">
-                      {b.batchNumber ?? <span className="text-slate-400">pending…</span>}
+                  <TableRow key={b.id} className="hover:bg-zinc-50/60">
+                    <TableCell className="font-mono text-xs font-semibold text-zinc-800">
+                      {b.batchNumber ?? <span className="text-zinc-400">pending…</span>}
                     </TableCell>
                     <TableCell className="max-w-64">
-                      <p className="truncate font-medium text-slate-900">{b.productName ?? "—"}</p>
+                      <p className="truncate font-medium text-zinc-900">{b.productName ?? "—"}</p>
                       {(sku || b.lotNumber || b.mfgDate || b.expiryDate) && (
-                        <p className="mt-0.5 truncate text-[11px] text-slate-500 tabular-nums">
+                        <p className="mt-0.5 truncate text-[11px] text-zinc-500 tabular-nums">
                           {[
                             sku ? `SKU ${sku}` : null,
                             b.lotNumber ? `Lot ${b.lotNumber}` : null,
@@ -1039,7 +1048,7 @@ function BatchHistoryTab() {
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(b.amountCharged ?? 0, b.currency)}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-right text-xs text-slate-400 tabular-nums">
+                    <TableCell className="whitespace-nowrap text-right text-xs text-zinc-400 tabular-nums">
                       {new Date(b.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
@@ -1063,7 +1072,7 @@ function BatchHistoryTab() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 whitespace-nowrap border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
+                            className="h-8 whitespace-nowrap border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100"
                             asChild
                           >
                             <a href={b.paystackAuthorizationUrl} target="_blank" rel="noreferrer">
@@ -1071,13 +1080,13 @@ function BatchHistoryTab() {
                             </a>
                           </Button>
                         ) : (
-                          <span className="text-xs text-slate-400">Awaiting payment…</span>
+                          <span className="text-xs text-zinc-400">Awaiting payment…</span>
                         )
                       ) : b.status === "failed" ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 whitespace-nowrap border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
+                          className="h-8 whitespace-nowrap border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100"
                           disabled={resumingId === b.id}
                           onClick={() => handleResume(b.id)}
                         >
@@ -1092,7 +1101,7 @@ function BatchHistoryTab() {
                           )}
                         </Button>
                       ) : b.status === "generating" ? (
-                        <span className="text-xs text-slate-400 tabular-nums">
+                        <span className="text-xs text-zinc-400 tabular-nums">
                           Generating {Math.round((b.generationProgress ?? 0) * 100)}%…
                         </span>
                       ) : (
@@ -1130,7 +1139,7 @@ function BatchHistoryTab() {
                             className={`h-8 whitespace-nowrap text-xs ${
                               b.recalled
                                 ? "border-red-200 text-red-700 hover:bg-red-50"
-                                : "text-slate-500 hover:text-red-700"
+                                : "text-zinc-500 hover:text-red-700"
                             }`}
                           >
                             {b.recalled ? (
@@ -1164,14 +1173,14 @@ function BatchHistoryTab() {
               <DialogTitle>Labels for {selectedBatchForTags.batchNumber}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2 text-sm">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-zinc-500">
                 28×32mm serialized packaging stickers — download high-resolution labels (ZIP) or
                 open a printable sheet.
               </p>
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+              <div className="flex items-center justify-between rounded-xl border border-zinc-200 p-3">
                 <div>
                   <p className="text-sm font-semibold">Serialized labels</p>
-                  <p className="text-xs text-slate-500 tabular-nums">
+                  <p className="text-xs text-zinc-500 tabular-nums">
                     {selectedBatchForTags.quantity.toLocaleString()} codes · 28×32mm
                   </p>
                 </div>
@@ -1199,7 +1208,7 @@ function BatchHistoryTab() {
                         selectedBatchForTags.productName,
                       )
                     }
-                    className="h-8 bg-blue-600 text-xs hover:bg-blue-700"
+                    className="h-8 bg-[#356fd6] text-xs hover:bg-[#285fbd]"
                   >
                     <Archive className="mr-1 size-3.5" /> ZIP
                   </Button>
@@ -1436,21 +1445,21 @@ function CodeBankTab() {
   return (
     <div className="space-y-4">
       {/* Header bar */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Serialized Code Bank</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="text-sm font-bold text-zinc-900">Serialized Code Bank</h3>
+          <p className="text-xs text-zinc-500">
             Every unit carries an individual verification code · 28×32mm print labels · showing up
             to 200 matching codes.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
+          <div className="flex items-center rounded-xl border border-zinc-200 bg-zinc-50 p-1">
             <button
               type="button"
               onClick={() => setViewMode("table")}
               className={`rounded-lg p-1.5 transition ${
-                viewMode === "table" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
+                viewMode === "table" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"
               }`}
               title="Table view"
             >
@@ -1460,7 +1469,7 @@ function CodeBankTab() {
               type="button"
               onClick={() => setViewMode("cards")}
               className={`rounded-lg p-1.5 transition ${
-                viewMode === "cards" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
+                viewMode === "cards" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"
               }`}
               title="Card view"
             >
@@ -1471,7 +1480,7 @@ function CodeBankTab() {
       </div>
 
       {/* Filters */}
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="cb-prod">Product</Label>
@@ -1512,7 +1521,7 @@ function CodeBankTab() {
           <div className="min-w-0 space-y-1.5 sm:col-span-2">
             <Label htmlFor="cb-search">Search code or SKU</Label>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
               <Input
                 id="cb-search"
                 placeholder="ASM-XXXX-XXXXXX or SKU"
@@ -1523,10 +1532,10 @@ function CodeBankTab() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-          <p className="text-xs text-slate-500 tabular-nums">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3">
+          <p className="text-xs text-zinc-500 tabular-nums">
             Showing{" "}
-            <strong className="text-slate-900">{visibleCodes.length.toLocaleString()}</strong>{" "}
+            <strong className="text-zinc-900">{visibleCodes.length.toLocaleString()}</strong>{" "}
             {visibleCodes.length === 1 ? "code" : "codes"}
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -1562,9 +1571,9 @@ function CodeBankTab() {
       </div>
 
       {/* Codes list */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
         {codes.isPending ? (
-          <div className="h-64 animate-pulse rounded-xl bg-slate-50" />
+          <div className="h-64 animate-pulse rounded-xl bg-zinc-50" />
         ) : !visibleCodes.length ? (
           <div className="p-8">
             <EmptyState
@@ -1574,9 +1583,9 @@ function CodeBankTab() {
           </div>
         ) : viewMode === "table" ? (
           <div className="overflow-x-auto">
-            <div className="mb-3 flex items-center justify-between text-xs text-slate-500">
+            <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
               <span>
-                <strong className="text-slate-900 tabular-nums">{visibleCodes.length}</strong> codes
+                <strong className="text-zinc-900 tabular-nums">{visibleCodes.length}</strong> codes
               </span>
               <span>Click a QR thumbnail to download</span>
             </div>
@@ -1594,7 +1603,7 @@ function CodeBankTab() {
               </TableHeader>
               <TableBody>
                 {visibleCodes.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-slate-50/60">
+                  <TableRow key={c.id} className="hover:bg-zinc-50/60">
                     <TableCell>
                       <CodeQrThumbnail codeString={c.codeString} />
                     </TableCell>
@@ -1605,12 +1614,12 @@ function CodeBankTab() {
                     <TableCell className="max-w-44 truncate text-xs">
                       <span>{c.productName ?? "—"}</span>
                       {c.productSku ? (
-                        <span className="ml-1.5 font-mono text-[11px] text-slate-400">
+                        <span className="ml-1.5 font-mono text-[11px] text-zinc-400">
                           · {c.productSku}
                         </span>
                       ) : null}
                     </TableCell>
-                    <TableCell className="font-mono text-[11px] text-slate-500">
+                    <TableCell className="font-mono text-[11px] text-zinc-500">
                       {c.batchNumber ?? "—"}
                     </TableCell>
                     <TableCell className="text-right text-xs tabular-nums">
@@ -1624,7 +1633,7 @@ function CodeBankTab() {
                         variant="outline"
                         size="sm"
                         onClick={() => setPreviewCode(c)}
-                        className="h-8 border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
+                        className="h-8 border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100"
                       >
                         Preview
                       </Button>
@@ -1636,17 +1645,17 @@ function CodeBankTab() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500">
-              Displaying <strong className="text-slate-900">{visibleCodes.length}</strong> labels
+            <p className="text-xs text-zinc-500">
+              Displaying <strong className="text-zinc-900">{visibleCodes.length}</strong> labels
             </p>
             <div className="grid place-items-center gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {visibleCodes.slice(0, 48).map((c) => (
                 <div
                   key={c.id}
-                  className="flex w-full max-w-72 flex-col items-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
+                  className="flex w-full max-w-72 flex-col items-center rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md"
                 >
-                  <div className="mb-2 flex w-full items-center justify-between border-b border-slate-100 pb-2 text-[11px] text-slate-500">
-                    <span className="max-w-32 truncate font-medium text-slate-900">
+                  <div className="mb-2 flex w-full items-center justify-between border-b border-zinc-100 pb-2 text-[11px] text-zinc-500">
+                    <span className="max-w-32 truncate font-medium text-zinc-900">
                       {c.productName}
                     </span>
                     <span className="font-mono">{c.batchNumber}</span>
@@ -1663,7 +1672,7 @@ function CodeBankTab() {
                   <button
                     type="button"
                     onClick={() => setPreviewCode(c)}
-                    className="mt-2 text-xs font-medium text-blue-700 hover:underline"
+                    className="mt-2 text-xs font-medium text-zinc-800 hover:underline"
                   >
                     Full preview
                   </button>
@@ -1671,7 +1680,7 @@ function CodeBankTab() {
               ))}
             </div>
             {visibleCodes.length > 48 && (
-              <p className="text-center text-xs text-slate-400">
+              <p className="text-center text-xs text-zinc-400">
                 Showing first 48 labels — switch to table view or narrow filters to see more.
               </p>
             )}
@@ -1717,14 +1726,14 @@ function CodeQrThumbnail({ codeString }: { codeString: string }) {
   }, [codeString]);
 
   if (!dataUrl) {
-    return <div className="size-8 animate-pulse rounded bg-slate-100" />;
+    return <div className="size-8 animate-pulse rounded bg-zinc-100" />;
   }
 
   return (
     <button
       type="button"
       onClick={() => downloadDataUrl(dataUrl, `qr-${codeString}.png`)}
-      className="size-8 overflow-hidden rounded-lg border border-slate-200 p-0.5 transition hover:ring-2 hover:ring-blue-500"
+      className="size-8 overflow-hidden rounded-lg border border-zinc-200 p-0.5 transition hover:ring-2 hover:ring-zinc-400"
       title="Click to download QR code"
     >
       <img src={dataUrl} alt="QR" className="size-full object-contain" />

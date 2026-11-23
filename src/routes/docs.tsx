@@ -32,9 +32,10 @@ function DocsPage() {
       </nav>
 
       <main className="max-w-[820px] mx-auto px-6 py-16">
-        <h1 className="text-3xl font-bold text-[#1a1a1e] mb-2">Product Documentation</h1>
+        <h1 className="text-3xl font-bold text-[#1a1a1e] mb-2">Asemi User Guide</h1>
         <p className="text-sm text-[#6e6e7a] mb-10">
-          How the Asemi authentication platform works — from registration to consumer verification.
+          Step-by-step help for setting up products, issuing codes, checking activity, and managing
+          your manufacturer account.
         </p>
 
         <div className="space-y-10">
@@ -126,36 +127,104 @@ function DocsPage() {
             </div>
           </section>
 
-          {/* Dashboard Features */}
-          <section>
+          {/* Manufacturer workflows */}
+          <section id="products" className="scroll-mt-24">
             <div className="flex items-center gap-2 mb-4">
               <Layers className="w-5 h-5 text-[#2563eb]" />
-              <h2 className="text-xl font-bold text-[#1a1a1e]">Dashboard Features</h2>
+              <h2 className="text-xl font-bold text-[#1a1a1e]">Products: add your catalogue</h2>
+            </div>
+            <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
+              <p>
+                Open <strong className="text-[#1a1a1e]">Products</strong> in the dashboard and
+                select <strong className="text-[#1a1a1e]">New product</strong>. Enter the product
+                name and choose its category. Add the SKU used on your packaging; it should identify
+                this product consistently.
+              </p>
+              <p>
+                The description and product photos help customers recognize the item on its
+                verification page. Regulatory approval number, default lot number, and default
+                manufacture/expiry dates are optional. Defaults can be overridden for an individual
+                batch. Select <strong className="text-[#1a1a1e]">Create product</strong> to save.
+                Use the edit action on a product to update its details later.
+              </p>
+              <p>
+                To recall a product, use its recall action, enter a clear reason, and confirm. The
+                warning is shown when a customer checks an affected code. Lift the recall from the
+                same product when it is resolved.
+              </p>
+            </div>
+          </section>
+
+          <section id="batches" className="scroll-mt-24">
+            <div className="flex items-center gap-2 mb-4">
+              <QrCode className="w-5 h-5 text-[#2563eb]" />
+              <h2 className="text-xl font-bold text-[#1a1a1e]">Batches: issue product codes</h2>
+            </div>
+            <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
+              <p>
+                Open <strong className="text-[#1a1a1e]">Batches &amp; Codes</strong> and stay on{" "}
+                <strong className="text-[#1a1a1e]">New batch</strong>. Select the product, then
+                choose a suggested code quantity or enter your own. The price summary shows the
+                regional rate and applies available complimentary codes automatically.
+              </p>
+              <p>
+                Add the lot number, manufacture date, and expiry date for the production run. Check
+                the product and quantity in the live label preview, then select{" "}
+                <strong className="text-[#1a1a1e]">Confirm &amp; pay with Paystack</strong>. Codes
+                are issued after checkout is confirmed. Do not submit payment twice if the
+                confirmation is still processing.
+              </p>
+              <p>
+                Open <strong className="text-[#1a1a1e]">History</strong> to find a previous batch
+                and its status. Use <strong className="text-[#1a1a1e]">Codes</strong> to find issued
+                serials and access the available code/label export actions.
+              </p>
+            </div>
+          </section>
+
+          <section id="analytics" className="scroll-mt-24">
+            <div className="flex items-center gap-2 mb-4">
+              <Layers className="w-5 h-5 text-[#2563eb]" />
+              <h2 className="text-xl font-bold text-[#1a1a1e]">Analytics: review scans</h2>
             </div>
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 text-sm leading-relaxed text-[#45454f]">
-              <ul className="space-y-3 list-disc list-inside">
-                <li>
-                  <strong className="text-[#1a1a1e]">Products:</strong> Manage SKUs, descriptions,
-                  photos, default lot/expiry dates, and SKU-level recalls.
-                </li>
-                <li>
-                  <strong className="text-[#1a1a1e]">Batches &amp; Codes:</strong> Request
-                  serialized batches via Paystack checkout, track batch history, manage recalls, and
-                  export 28×32mm labels as ZIP or printable sheets.
-                </li>
-                <li>
-                  <strong className="text-[#1a1a1e]">Analytics:</strong> View scan volumes,
-                  geographic distribution, and suspicious activity reports.
-                </li>
-                <li>
-                  <strong className="text-[#1a1a1e]">Billing:</strong> Track your pricing tier,
-                  lifetime spend, and transaction invoices.
-                </li>
-                <li>
-                  <strong className="text-[#1a1a1e]">Profile:</strong> Update brand details, logo,
-                  and compliance documentation.
-                </li>
-              </ul>
+              <p>
+                Open <strong className="text-[#1a1a1e]">Analytics</strong> to review consumer scan
+                activity, scan locations, and repeat or suspicious scans. Use these patterns to
+                identify where customers are checking products and which codes may need
+                investigation. A scan count represents recorded verification activity, not units
+                sold.
+              </p>
+            </div>
+          </section>
+
+          <section id="billing" className="scroll-mt-24">
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck className="w-5 h-5 text-[#2563eb]" />
+              <h2 className="text-xl font-bold text-[#1a1a1e]">Billing: check charges</h2>
+            </div>
+            <div className="bg-white border border-[#e2ded5] rounded-xl p-6 text-sm leading-relaxed text-[#45454f]">
+              <p>
+                Open <strong className="text-[#1a1a1e]">Billing</strong> to review payment and
+                account billing information. Each new batch displays its estimate and complimentary
+                code deduction before checkout. The final charge is calculated by the server at
+                checkout; rely on the Paystack amount and receipt for the completed transaction.
+              </p>
+            </div>
+          </section>
+
+          <section id="profile" className="scroll-mt-24">
+            <div className="flex items-center gap-2 mb-4">
+              <Package className="w-5 h-5 text-[#2563eb]" />
+              <h2 className="text-xl font-bold text-[#1a1a1e]">Profile: keep your brand current</h2>
+            </div>
+            <div className="bg-white border border-[#e2ded5] rounded-xl p-6 text-sm leading-relaxed text-[#45454f]">
+              <p>
+                Open <strong className="text-[#1a1a1e]">Profile</strong> to review and update your
+                company information, brand identity, and compliance documents. Keep your support
+                contact details current so customers and the Asemi review team can identify your
+                brand.
+              </p>
             </div>
           </section>
         </div>

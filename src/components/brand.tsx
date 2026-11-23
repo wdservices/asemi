@@ -32,15 +32,21 @@ export function StatCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05)]">
+    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
           {label}
         </p>
-        {icon && <span className="text-blue-600">{icon}</span>}
+        {icon && (
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-zinc-100 text-zinc-700">
+            {icon}
+          </span>
+        )}
       </div>
-      <p className="mt-2 font-sans text-3xl font-bold tracking-tight">{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      <p className="mt-3 font-sans text-[28px] font-semibold leading-none tracking-tight text-zinc-950 tabular-nums">
+        {value}
+      </p>
+      {hint && <p className="mt-2 text-xs leading-5 text-zinc-500">{hint}</p>}
     </div>
   );
 }
@@ -84,8 +90,8 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="font-sans text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-        {description && <p className="mt-1 max-w-xl text-sm text-slate-500">{description}</p>}
+        <h1 className="font-sans text-[22px] font-semibold tracking-tight text-zinc-950">{title}</h1>
+        {description && <p className="mt-1 max-w-xl text-sm text-zinc-500">{description}</p>}
       </div>
       {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
     </div>
@@ -102,9 +108,9 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-16 text-center">
-      <p className="font-sans text-lg font-semibold text-slate-900">{title}</p>
-      {description && <p className="mt-1 max-w-sm text-sm text-slate-500">{description}</p>}
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-16 text-center">
+      <p className="font-sans text-lg font-semibold text-zinc-900">{title}</p>
+      {description && <p className="mt-1 max-w-sm text-sm text-zinc-500">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

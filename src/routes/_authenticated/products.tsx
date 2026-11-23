@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMyCompany, useSession, type Company, CATEGORIES } from "@/lib/auth";
 import {
@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   PackagePlus,
+  BookOpen,
   Pencil,
   Trash2,
   Package,
@@ -190,12 +191,19 @@ function ProductsPage() {
         title="Products"
         description="Manage your protected SKUs, default lot and shelf-life provenance, and product-wide recall notices."
         action={
-          <Button
-            onClick={openCreate}
-            className="whitespace-nowrap shrink-0 bg-blue-600 hover:bg-blue-700"
-          >
-            <PackagePlus className="size-4" /> New product
-          </Button>
+          <>
+            <Button variant="outline" asChild className="whitespace-nowrap">
+              <Link to="/docs" hash="products">
+                <BookOpen className="size-4" /> Product setup guide
+              </Link>
+            </Button>
+            <Button
+              onClick={openCreate}
+              className="whitespace-nowrap shrink-0 bg-blue-600 hover:bg-blue-700"
+            >
+              <PackagePlus className="size-4" /> New product
+            </Button>
+          </>
         }
       />
 
@@ -589,17 +597,24 @@ function ProductDialog({
 
   async function handleImageFiles(files: FileList | null) {
     if (!files || !companyId) return;
+    const remaining = Math.max(0, 10 - images.length);
+    if (remaining === 0) {
+      toast.error("A product can have up to 10 photos.");
+      return;
+    }
+    const selectedFiles = Array.from(files).slice(0, remaining);
+    if (files.length > remaining) {
+      toast.message(`Only ${remaining} more photo${remaining === 1 ? "" : "s"} can be added.`);
+    }
     const newImages = [...images];
 
     setUploading(true);
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (!file) continue;
+      for (const file of selectedFiles) {
         newImages.push(await uploadProductImage(companyId, file));
       }
       setImages(newImages);
-      toast.success(`${files.length} image${files.length > 1 ? "s" : ""} uploaded`);
+      toast.success(`${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} uploaded`);
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -653,154 +668,177 @@ function ProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit product" : "New product"}</DialogTitle>
+      <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-3xl flex-col gap-0 overflow-hidden rounded-xl border-zinc-200 bg-white p-0 shadow-2xl sm:w-full">
+        <DialogHeader className="shrink-0 border-b border-zinc-200 bg-zinc-50 px-6 py-5 text-left sm:px-8">
+          <DialogTitle className="text-lg font-semibold tracking-tight text-zinc-950">
+            {editing ? "Edit product" : "Add a product"}
+          </DialogTitle>
+          <DialogDescription className="mt-1 max-w-xl text-sm leading-5 text-zinc-500">
+            Add the product details customers will see when they verify an item. You can update
+            these details later.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="p-name">Product name *</Label>
-              <Input
-                id="p-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Botanical Repair Serum 50ml"
-                required
-              />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5 sm:px-8">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="p-name" className="text-xs font-semibold text-zinc-700">
+                  Product name *
+                </Label>
+                <Input
+                  id="p-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter the product name, e.g. Botanical Repair Serum 50ml"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="p-cat">Category *</Label>
+                <Select value={category} onValueChange={(value) => setCategory(value ?? "")}>
+                  <SelectTrigger id="p-cat">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="p-sku">SKU</Label>
+                <Input
+                  id="p-sku"
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="Enter your SKU, e.g. BRS-0050"
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="p-desc">Description (optional)</Label>
+                <Textarea
+                  id="p-desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Describe this product. This appears on its consumer verification certificate."
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-cat">Category *</Label>
-              <Select value={category} onValueChange={(value) => setCategory(value ?? "")}>
-                <SelectTrigger id="p-cat">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-sku">SKU</Label>
-              <Input
-                id="p-sku"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="e.g. BRS-0050"
-                className="font-mono"
-              />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="p-desc">Description (optional)</Label>
-              <Textarea
-                id="p-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Short description shown on the consumer authentication certificate."
-              />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Images</Label>
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-              {images.map((url, i) => (
-                <div
-                  key={i}
-                  className="group relative aspect-square overflow-hidden rounded-md border"
-                >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute inset-0 grid place-items-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100"
-                    aria-label="Remove image"
+            <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <Label className="text-xs font-semibold text-zinc-700">Product photos</Label>
+                <span className="text-xs text-zinc-500">
+                  Optional · {images.length}/10 photos added
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                {images.map((url, i) => (
+                  <div
+                    key={i}
+                    className="group relative aspect-square overflow-hidden rounded-md border"
                   >
-                    <X className="size-5" />
-                  </button>
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute inset-0 grid place-items-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100"
+                      aria-label="Remove image"
+                    >
+                      <X className="size-5" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || images.length >= 10}
+                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-white text-zinc-500 transition hover:border-zinc-500 hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <Upload className="size-5 animate-bounce" />
+                  ) : (
+                    <ImagePlus className="size-5" />
+                  )}
+                  <span className="text-[10px]">{uploading ? "…" : "Add"}</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    handleImageFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+              <p className="text-xs leading-5 text-zinc-500">
+                Help customers recognize the genuine product on the verification page.
+              </p>
+            </div>
+
+            <div className="space-y-4 rounded-xl border border-zinc-200 p-4">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900">Traceability details</p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Optional product defaults. You can enter different lot and date details for each
+                  batch.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-regno">Regulatory approval no. (optional)</Label>
+                  <Input
+                    id="p-regno"
+                    value={regulatoryNumber}
+                    onChange={(e) => setRegulatoryNumber(e.target.value)}
+                    placeholder="Enter an approval number, e.g. NAFDAC"
+                  />
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed text-muted-foreground transition hover:bg-accent/50 disabled:opacity-50"
-              >
-                {uploading ? (
-                  <Upload className="size-5 animate-bounce" />
-                ) : (
-                  <ImagePlus className="size-5" />
-                )}
-                <span className="text-[10px]">{uploading ? "…" : "Add"}</span>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={(e) => {
-                  handleImageFiles(e.target.files);
-                  e.target.value = "";
-                }}
-              />
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-lot">Default lot number (optional)</Label>
+                  <Input
+                    id="p-lot"
+                    value={lotNumber}
+                    onChange={(e) => setLotNumber(e.target.value)}
+                    placeholder="Enter a default lot number, e.g. LOT-2026-1042"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-mfg">Default manufacture date (optional)</Label>
+                  <Input
+                    id="p-mfg"
+                    type="date"
+                    value={mfgDate}
+                    onChange={(e) => setMfgDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="p-exp">Default expiry date (optional)</Label>
+                  <Input
+                    id="p-exp"
+                    type="date"
+                    value={expiryDate}
+                    onChange={(e) => setExpiryDate(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Upload up to 10 product photographs for visual consumer inspection.
-            </p>
+            {invalidDateRange && (
+              <p className="text-xs font-medium text-red-600">
+                Expiry date must be on or after the manufacture date.
+              </p>
+            )}
           </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="p-regno">Regulatory approval no. (optional)</Label>
-              <Input
-                id="p-regno"
-                value={regulatoryNumber}
-                onChange={(e) => setRegulatoryNumber(e.target.value)}
-                placeholder="e.g. FDA, CE, NAFDAC no."
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-lot">Default lot number (optional)</Label>
-              <Input
-                id="p-lot"
-                value={lotNumber}
-                onChange={(e) => setLotNumber(e.target.value)}
-                placeholder="e.g. LOT-2026-1042"
-                className="font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-mfg">Default manufacture date (optional)</Label>
-              <Input
-                id="p-mfg"
-                type="date"
-                value={mfgDate}
-                onChange={(e) => setMfgDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="p-exp">Default expiry date (optional)</Label>
-              <Input
-                id="p-exp"
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-              />
-            </div>
-          </div>
-          {invalidDateRange && (
-            <p className="text-xs font-medium text-red-600">
-              Expiry date must be on or after the manufacture date.
-            </p>
-          )}
-
-          <DialogFooter>
+          <DialogFooter className="shrink-0 gap-2 border-t border-zinc-200 bg-white px-6 py-4 sm:px-8">
             <Button
               type="button"
               variant="outline"
@@ -812,7 +850,7 @@ function ProductDialog({
             <Button
               type="submit"
               disabled={saving || uploading || invalidDateRange}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-[#1a1a1e] text-white hover:bg-zinc-800"
             >
               {saving
                 ? editing

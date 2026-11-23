@@ -79,10 +79,10 @@ export const CountrySelectDropdown: React.FC<CountrySelectProps> = ({
         id={id}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative w-full flex items-center justify-between gap-2 pl-11 pr-3 h-[52px] text-[15px] bg-zinc-50/70 hover:bg-zinc-50 focus:bg-white border rounded-2xl transition-all text-left font-sans cursor-pointer outline-none ${
+        className={`relative flex h-12 w-full items-center justify-between gap-2 border bg-white pl-11 pr-3 text-left font-sans text-sm transition-colors outline-none cursor-pointer ${
           isOpen
-            ? "border-zinc-950 bg-white ring-4 ring-[#2563eb]/20 shadow-lg"
-            : "border-zinc-200 hover:border-zinc-400"
+            ? "border-zinc-950 ring-2 ring-[#c9a84c]/30"
+            : "border-zinc-300 hover:border-zinc-500"
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -109,7 +109,7 @@ export const CountrySelectDropdown: React.FC<CountrySelectProps> = ({
       {/* Sleek Floating Popover Menu */}
       {isOpen && (
         <div
-          className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border border-zinc-200 rounded-2xl shadow-[0_24px_60px_-16px_rgba(0,0,0,0.3)] overflow-hidden font-sans flex flex-col"
+          className="absolute z-50 left-0 right-0 top-full mt-2 flex flex-col overflow-hidden border border-zinc-200 bg-white font-sans shadow-[0_16px_36px_-16px_rgba(0,0,0,0.24)]"
           style={{ minWidth: "280px" }}
         >
           {/* Search Header */}
@@ -238,10 +238,10 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
         id={id}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between gap-2 px-4 h-[52px] text-[15px] bg-zinc-50/70 hover:bg-zinc-50 border rounded-2xl transition-all text-left font-sans cursor-pointer outline-none ${
+        className={`flex h-12 w-full items-center justify-between gap-2 border bg-white px-4 text-left font-sans text-sm transition-colors outline-none cursor-pointer ${
           isOpen
-            ? "border-zinc-950 bg-white ring-4 ring-[#2563eb]/20 shadow-lg"
-            : "border-zinc-200 hover:border-zinc-400"
+            ? "border-zinc-950 ring-2 ring-[#c9a84c]/30"
+            : "border-zinc-300 hover:border-zinc-500"
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -262,7 +262,7 @@ export const IndustrySelectDropdown: React.FC<IndustrySelectProps> = ({
       {/* Sleek Floating Popover Menu */}
       {isOpen && (
         <div
-          className="absolute z-50 left-0 right-0 top-full mt-2 bg-white border border-zinc-200 rounded-2xl shadow-[0_24px_60px_-16px_rgba(0,0,0,0.3)] overflow-hidden font-sans flex flex-col"
+          className="absolute z-50 left-0 right-0 top-full mt-2 flex flex-col overflow-hidden border border-zinc-200 bg-white font-sans shadow-[0_16px_36px_-16px_rgba(0,0,0,0.24)]"
           style={{ minWidth: "290px" }}
         >
           <div className="px-3 py-2 bg-zinc-50/80 border-b border-zinc-100 flex items-center justify-between text-[11px] text-zinc-500">

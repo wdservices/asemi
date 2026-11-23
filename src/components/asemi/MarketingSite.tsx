@@ -125,14 +125,14 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
                   </span>
                 </div>
                 <span className="text-[10px] font-mono bg-[#f0f8f3] text-[#2e8b57] px-2 py-0.5 border border-[#c6e5d2]">
-                  LIVE SCAN
+                  SAMPLE RESULT
                 </span>
               </div>
 
               {/* Sample Product Packaging Visual */}
               <div className="p-4 bg-[#fafaf8] border border-[#f0ece4] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-[#78716c]">Authentic Serial</span>
+                  <span className="font-mono text-xs text-[#78716c]">Sample serial</span>
                   <strong className="font-mono text-xs text-[#1a1a1e] bg-white px-2 py-0.5 border border-[#e2ded5]">
                     ASM-9K4T-7X2P
                   </strong>
@@ -141,7 +141,7 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
                 <div className="bg-[#f0f8f3] border border-[#c6e5d2] p-4 text-[#144729]">
                   <div className="flex items-center gap-2 font-bold text-sm">
                     <CheckCircle2 className="w-4 h-4 text-[#2e8b57]" />
-                    <span>Genuine Product Verified</span>
+                    <span>Example: genuine product verified</span>
                   </div>
                   <div className="text-xs text-[#255e39] mt-1">
                     Organic Shea Butter 250ml • Dove Care Products Ltd
@@ -153,7 +153,7 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
                   className="w-full bg-[#1a1a1e] hover:bg-[#b8962e] text-white py-2.5 text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-2"
                 >
                   <QrCode className="w-3.5 h-3.5" />
-                  <span>Try Live Verifier Simulator</span>
+                  <span>Open the consumer verifier</span>
                 </button>
               </div>
             </div>
@@ -290,7 +290,7 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
               FAQ
             </Link>
             <Link to="/docs" className="hover:text-[#1a1a1e] underline">
-              Documentation
+              User guide
             </Link>
             <Link to="/terms" className="hover:text-[#1a1a1e] underline">
               Terms &amp; Conditions

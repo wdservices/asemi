@@ -150,15 +150,15 @@ function DashboardShell() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-[#f4f4f5] font-sans text-zinc-900">
       <div className="flex min-h-screen">
-        {/* Sidebar — simple white, blue active state */}
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
-          <div className="px-5 pb-2 pt-5">
-            <Logo />
+        {/* Sidebar — dark rail, gold active state */}
+        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-[#1a1a1e] lg:flex">
+          <div className="border-b border-white/10 px-5 py-5">
+            <Logo className="text-white" />
           </div>
           <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
               {isAdminRoute ? "Administration" : "Workspace"}
             </p>
             {isAdminRoute ? (
@@ -175,10 +175,10 @@ function DashboardShell() {
                       preload="intent"
                       title={hint}
                       className={cn(
-                        "flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        "flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                         active
-                          ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                          : "text-slate-600 hover:bg-blue-50 hover:text-blue-700",
+                          ? "bg-[#c9a84c] text-[#1a1a1e]"
+                          : "text-zinc-400 hover:bg-white/5 hover:text-white",
                       )}
                     >
                       <span className="flex min-w-0 items-center gap-3">
@@ -189,7 +189,7 @@ function DashboardShell() {
                         <span
                           className={cn(
                             "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                            active ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700",
+                            active ? "bg-[#1a1a1e]/15 text-[#1a1a1e]" : "bg-white/10 text-zinc-300",
                           )}
                         >
                           {badge}
@@ -211,10 +211,10 @@ function DashboardShell() {
                       preload="intent"
                       title={hint}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                         active
-                          ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                          : "text-slate-600 hover:bg-blue-50 hover:text-blue-700",
+                          ? "bg-[#c9a84c] text-[#1a1a1e]"
+                          : "text-zinc-400 hover:bg-white/5 hover:text-white",
                       )}
                     >
                       <Icon className="size-4 shrink-0" />
@@ -225,20 +225,20 @@ function DashboardShell() {
               </div>
             )}
           </nav>
-          <div className="border-t border-slate-100 p-3">
-            <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
+          <div className="border-t border-white/10 p-3">
+            <div className="flex items-center gap-2.5 rounded-lg bg-white/5 px-3 py-2.5">
               <Avatar className="size-8">
-                <AvatarFallback className="bg-blue-100 text-xs font-bold text-blue-700">
+                <AvatarFallback className="bg-[#c9a84c] text-xs font-bold text-[#1a1a1e]">
                   {session?.user.email?.[0]?.toUpperCase() ?? "A"}
                 </AvatarFallback>
               </Avatar>
-              <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
+              <p className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-300">
                 {session?.user.email ?? "Loading…"}
               </p>
             </div>
             <button
               onClick={signOut}
-              className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
             >
               <LogOut className="size-4" /> Sign out
             </button>
@@ -248,10 +248,10 @@ function DashboardShell() {
         {/* Main column */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top bar — clean white */}
-          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur md:px-8">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 md:px-8">
             <div className="flex items-center gap-3">
               <button
-                className="grid size-9 place-items-center rounded-xl hover:bg-slate-100 lg:hidden"
+                className="grid size-9 place-items-center rounded-lg hover:bg-zinc-100 lg:hidden"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open menu"
               >
@@ -262,11 +262,11 @@ function DashboardShell() {
               </span>
               {isAdminRoute ? (
                 <div className="hidden items-center gap-2 md:flex">
-                  <span className="text-sm font-semibold text-slate-900">Admin Console</span>
+                  <span className="text-sm font-semibold text-zinc-900">Admin Console</span>
                 </div>
               ) : company ? (
                 <div className="hidden items-center gap-2 md:flex">
-                  <span className="max-w-64 truncate text-sm font-semibold text-slate-900">
+                  <span className="max-w-64 truncate text-sm font-semibold text-zinc-900">
                     {company.name}
                   </span>
                   <CompanyPill status={company.status} />
@@ -289,7 +289,7 @@ function DashboardShell() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden border-blue-200 text-blue-700 hover:bg-blue-50 sm:inline-flex"
+                  className="hidden border-zinc-300 text-zinc-800 hover:bg-zinc-100 sm:inline-flex"
                   onClick={() => navigate({ to: "/batches" })}
                 >
                   <QrCode className="mr-1.5 size-4" /> New batch
@@ -299,7 +299,7 @@ function DashboardShell() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="size-9 rounded-full p-0">
                     <Avatar className="size-9">
-                      <AvatarFallback className="bg-blue-100 text-xs font-bold text-blue-700">
+                      <AvatarFallback className="bg-[#1a1a1e] text-xs font-bold text-white">
                         {session?.user.email?.[0]?.toUpperCase() ?? "A"}
                       </AvatarFallback>
                     </Avatar>
@@ -336,19 +336,19 @@ function DashboardShell() {
                 className="absolute inset-0 bg-slate-900/40"
                 onClick={() => setMobileOpen(false)}
               />
-              <aside className="absolute left-0 top-0 flex h-full w-72 flex-col overflow-y-auto bg-white p-5 shadow-xl">
+              <aside className="absolute left-0 top-0 flex h-full w-72 flex-col overflow-y-auto bg-[#1a1a1e] p-5 shadow-2xl">
                 <div className="flex items-center justify-between">
-                  <Logo />
+                  <Logo className="text-white" />
                   <button
                     onClick={() => setMobileOpen(false)}
-                    className="grid size-9 place-items-center rounded-xl hover:bg-slate-100"
+                    className="grid size-9 place-items-center rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white"
                     aria-label="Close menu"
                   >
                     <X className="size-4" />
                   </button>
                 </div>
                 <nav className="mt-6 flex flex-col gap-1">
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                     {isAdminRoute ? "Administration" : "Workspace"}
                   </p>
                   {isAdminRoute
@@ -364,8 +364,10 @@ function DashboardShell() {
                             preload="intent"
                             onClick={() => setMobileOpen(false)}
                             className={cn(
-                              "flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium",
-                              active ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-blue-50",
+                              "flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-medium",
+                              active
+                                ? "bg-[#c9a84c] text-[#1a1a1e]"
+                                : "text-zinc-400 hover:bg-white/5 hover:text-white",
                             )}
                           >
                             <span className="flex items-center gap-3">
@@ -375,7 +377,9 @@ function DashboardShell() {
                               <span
                                 className={cn(
                                   "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                                  active ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700",
+                                  active
+                                    ? "bg-[#1a1a1e]/15 text-[#1a1a1e]"
+                                    : "bg-white/10 text-zinc-300",
                                 )}
                               >
                                 {badge}
@@ -394,8 +398,10 @@ function DashboardShell() {
                             preload="intent"
                             onClick={() => setMobileOpen(false)}
                             className={cn(
-                              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                              active ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-blue-50",
+                              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+                              active
+                                ? "bg-[#c9a84c] text-[#1a1a1e]"
+                                : "text-zinc-400 hover:bg-white/5 hover:text-white",
                             )}
                           >
                             <Icon className="size-4" /> {label}
@@ -405,7 +411,7 @@ function DashboardShell() {
                 </nav>
                 <button
                   onClick={signOut}
-                  className="mt-auto flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100"
+                  className="mt-auto flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   <LogOut className="size-4" /> Sign out
                 </button>
@@ -415,7 +421,12 @@ function DashboardShell() {
 
           {/* Content */}
           <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
-            <div className="mx-auto max-w-6xl">
+            <div
+              className={cn(
+                "mx-auto w-full",
+                currentPath.startsWith("/batches") ? "max-w-[1680px]" : "max-w-6xl",
+              )}
+            >
               {sessionPending || (companyPending && !isAdminRoute) ? (
                 <div className="space-y-4">
                   <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-200" />
@@ -460,6 +471,17 @@ function DashboardShell() {
               )}
             </div>
           </main>
+          <footer className="border-t border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-500 md:px-8">
+            <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2">
+              <span>Asemi manufacturer workspace</span>
+              <Link
+                to="/docs"
+                className="font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-zinc-950"
+              >
+                User guide and feature help
+              </Link>
+            </div>
+          </footer>
         </div>
       </div>
     </div>
