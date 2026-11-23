@@ -1153,36 +1153,40 @@ function CodeBankTab() {
     queryKey: ["codes-bank", companyId, filterProduct, filterBatch, flaggedOnly],
     enabled: !!companyId,
     ...QUERY_OPTS,
-    queryFn: async (): Promise<CodeWithExtras[]> => {
-      const list = await listCodes(companyId!, {
+    queryFn: () =>
+      listCodes(companyId!, {
         productId: filterProduct === "all" ? undefined : filterProduct,
         batchId: filterBatch === "all" ? undefined : filterBatch,
         flaggedOnly: flaggedOnly || undefined,
         limitN: 200,
-      });
-      const productNames = new Map((products.data ?? []).map((p) => [p.id, p.name]));
-      const batchNumbers = new Map((batches.data ?? []).map((b) => [b.id, b.batchNumber]));
-      return list.map((c) => ({
-        ...c,
-        productName: productNames.get(c.productId) ?? "—",
-        batchNumber: batchNumbers.get(c.batchId) ?? "—",
-      }));
-    },
+      }),
   });
+
+  // Join names in render (not in the queryFn) so a late-arriving batches/products
+  // response still fills in the Product/Batch columns without a refetch.
+  const codesWithExtras = useMemo<CodeWithExtras[]>(() => {
+    const productNames = new Map((products.data ?? []).map((p) => [p.id, p.name]));
+    const batchNumbers = new Map((batches.data ?? []).map((b) => [b.id, b.batchNumber]));
+    return (codes.data ?? []).map((c) => ({
+      ...c,
+      productName: productNames.get(c.productId) ?? "—",
+      batchNumber: batchNumbers.get(c.batchId) ?? "—",
+    }));
+  }, [codes.data, products.data, batches.data]);
 
   const searchClean = search
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
   const visibleCodes = useMemo(() => {
-    if (!searchClean) return codes.data ?? [];
-    return (codes.data ?? []).filter((c) =>
+    if (!searchClean) return codesWithExtras;
+    return codesWithExtras.filter((c) =>
       c.codeString
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "")
         .includes(searchClean),
     );
-  }, [codes.data, searchClean]);
+  }, [codesWithExtras, searchClean]);
 
   const activeSelectedBatch = useMemo(() => {
     if (filterBatch === "all") return null;

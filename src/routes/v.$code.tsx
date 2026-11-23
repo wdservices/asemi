@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Logo } from "@/components/brand";
 import { normalizeCode } from "@/lib/auth";
-import { fnVerifyCode, submitReport, type VerifyResult } from "@/lib/db";
+import { fnVerifyCode, submitReport, verifyCodeLocally, type VerifyResult } from "@/lib/db";
 
 export const Route = createFileRoute("/v/$code")({
   head: ({ params }) => ({
@@ -54,11 +54,24 @@ function VerifyResult() {
           typeof window !== "undefined"
             ? `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
             : "browser_fp";
-        const res = await fnVerifyCode({
-          code,
-          browserToken: browserToken(),
-          deviceFingerprint: fp,
-        });
+        let res: VerifyResult;
+        try {
+          res = await fnVerifyCode({
+            code,
+            browserToken: browserToken(),
+            deviceFingerprint: fp,
+          });
+        } catch (fnErr) {
+          // Cloud Functions may not be deployed yet (or be temporarily
+          // unreachable). Codes are publicly readable, so verify directly
+          // against Firestore instead of failing the scan.
+          console.warn("Cloud verify unavailable — using Firestore fallback:", fnErr);
+          res = await verifyCodeLocally({
+            code,
+            browserToken: browserToken(),
+            deviceFingerprint: fp,
+          });
+        }
         if (cancelled) return;
 
         if (res.status === "invalid") {

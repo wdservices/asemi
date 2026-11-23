@@ -764,6 +764,117 @@ export const fnVerifyCode = (input: {
   deviceFingerprint?: string | null;
 }) => callFn<VerifyResult>("verifycode", input);
 
+/**
+ * Client-side verification fallback used when the `verifycode` Cloud Function
+ * is not deployed (or unreachable). Codes are publicly readable, and each code
+ * doc carries a snapshot of the product/company/batch display data so this can
+ * run for anonymous scanners without exposing the products/companies collections.
+ */
+export async function verifyCodeLocally(input: {
+  code: string;
+  browserToken?: string | null;
+  deviceFingerprint?: string | null;
+}): Promise<VerifyResult> {
+  const raw = (input.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!raw) return { status: "invalid" };
+
+  const db = requireDb();
+  let snap = await getDocs(
+    query(collection(db, "codes"), where("codeLookup", "==", raw), limit(1)),
+  );
+  if (snap.empty && raw.length === 12) {
+    const dashed = raw.replace(/(.{4})(?=.)/g, "$1-");
+    snap = await getDocs(
+      query(collection(db, "codes"), where("codeString", "==", dashed), limit(1)),
+    );
+  }
+  if (snap.empty) return { status: "invalid" };
+
+  const codeDoc = snap.docs[0]!;
+  const data = codeDoc.data() as Record<string, any>;
+  const scanCount = Number(data["scanCount"] || 0) + 1;
+
+  // Record the scan + bump the counter. Best-effort: a rules/quota failure must
+  // not stop the consumer from seeing a valid result.
+  try {
+    await addDoc(collection(db, "codes", codeDoc.id, "scans"), {
+      codeId: codeDoc.id,
+      codeString: String(data["codeString"] || ""),
+      companyId: String(data["companyId"] || ""),
+      productId: String(data["productId"] || ""),
+      batchId: data["batchId"] ? String(data["batchId"]) : null,
+      browserToken: input.browserToken ?? null,
+      city: null,
+      country: null,
+      deviceFingerprint: input.deviceFingerprint ?? null,
+      flagged: false,
+      scannedAt: serverTimestamp(),
+    });
+    await updateDoc(codeDoc.ref, { scanCount, lastScannedAt: serverTimestamp() });
+  } catch {
+    // ignore — verification result is still returned below
+  }
+
+  // Prefer live docs when the viewer is allowed to read them (brand owner);
+  // fall back to the snapshot written on the code doc (public scanners).
+  const [productSnap, companySnap, batchSnap] = await Promise.all([
+    data["productId"]
+      ? getDoc(doc(db, "products", String(data["productId"]))).catch(() => null)
+      : Promise.resolve(null),
+    data["companyId"]
+      ? getDoc(doc(db, "companies", String(data["companyId"]))).catch(() => null)
+      : Promise.resolve(null),
+    data["batchId"]
+      ? getDoc(doc(db, "batches", String(data["batchId"]))).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+  const product = productSnap?.exists() ? productSnap.data() : {};
+  const company = companySnap?.exists() ? companySnap.data() : {};
+  const batch = batchSnap?.exists() ? batchSnap.data() : {};
+  const images: string[] = Array.isArray(product["imageUrls"])
+    ? (product["imageUrls"] as string[])
+    : data["productImage"]
+      ? [String(data["productImage"])]
+      : [];
+
+  return {
+    status: scanCount >= 3 ? "genuine_repeated" : "genuine",
+    code: String(data["codeString"] || raw),
+    scan_count: scanCount,
+    product: {
+      name: product["name"] || data["productName"] || "Unlisted product",
+      category: product["category"] || data["productCategory"] || "",
+      description: product["description"] || data["productDescription"] || "",
+      image: images[0] || null,
+      images,
+      lotNumber: product["lotNumber"] ?? data["lotNumber"] ?? batch["lotNumber"] ?? null,
+      mfgDate: product["mfgDate"] ?? data["mfgDate"] ?? batch["mfgDate"] ?? null,
+      expiryDate: product["expiryDate"] ?? data["expiryDate"] ?? batch["expiryDate"] ?? null,
+      regulatoryNumber: product["regulatoryNumber"] ?? data["regulatoryNumber"] ?? null,
+      regulatoryDocName: product["regulatoryDocName"] ?? null,
+      regulatoryDocUrl: product["regulatoryDocUrl"] ?? null,
+      certificateOfAnalysisName: product["certificateOfAnalysisName"] ?? null,
+      certificateOfAnalysisUrl: product["certificateOfAnalysisUrl"] ?? null,
+      coaDocName: product["coaDocName"] ?? data["coaDocName"] ?? batch["coaDocName"] ?? null,
+      coaDocUrl: product["coaDocUrl"] ?? data["coaDocUrl"] ?? batch["coaDocUrl"] ?? null,
+    },
+    company: {
+      name: company["name"] || data["companyName"] || "Unverified manufacturer",
+      logo: company["logoUrl"] || null,
+    },
+    batch: {
+      number: batch["batchNumber"] || data["batchNumber"] || String(data["batchId"] || ""),
+      produced_at:
+        batch["createdAt"] instanceof Timestamp
+          ? batch["createdAt"].toDate().toISOString()
+          : data["producedAt"] instanceof Timestamp
+            ? data["producedAt"].toDate().toISOString()
+            : (data["producedAt"] ?? null),
+      lotNumber: batch["lotNumber"] ?? data["lotNumber"] ?? product["lotNumber"] ?? null,
+    },
+  };
+}
+
 export const fnAdminApproveCompany = (companyId: string, note?: string | null) =>
   callFn("adminapprovecompany", { companyId, note: note ?? null });
 export const fnAdminRejectCompany = (companyId: string, note?: string | null) =>

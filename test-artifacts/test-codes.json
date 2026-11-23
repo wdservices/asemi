@@ -1,0 +1,36 @@
+{
+  "companyId": "WxCMr1ulUAOToYZVMe7WdWQR3PZ2",
+  "companyName": "Asemi Demo Brand",
+  "productId": "Mn6mWYt0Uibfr09Y2zrU",
+  "productName": "Sample Product",
+  "batchId": "testbatch_1795395278828",
+  "batchNumber": "AS-2611-001",
+  "codes": [
+    {
+      "id": "testcode_1795395279154_0",
+      "codeString": "ASM-B5WG-JX4J9Y",
+      "codeLookup": "ASMB5WGJX4J9Y"
+    },
+    {
+      "id": "testcode_1795395279677_1",
+      "codeString": "ASM-8GXZ-Q8SJLD",
+      "codeLookup": "ASM8GXZQ8SJLD"
+    },
+    {
+      "id": "testcode_1795395280015_2",
+      "codeString": "ASM-KG5G-6PAYHQ",
+      "codeLookup": "ASMKG5G6PAYHQ"
+    },
+    {
+      "id": "testcode_1795395280508_3",
+      "codeString": "ASM-674P-UV2AXS",
+      "codeLookup": "ASM674PUV2AXS"
+    },
+    {
+      "id": "testcode_1795395280840_4",
+      "codeString": "ASM-7KFE-W4DQWK",
+      "codeLookup": "ASM7KFEW4DQWK"
+    }
+  ],
+  "createdAt": "2026-11-23T00:54:37.938Z"
+}
