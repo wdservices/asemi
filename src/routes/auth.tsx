@@ -65,13 +65,9 @@ function AuthPage() {
         {/* Unified Authentication Card (Same UI for Login and Register) */}
         <AuthCard
           initialMode={initialMode}
-          onSuccess={(role) => {
+          onSuccess={() => {
             // Replace history so back-button doesn't return to login (feels instant).
-            if (role === "ADMIN") {
-              navigate({ to: "/admin", replace: true });
-            } else {
-              navigate({ to: "/dashboard", replace: true });
-            }
+            navigate({ to: "/dashboard", replace: true });
           }}
           isModal={false}
         />

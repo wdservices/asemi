@@ -20,14 +20,24 @@ import {
   Receipt,
   QrCode,
   Gift,
+  ShieldCheck,
+  Building2,
+  Flag,
+  Inbox,
+  ScanSearch,
 } from "lucide-react";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand";
 import { useIsAdmin, useMyCompany, useSession, useSignOut } from "@/lib/auth";
 import { CountrySelectDropdown } from "@/components/asemi/AuthDropdowns";
-import { createCompany, uploadCompanyDoc, uploadProductImage } from "@/lib/db";
+import {
+  createCompany,
+  listCompaniesByStatus,
+  uploadCompanyDoc,
+  uploadProductImage,
+} from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -88,6 +98,21 @@ function DashboardShell() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const isProfileRoute = currentPath === "/profile" || currentPath.startsWith("/profile");
+  const isAdminRoute = currentPath === "/admin" || currentPath.startsWith("/admin/");
+
+  const pendingApprovals = useQuery({
+    queryKey: ["admin-approvals-count"],
+    enabled: !!isAdmin && isAdminRoute,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const rows = await listCompaniesByStatus(["pending", "needs_info"]);
+      return rows.length;
+    },
+  });
+
   const needsOnboarding =
     !companyPending && !companyError && (!company || company.status === undefined);
   const showPending =
@@ -95,9 +120,6 @@ function DashboardShell() {
     (company.status === "pending" ||
       company.status === "needs_info" ||
       company.status === "rejected");
-  const location = useLocation();
-  const currentPath = location.pathname;
-  const isProfileRoute = currentPath === "/profile" || currentPath.startsWith("/profile");
 
   const companyNav = [
     { label: "Overview", to: "/dashboard", icon: LayoutDashboard, hint: "Stats & activity" },
@@ -106,6 +128,25 @@ function DashboardShell() {
     { label: "Analytics", to: "/analytics", icon: BarChart3, hint: "Scans & flags" },
     { label: "Billing", to: "/billing", icon: Receipt, hint: "Pricing & invoices" },
     { label: "Profile", to: "/profile", icon: UserCircle2, hint: "Company settings" },
+  ];
+
+  const adminNav = [
+    {
+      label: "Approvals",
+      to: "/admin",
+      icon: ShieldCheck,
+      hint: "Pending company approvals",
+      badge: pendingApprovals.data ?? 0,
+    },
+    { label: "Companies", to: "/admin/companies", icon: Building2, hint: "All registered brands" },
+    {
+      label: "Product Units",
+      to: "/admin/units",
+      icon: ScanSearch,
+      hint: "Search units by SKU or code",
+    },
+    { label: "Fraud Review", to: "/admin/fraud", icon: Flag, hint: "Flagged scans & anomalies" },
+    { label: "Reports Inbox", to: "/admin/reports", icon: Inbox, hint: "Consumer reports" },
   ];
 
   return (
@@ -118,31 +159,71 @@ function DashboardShell() {
           </div>
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-              Workspace
+              {isAdminRoute ? "Administration" : "Workspace"}
             </p>
-            <div className="space-y-1">
-              {companyNav.map(({ label, to, icon: Icon, hint }) => {
-                const active =
-                  currentPath === to || (to !== "/dashboard" && currentPath.startsWith(to));
-                return (
-                  <Link
-                    key={to}
-                    to={to}
-                    preload="intent"
-                    title={hint}
-                    className={cn(
-                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                        : "text-slate-600 hover:bg-blue-50 hover:text-blue-700",
-                    )}
-                  >
-                    <Icon className="size-4 shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            {isAdminRoute ? (
+              <div className="space-y-1">
+                {adminNav.map(({ label, to, icon: Icon, hint, badge }) => {
+                  const active =
+                    to === "/admin"
+                      ? currentPath === "/admin"
+                      : currentPath === to || currentPath.startsWith(`${to}/`);
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      preload="intent"
+                      title={hint}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+                          : "text-slate-600 hover:bg-blue-50 hover:text-blue-700",
+                      )}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <Icon className="size-4 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </span>
+                      {typeof badge === "number" && badge > 0 && (
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                            active ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700",
+                          )}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {companyNav.map(({ label, to, icon: Icon, hint }) => {
+                  const active =
+                    currentPath === to || (to !== "/dashboard" && currentPath.startsWith(to));
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      preload="intent"
+                      title={hint}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+                          : "text-slate-600 hover:bg-blue-50 hover:text-blue-700",
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </nav>
           <div className="border-t border-slate-100 p-3">
             <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
@@ -179,7 +260,11 @@ function DashboardShell() {
               <span className="lg:hidden">
                 <Logo compact />
               </span>
-              {company ? (
+              {isAdminRoute ? (
+                <div className="hidden items-center gap-2 md:flex">
+                  <span className="text-sm font-semibold text-slate-900">Admin Console</span>
+                </div>
+              ) : company ? (
                 <div className="hidden items-center gap-2 md:flex">
                   <span className="max-w-64 truncate text-sm font-semibold text-slate-900">
                     {company.name}
@@ -200,14 +285,16 @@ function DashboardShell() {
               ) : null}
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden border-blue-200 text-blue-700 hover:bg-blue-50 sm:inline-flex"
-                onClick={() => navigate({ to: "/batches" })}
-              >
-                <QrCode className="mr-1.5 size-4" /> New batch
-              </Button>
+              {!isAdminRoute && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden border-blue-200 text-blue-700 hover:bg-blue-50 sm:inline-flex"
+                  onClick={() => navigate({ to: "/batches" })}
+                >
+                  <QrCode className="mr-1.5 size-4" /> New batch
+                </Button>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="size-9 rounded-full p-0">
@@ -223,13 +310,17 @@ function DashboardShell() {
                     <p className="truncate text-sm font-medium text-slate-900">
                       {session?.user.email}
                     </p>
-                    {isAdmin && <p className="text-xs text-slate-500">Platform admin</p>}
+                    {isAdminRoute && <p className="text-xs text-slate-500">Platform admin</p>}
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
-                    <Settings className="mr-2 size-4" /> Company profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {!isAdminRoute && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
+                        <Settings className="mr-2 size-4" /> Company profile
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="mr-2 size-4" /> Sign out
                   </DropdownMenuItem>
@@ -241,8 +332,11 @@ function DashboardShell() {
           {/* Mobile drawer */}
           {mobileOpen && (
             <div className="fixed inset-0 z-50 lg:hidden">
-              <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMobileOpen(false)} />
-              <aside className="absolute left-0 top-0 flex h-full w-72 flex-col bg-white p-5 shadow-xl">
+              <div
+                className="absolute inset-0 bg-slate-900/40"
+                onClick={() => setMobileOpen(false)}
+              />
+              <aside className="absolute left-0 top-0 flex h-full w-72 flex-col overflow-y-auto bg-white p-5 shadow-xl">
                 <div className="flex items-center justify-between">
                   <Logo />
                   <button
@@ -254,25 +348,60 @@ function DashboardShell() {
                   </button>
                 </div>
                 <nav className="mt-6 flex flex-col gap-1">
-                  {companyNav.map(({ label, to, icon: Icon }) => {
-                    const active = currentPath === to;
-                    return (
-                      <Link
-                        key={to}
-                        to={to}
-                        preload="intent"
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
-                          active
-                            ? "bg-blue-600 text-white"
-                            : "text-slate-700 hover:bg-blue-50",
-                        )}
-                      >
-                        <Icon className="size-4" /> {label}
-                      </Link>
-                    );
-                  })}
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    {isAdminRoute ? "Administration" : "Workspace"}
+                  </p>
+                  {isAdminRoute
+                    ? adminNav.map(({ label, to, icon: Icon, badge }) => {
+                        const active =
+                          to === "/admin"
+                            ? currentPath === "/admin"
+                            : currentPath === to || currentPath.startsWith(`${to}/`);
+                        return (
+                          <Link
+                            key={to}
+                            to={to}
+                            preload="intent"
+                            onClick={() => setMobileOpen(false)}
+                            className={cn(
+                              "flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium",
+                              active ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-blue-50",
+                            )}
+                          >
+                            <span className="flex items-center gap-3">
+                              <Icon className="size-4" /> {label}
+                            </span>
+                            {typeof badge === "number" && badge > 0 && (
+                              <span
+                                className={cn(
+                                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                                  active ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700",
+                                )}
+                              >
+                                {badge}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })
+                    : companyNav.map(({ label, to, icon: Icon }) => {
+                        const active =
+                          currentPath === to || (to !== "/dashboard" && currentPath.startsWith(to));
+                        return (
+                          <Link
+                            key={to}
+                            to={to}
+                            preload="intent"
+                            onClick={() => setMobileOpen(false)}
+                            className={cn(
+                              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+                              active ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-blue-50",
+                            )}
+                          >
+                            <Icon className="size-4" /> {label}
+                          </Link>
+                        );
+                      })}
                 </nav>
                 <button
                   onClick={signOut}
@@ -287,7 +416,7 @@ function DashboardShell() {
           {/* Content */}
           <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto max-w-6xl">
-              {sessionPending || companyPending ? (
+              {sessionPending || (companyPending && !isAdminRoute) ? (
                 <div className="space-y-4">
                   <div className="h-8 w-48 animate-pulse rounded-lg bg-slate-200" />
                   <div className="grid gap-4 md:grid-cols-4">
@@ -307,6 +436,8 @@ function DashboardShell() {
                     <Button className="bg-blue-600 hover:bg-blue-700">Go to sign in</Button>
                   </Link>
                 </div>
+              ) : isAdminRoute ? (
+                <Outlet />
               ) : companyError ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
                   <p className="font-sans text-lg font-bold">Couldn't load your company</p>

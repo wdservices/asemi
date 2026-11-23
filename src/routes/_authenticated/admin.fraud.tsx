@@ -52,6 +52,7 @@ export const Route = createFileRoute("/_authenticated/admin/fraud")({
 type FlaggedCode = Code & {
   companyName: string;
   productName: string;
+  productSku: string;
   batchNumber: string;
   scans: Array<{ city: string | null; country: string | null }>;
 };
@@ -67,6 +68,9 @@ const REVIEW_FILTERS: Array<{ key: string; label: string }> = [
 function AdminFraud() {
   const isAdmin = useIsAdmin();
 
+  if (isAdmin.isPending) {
+    return <div className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />;
+  }
   if (!isAdmin.data) {
     return <NotAuthorizedCard />;
   }
@@ -126,6 +130,8 @@ function FraudContent() {
             ...c,
             companyName: names.companies.get(c.companyId) ?? "—",
             productName: names.products.get(c.productId) ?? "—",
+            productSku:
+              c.sku || names.batchSkus.get(c.batchId) || names.productSkus.get(c.productId) || "",
             batchNumber: names.batches.get(c.batchId) ?? "—",
             scans: scans.map((s) => ({ city: s.city, country: s.country })),
           };
@@ -163,6 +169,7 @@ function FraudContent() {
       if (!q) return true;
       return (
         c.codeString.toLowerCase().includes(q) ||
+        c.productSku.toLowerCase().includes(q) ||
         c.companyName.toLowerCase().includes(q) ||
         c.productName.toLowerCase().includes(q) ||
         c.batchNumber.toLowerCase().includes(q)
@@ -209,6 +216,7 @@ function FraudContent() {
     if (!rows.length) return;
     const headers = [
       "Code",
+      "SKU",
       "Company",
       "Product",
       "Batch",
@@ -225,6 +233,7 @@ function FraudContent() {
       lines.push(
         [
           r.codeString,
+          `"${(r.productSku ?? "").replace(/"/g, '""')}"`,
           `"${r.companyName.replace(/"/g, '""')}"`,
           `"${r.productName.replace(/"/g, '""')}"`,
           r.batchNumber ?? "",
@@ -349,7 +358,7 @@ function FraudContent() {
           <div className="relative flex-1 min-w-[240px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search code, company, product, or batch…"
+              placeholder="Search code, SKU, company, product, or batch…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -408,6 +417,7 @@ function FraudContent() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="px-3">Code</TableHead>
+                  <TableHead className="px-3">SKU</TableHead>
                   <TableHead className="px-3">Company</TableHead>
                   <TableHead className="px-3">Product</TableHead>
                   <TableHead className="px-3">Batch</TableHead>
@@ -432,6 +442,9 @@ function FraudContent() {
                             </span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="px-3 font-mono text-xs text-slate-700">
+                        {c.productSku || "—"}
                       </TableCell>
                       <TableCell className="px-3 text-sm">{c.companyName ?? "—"}</TableCell>
                       <TableCell className="px-3 text-sm">{c.productName ?? "—"}</TableCell>

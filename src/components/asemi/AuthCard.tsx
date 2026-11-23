@@ -124,12 +124,10 @@ export const AuthCard: React.FC<AuthCardProps> = ({
     return err instanceof Error ? err.message : "Authentication failed. Please try again.";
   }
 
-  async function resolveRole(
-    uid: string,
-    email?: string | null,
-  ): Promise<"ADMIN" | "COMPANY_USER"> {
-    if (email && email.toLowerCase() === "spellz49@gmail.com") return "ADMIN";
+  async function resolveRole(uid: string): Promise<"ADMIN" | "COMPANY_USER"> {
     try {
+      const companySnap = await getDoc(doc(requireDb(), "companies", uid));
+      if (companySnap.exists()) return "COMPANY_USER";
       const snap = await getDoc(doc(requireDb(), "roles", uid));
       return snap.exists() && snap.data()?.["role"] === "admin" ? "ADMIN" : "COMPANY_USER";
     } catch {
@@ -137,7 +135,7 @@ export const AuthCard: React.FC<AuthCardProps> = ({
     }
   }
 
-  // Unified Sign In Handler — real Firebase Auth, role from roles/{uid}.
+  // Unified Sign In Handler — real Firebase Auth.
   const handleUnifiedLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -156,12 +154,8 @@ export const AuthCard: React.FC<AuthCardProps> = ({
 
     try {
       const cred = await signInWithEmailAndPassword(requireAuth(), input, loginPassword);
-      const role = await resolveRole(cred.user.uid, cred.user.email);
-      setSuccessMessage(
-        role === "ADMIN"
-          ? "Admin clearance authenticated. Redirecting to regulatory console…"
-          : "Signed in. Redirecting to dashboard…",
-      );
+      const role = await resolveRole(cred.user.uid);
+      setSuccessMessage("Signed in. Redirecting to dashboard…");
       if (onSuccess) onSuccess(role);
     } catch (err) {
       console.error(err);

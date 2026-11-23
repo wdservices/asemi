@@ -12,15 +12,7 @@ import {
 import { EmptyState, PageHeader, StatCard } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  PackagePlus,
-  QrCode,
-  TrendingUp,
-  Flag,
-  Package,
-  ArrowRight,
-  Gift,
-} from "lucide-react";
+import { PackagePlus, QrCode, TrendingUp, Flag, Package, ArrowRight, Gift } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -128,10 +120,7 @@ function DashboardOverview() {
     queryFn: async () => {
       let scans: Awaited<ReturnType<typeof listCompanyScans>> = [];
       try {
-        scans = await listCompanyScans(
-          companyId!,
-          new Date(Date.now() - 30 * 864e5).toISOString(),
-        );
+        scans = await listCompanyScans(companyId!, new Date(Date.now() - 30 * 864e5).toISOString());
       } catch {
         scans = [];
       }
@@ -203,10 +192,7 @@ function DashboardOverview() {
           <p className="mx-auto mt-1 max-w-xl text-xs text-slate-400">
             Check your connection and Firestore permissions, then retry.
           </p>
-          <Button
-            className="mt-4 bg-blue-600 hover:bg-blue-700"
-            onClick={() => refetchCompany()}
-          >
+          <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => refetchCompany()}>
             Retry
           </Button>
         </div>
@@ -314,7 +300,11 @@ function DashboardOverview() {
         description={`Here's what's happening at ${company?.name ?? "your brand"} — last 30 days.`}
         action={
           <div className="flex gap-2">
-            <Button asChild variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+            <Button
+              asChild
+              variant="outline"
+              className="border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
               <Link to="/batches">
                 <QrCode className="mr-2 size-4" /> New batch
               </Link>
@@ -380,7 +370,12 @@ function DashboardOverview() {
           <p className="text-red-900">
             <strong>{s.flagged.toLocaleString()}</strong> suspicious scans need review.
           </p>
-          <Button variant="ghost" size="sm" asChild className="ml-auto text-red-700 hover:bg-red-100">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="ml-auto text-red-700 hover:bg-red-100"
+          >
             <Link to="/analytics">
               Review <ArrowRight className="ml-1 size-3.5" />
             </Link>

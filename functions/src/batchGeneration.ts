@@ -30,8 +30,19 @@ export async function runCodeGeneration(batchId: string): Promise<void> {
   }
   if (batch.status === "ready") return;
 
+  let resolvedSku = String(batch.sku || "").trim();
+  if (!resolvedSku && productId) {
+    const pSnap = await db.collection("products").doc(productId).get();
+    if (pSnap.exists) resolvedSku = String(pSnap.data()?.sku || "").trim();
+  }
+  const resolvedSkuLookup = resolvedSku.toUpperCase();
+
   try {
-    const existing = await db.collection("codes").where("batchId", "==", batchId).select("codeString").get();
+    const existing = await db
+      .collection("codes")
+      .where("batchId", "==", batchId)
+      .select("codeString")
+      .get();
     const seen = new Set(existing.docs.map((d) => String(d.data().codeString)));
     let created = seen.size;
 
@@ -47,6 +58,8 @@ export async function runCodeGeneration(batchId: string): Promise<void> {
           batchId,
           productId,
           companyId,
+          sku: resolvedSku,
+          skuLookup: resolvedSkuLookup,
           codeString: s,
           codeLookup: s.replace(/[^A-Z0-9]/gi, "").toUpperCase(),
           scanCount: 0,

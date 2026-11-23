@@ -37,7 +37,8 @@ const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     grant_type: "refresh_token",
   }),
 });
-if (!tokenRes.ok) throw new Error(`token refresh failed: ${tokenRes.status} ${await tokenRes.text()}`);
+if (!tokenRes.ok)
+  throw new Error(`token refresh failed: ${tokenRes.status} ${await tokenRes.text()}`);
 const { access_token: accessToken } = await tokenRes.json();
 const headers = { authorization: `Bearer ${accessToken}`, "content-type": "application/json" };
 
@@ -64,7 +65,8 @@ async function runQuery(collectionId, fieldPath, value) {
       },
     }),
   });
-  if (!res.ok) throw new Error(`runQuery ${collectionId} failed: ${res.status} ${await res.text()}`);
+  if (!res.ok)
+    throw new Error(`runQuery ${collectionId} failed: ${res.status} ${await res.text()}`);
   const rows = await res.json();
   return rows.filter((r) => r.document).map((r) => r.document);
 }
@@ -75,7 +77,8 @@ async function createDoc(collectionId, docId, fields) {
     headers,
     body: JSON.stringify({ fields }),
   });
-  if (!res.ok) throw new Error(`create ${collectionId}/${docId}: ${res.status} ${await res.text()}`);
+  if (!res.ok)
+    throw new Error(`create ${collectionId}/${docId}: ${res.status} ${await res.text()}`);
   return res.json();
 }
 
@@ -93,7 +96,8 @@ async function patchDoc(docPath, fields) {
 }
 
 const str = (doc, key) => doc.fields?.[key]?.stringValue;
-const num = (doc, key) => Number(doc.fields?.[key]?.integerValue ?? doc.fields?.[key]?.doubleValue ?? 0);
+const num = (doc, key) =>
+  Number(doc.fields?.[key]?.integerValue ?? doc.fields?.[key]?.doubleValue ?? 0);
 
 // ---------------------------------------------------------------------------
 // Code string generator (mirrors functions/src/codes.ts)

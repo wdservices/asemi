@@ -170,10 +170,14 @@ export const CATEGORIES = [
 ];
 
 export function normalizeCode(input: string) {
-  const raw = input
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 12);
+  const clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (clean.startsWith("ASM")) {
+    const rest = clean.slice(3, 13);
+    if (!rest) return "ASM";
+    if (rest.length <= 4) return `ASM-${rest}`;
+    return `ASM-${rest.slice(0, 4)}-${rest.slice(4)}`;
+  }
+  const raw = clean.slice(0, 12);
   return raw.replace(/(.{4})(?=.)/g, "$1-");
 }
 

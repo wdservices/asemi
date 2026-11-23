@@ -103,6 +103,10 @@
           "type": "string",
           "description": "Stock keeping unit"
         },
+        "skuLookup": {
+          "type": "string",
+          "description": "Normalized uppercase SKU for indexed search"
+        },
         "category": {
           "type": "string",
           "description": "Product category"
@@ -114,6 +118,35 @@
         "imageUrls": {
           "type": "array",
           "description": "Gallery image URLs"
+        },
+        "lotNumber": {
+          "type": "string",
+          "description": "Default lot number"
+        },
+        "mfgDate": {
+          "type": "string",
+          "description": "Default manufacturing date (YYYY-MM-DD)"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Default expiry date (YYYY-MM-DD)"
+        },
+        "regulatoryNumber": {
+          "type": "string",
+          "description": "Regulatory approval or compliance identifier"
+        },
+        "recalled": {
+          "type": "boolean",
+          "description": "Whether the product has an active recall alert"
+        },
+        "recallReason": {
+          "type": "string",
+          "description": "Consumer-facing recall advisory notice"
+        },
+        "recalledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when product recall was activated"
         },
         "createdAt": {
           "type": "string",
@@ -140,6 +173,14 @@
           "type": "string",
           "description": "Snapshot of product name"
         },
+        "sku": {
+          "type": "string",
+          "description": "Batch or product SKU"
+        },
+        "skuLookup": {
+          "type": "string",
+          "description": "Normalized uppercase SKU for indexed search"
+        },
         "batchNumber": {
           "type": "string",
           "description": "Human readable batch number"
@@ -158,7 +199,32 @@
         },
         "status": {
           "type": "string",
-          "description": "Batch generation status (generating, ready, exported, failed)"
+          "description": "Batch generation status (awaiting_payment, generating, ready, exported, failed)"
+        },
+        "lotNumber": {
+          "type": "string",
+          "description": "Production lot identifier"
+        },
+        "mfgDate": {
+          "type": "string",
+          "description": "Batch manufacture date (YYYY-MM-DD)"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Batch expiry date (YYYY-MM-DD)"
+        },
+        "recalled": {
+          "type": "boolean",
+          "description": "Whether this batch is currently recalled"
+        },
+        "recallReason": {
+          "type": "string",
+          "description": "Consumer-facing recall advisory notice"
+        },
+        "recalledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when batch recall was activated"
         },
         "createdAt": {
           "type": "string",
@@ -166,7 +232,99 @@
           "description": "Timestamp created"
         }
       },
-      "required": ["companyId", "productId", "batchNumber", "quantity", "status"]
+      "required": ["companyId", "productId", "quantity", "status"]
+    },
+    "PublicBatchStatus": {
+      "title": "PublicBatchStatus",
+      "description": "Publicly readable provenance and recall state for a batch (zero PII/financial fields)",
+      "type": "object",
+      "properties": {
+        "batchId": {
+          "type": "string",
+          "description": "Associated batch ID"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Owning company UID"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Associated product ID"
+        },
+        "sku": {
+          "type": "string",
+          "description": "Batch or product SKU"
+        },
+        "lotNumber": {
+          "type": "string",
+          "description": "Lot identifier"
+        },
+        "mfgDate": {
+          "type": "string",
+          "description": "Manufacture date"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Expiry date"
+        },
+        "recalled": {
+          "type": "boolean",
+          "description": "Active recall flag"
+        },
+        "recallReason": {
+          "type": "string",
+          "description": "Consumer-facing recall notice"
+        },
+        "recalledAt": {
+          "type": "string",
+          "description": "ISO timestamp of recall"
+        }
+      },
+      "required": ["batchId", "companyId", "recalled"]
+    },
+    "PublicProductStatus": {
+      "title": "PublicProductStatus",
+      "description": "Publicly readable SKU, provenance, and recall state for a product (zero PII)",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "Associated product ID"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Owning company UID"
+        },
+        "sku": {
+          "type": "string",
+          "description": "Product SKU"
+        },
+        "lotNumber": {
+          "type": "string",
+          "description": "Default lot identifier"
+        },
+        "mfgDate": {
+          "type": "string",
+          "description": "Default manufacture date"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Default expiry date"
+        },
+        "recalled": {
+          "type": "boolean",
+          "description": "Active product-wide recall flag"
+        },
+        "recallReason": {
+          "type": "string",
+          "description": "Consumer-facing recall notice"
+        },
+        "recalledAt": {
+          "type": "string",
+          "description": "ISO timestamp of recall"
+        }
+      },
+      "required": ["productId", "companyId", "recalled"]
     },
     "Code": {
       "title": "Code",
@@ -189,6 +347,14 @@
           "type": "string",
           "description": "Formatted anti-counterfeit code"
         },
+        "sku": {
+          "type": "string",
+          "description": "Associated unit SKU"
+        },
+        "skuLookup": {
+          "type": "string",
+          "description": "Normalized uppercase SKU for indexed unit lookup"
+        },
         "scanCount": {
           "type": "number",
           "description": "Verification scan count"
@@ -196,6 +362,10 @@
         "flagged": {
           "type": "boolean",
           "description": "Fraud flag status"
+        },
+        "reviewStatus": {
+          "type": "string",
+          "description": "Moderation status (none, open, reviewed, escalated)"
         },
         "createdAt": {
           "type": "string",
@@ -233,6 +403,43 @@
         }
       },
       "required": ["codeId", "codeString", "companyId", "productId"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Consumer counterfeit or suspicious item report",
+      "type": "object",
+      "properties": {
+        "codeId": {
+          "type": "string",
+          "description": "Code ID if matched"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Company UID if matched"
+        },
+        "codeString": {
+          "type": "string",
+          "description": "Reported code string"
+        },
+        "contact": {
+          "type": "string",
+          "description": "Optional consumer contact"
+        },
+        "message": {
+          "type": "string",
+          "description": "Report description"
+        },
+        "reviewed": {
+          "type": "boolean",
+          "description": "Whether admin has triaged this report"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp created"
+        }
+      },
+      "required": ["codeString", "message"]
     }
   },
   "firestore": {
@@ -252,6 +459,14 @@
       "schema": "Batch",
       "description": "Production batches for serialization"
     },
+    "/batchStatus/{batchId}": {
+      "schema": "PublicBatchStatus",
+      "description": "Publicly readable batch recall and expiry provenance"
+    },
+    "/productStatus/{productId}": {
+      "schema": "PublicProductStatus",
+      "description": "Publicly readable product recall and SKU provenance"
+    },
     "/codes/{codeId}": {
       "schema": "Code",
       "description": "Individual serialized item tags"
@@ -259,6 +474,10 @@
     "/codes/{codeId}/scans/{scanId}": {
       "schema": "Scan",
       "description": "Verification scan audit trail"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Consumer counterfeit reports"
     }
   }
 }

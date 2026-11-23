@@ -8,8 +8,7 @@ export const Route = createFileRoute("/docs")({
       { title: "Documentation — Asemi" },
       {
         name: "description",
-        content:
-          "Product documentation for the Asemi product authentication platform.",
+        content: "Product documentation for the Asemi product authentication platform.",
       },
     ],
   }),
@@ -42,26 +41,32 @@ function DocsPage() {
           {/* Getting Started */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="w-5 h-5 text-[#c9a84c]" />
+              <ShieldCheck className="w-5 h-5 text-[#2563eb]" />
               <h2 className="text-xl font-bold text-[#1a1a1e]">Getting Started</h2>
             </div>
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
               <p>
-                <strong className="text-[#1a1a1e]">Step 1: Register your brand.</strong>{" "}
-                Visit <Link to="/auth" search={{ mode: "register" }} className="underline text-[#b8962e] font-medium">the registration page</Link>{" "}
-                and provide your company name, operating country, industry category, and an authorized
-                work email. Business registration documents and tax IDs are optional.
+                <strong className="text-[#1a1a1e]">Step 1: Register your brand.</strong> Visit{" "}
+                <Link
+                  to="/auth"
+                  search={{ mode: "register" }}
+                  className="underline text-[#1d4ed8] font-medium"
+                >
+                  the registration page
+                </Link>{" "}
+                and provide your company name, operating country, industry category, and an
+                authorized work email. Business registration documents are optional during signup.
               </p>
               <p>
-                <strong className="text-[#1a1a1e]">Step 2: Account verification.</strong>{" "}
-                After registration, your account enters a pending review state. Our team verifies your
-                business details within 1-2 business days. During this time, you have access to 20
-                free verification codes.
+                <strong className="text-[#1a1a1e]">Step 2: Account verification.</strong> After
+                registration, your account enters a pending review state. Our compliance team
+                reviews your details within 1–2 business days. On approval you receive 20
+                complimentary verification codes.
               </p>
               <p>
-                <strong className="text-[#1a1a1e]">Step 3: Access your dashboard.</strong>{" "}
-                Once approved, log in to access your manufacturer dashboard where you can list
-                products, generate code batches, manage your code bank, and view analytics.
+                <strong className="text-[#1a1a1e]">Step 3: Access your dashboard.</strong> Once
+                approved, log in to manage your product catalogue, issue serialized code batches,
+                download 28×32mm print stickers, and monitor scan activity.
               </p>
             </div>
           </section>
@@ -69,25 +74,27 @@ function DocsPage() {
           {/* Verification Codes */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <QrCode className="w-5 h-5 text-[#c9a84c]" />
-              <h2 className="text-xl font-bold text-[#1a1a1e]">Verification Codes</h2>
+              <QrCode className="w-5 h-5 text-[#2563eb]" />
+              <h2 className="text-xl font-bold text-[#1a1a1e]">
+                Serialized Codes &amp; Provenance
+              </h2>
             </div>
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
               <p>
-                Each verification code is a unique 10-12 character cryptographic identifier. Codes
-                are generated as QR labels with a text fallback for manual entry. Every code you
-                generate is permanently stored in your Code Bank and can be re-exported or reprinted
-                at no additional cost.
+                Every physical unit receives its own unique cryptographic code (formatted{" "}
+                <span className="font-mono text-xs">ASM-XXXX-XXXXXX</span>) rendered on a
+                print-ready 28×32mm sticker with QR code and text fallback. All codes remain stored
+                permanently in your Code Bank for re-export as ZIP or print sheets.
               </p>
               <p>
-                Codes are generated in batches linked to a specific product. When generating a batch,
-                you specify the product, quantity, lot number, and manufacturing/expiry dates for
-                full traceability.
+                When issuing a batch, you can record lot numbers, manufacture dates, and expiry
+                dates alongside your product SKU for full unit-level traceability. Brands can also
+                issue or lift instant product-wide or batch-specific recalls at any time.
               </p>
               <p>
-                <strong className="text-[#1a1a1e]">Pricing:</strong> Progressive volume-based pricing
-                applies automatically. The first 20 codes are free. Rates decrease as your lifetime
-                code volume increases across defined pricing tiers.
+                <strong className="text-[#1a1a1e]">Pricing:</strong> Progressive volume-based
+                pricing applies automatically in your regional currency. Your first 20 codes are
+                free.
               </p>
             </div>
           </section>
@@ -95,24 +102,26 @@ function DocsPage() {
           {/* Consumer Verification */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <Package className="w-5 h-5 text-[#c9a84c]" />
+              <Package className="w-5 h-5 text-[#2563eb]" />
               <h2 className="text-xl font-bold text-[#1a1a1e]">Consumer Verification</h2>
             </div>
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 space-y-4 text-sm leading-relaxed text-[#45454f]">
               <p>
-                Consumers verify product authenticity by scanning the QR code on the product
-                packaging with their smartphone camera, or by manually entering the verification
-                code at <strong className="text-[#1a1a1e]">your-brand.com/v/CODE</strong>.
+                Consumers verify authenticity by scanning the packaging QR code with their
+                smartphone camera, opening our built-in browser camera scanner on{" "}
+                <Link to="/verify" className="underline text-[#1d4ed8] font-medium">
+                  /verify
+                </Link>
+                , or entering the printed serial code manually.
               </p>
               <p>
-                The verification page displays: product name, manufacturer name, category,
-                verification status (genuine or suspicious), and the number of times the code has
-                been scanned. No app download is required.
+                The provenance certificate displays product details, SKU, manufacturer identity, lot
+                number, manufacture and expiry dates (with automatic expiry advisories), scan count,
+                and urgent manufacturer recall notices if issued.
               </p>
               <p>
-                If a code is scanned multiple times from geographically distant locations within a
-                short time window, the system flags it as potentially compromised and displays a
-                warning to the consumer while alerting the brand owner.
+                Repeated scans across distant locations automatically raise a fraud warning for
+                consumers and flag the code in your analytics and admin fraud review console.
               </p>
             </div>
           </section>
@@ -120,22 +129,19 @@ function DocsPage() {
           {/* Dashboard Features */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <Layers className="w-5 h-5 text-[#c9a84c]" />
+              <Layers className="w-5 h-5 text-[#2563eb]" />
               <h2 className="text-xl font-bold text-[#1a1a1e]">Dashboard Features</h2>
             </div>
             <div className="bg-white border border-[#e2ded5] rounded-xl p-6 text-sm leading-relaxed text-[#45454f]">
               <ul className="space-y-3 list-disc list-inside">
                 <li>
-                  <strong className="text-[#1a1a1e]">Products:</strong> List products with names,
-                  categories, descriptions, images, and optional regulatory documents.
+                  <strong className="text-[#1a1a1e]">Products:</strong> Manage SKUs, descriptions,
+                  photos, default lot/expiry dates, and SKU-level recalls.
                 </li>
                 <li>
-                  <strong className="text-[#1a1a1e]">Generate Codes:</strong> Specify product and
-                  quantity, review pricing, and generate batches of verification codes.
-                </li>
-                <li>
-                  <strong className="text-[#1a1a1e]">Code Bank:</strong> Search, filter, inspect,
-                  export, and print all generated codes. Codes are stored permanently.
+                  <strong className="text-[#1a1a1e]">Batches &amp; Codes:</strong> Request
+                  serialized batches via Paystack checkout, track batch history, manage recalls, and
+                  export 28×32mm labels as ZIP or printable sheets.
                 </li>
                 <li>
                   <strong className="text-[#1a1a1e]">Analytics:</strong> View scan volumes,
@@ -143,11 +149,11 @@ function DocsPage() {
                 </li>
                 <li>
                   <strong className="text-[#1a1a1e]">Billing:</strong> Track your pricing tier,
-                  lifetime spend, and transaction history.
+                  lifetime spend, and transaction invoices.
                 </li>
                 <li>
-                  <strong className="text-[#1a1a1e]">Profile:</strong> Update company information,
-                  upload regulatory certificates, and manage account settings.
+                  <strong className="text-[#1a1a1e]">Profile:</strong> Update brand details, logo,
+                  and compliance documentation.
                 </li>
               </ul>
             </div>

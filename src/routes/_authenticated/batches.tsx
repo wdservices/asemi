@@ -13,21 +13,26 @@ import {
   fnInitializeBatchPayment,
   fnVerifyPaystackTransaction,
   fnResumeBatchGeneration,
+  setBatchRecall,
+  type Batch,
   type Code,
-  } from "@/lib/db";
+} from "@/lib/db";
 import { mirrorPrice, isMissingFunctionError } from "@/lib/server-pricing";
-import {
-  generateQrDataUrl,
-  downloadDataUrl,
-  generateBatchQrCode,
-  type BatchProductInfo,
-} from "@/lib/qr";
+import { generateQrDataUrl, downloadDataUrl } from "@/lib/qr";
 import { downloadTagsZip, printTagSheet } from "@/lib/tag-exporter";
 import { PageHeader, EmptyState, StatCard, StatusBadge } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -60,13 +65,13 @@ import {
   History,
   Loader2,
   RefreshCw,
+  ShieldAlert,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo } from "react";
 import { ProductTagPreview } from "@/components/asemi/ProductTagPreview";
 import { TagPreviewModal } from "@/components/asemi/TagPreviewModal";
-import { BatchQrModal } from "@/components/asemi/BatchQrModal";
-import { BatchQrInlinePanel } from "@/components/asemi/BatchQrInlinePanel";
 
 export const Route = createFileRoute("/_authenticated/batches")({
   head: () => ({ meta: [{ title: "Batches & Codes — Asemi" }] }),
@@ -78,6 +83,7 @@ export const Route = createFileRoute("/_authenticated/batches")({
 
 type CodeWithExtras = Code & {
   productName: string;
+  productSku: string;
   batchNumber: string;
 };
 
@@ -97,6 +103,15 @@ function useDebouncedValue<T>(value: T, ms: number): T {
   return v;
 }
 
+function isExpiredDate(dateStr?: string | null): boolean {
+  if (!dateStr) return false;
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const endOfDay = new Date(parsed);
+  endOfDay.setHours(23, 59, 59, 999);
+  return endOfDay.getTime() < Date.now();
+}
+
 function BatchesPage() {
   const [activeTab, setActiveTab] = useState("request");
   const search = Route.useSearch();
@@ -107,27 +122,8 @@ function BatchesPage() {
     <div className="space-y-6 font-sans">
       <PageHeader
         title="Batches & Codes"
-        description="Make QR codes for your products in three steps: pick a product, choose how many codes you need, then pay. Your codes appear under History when ready."
+        description="Issue serialized per-unit authentication codes, record lot provenance, and export print-ready 28×32mm stickers."
       />
-
-      {/* Simple 3-step guide */}
-      <div className="grid gap-3 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/80 to-white p-4 sm:grid-cols-3">
-        {[
-          { n: "1", t: "Choose product", d: "Pick which product these codes will protect" },
-          { n: "2", t: "Set quantity", d: "How many units you're packaging — priced live" },
-          { n: "3", t: "Pay & generate", d: "Paystack checkout, then codes generate" },
-        ].map((s) => (
-          <div key={s.n} className="flex items-center gap-3 rounded-xl bg-white/70 px-3 py-2">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">
-              {s.n}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">{s.t}</p>
-              <p className="truncate text-xs text-slate-500">{s.d}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {reference ? (
         <PaymentReturnHandler
@@ -294,7 +290,7 @@ function PaymentReturnHandler({
       <div className="flex flex-col items-center rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
         <Loader2 className="size-8 animate-spin text-blue-600" />
         <p className="mt-4 font-sans text-lg font-bold text-slate-900">
-          Payment confirmed — generating codes…
+          Payment confirmed — generating serialized codes…
         </p>
         <p className="mt-1 max-w-sm text-sm text-slate-500">
           {b?.batchNumber ? (
@@ -348,7 +344,6 @@ function PaymentReturnHandler({
     );
   }
 
-  // status === "ready" (or exported)
   const codeList = codes.data ?? [];
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -360,7 +355,7 @@ function PaymentReturnHandler({
           Batch {b.batchNumber ?? ""} ready
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          {b.quantity.toLocaleString()} codes created for{" "}
+          {b.quantity.toLocaleString()} serialized unit codes created for{" "}
           <span className="font-semibold text-slate-900">{b.productName}</span>.
         </p>
 
@@ -429,6 +424,10 @@ function RequestBatchTab() {
 
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState<number>(100);
+  const [sku, setSku] = useState("");
+  const [lotNumber, setLotNumber] = useState("");
+  const [mfgDate, setMfgDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -439,21 +438,26 @@ function RequestBatchTab() {
     queryFn: () => listProducts(companyId!),
   });
 
-  // Default to the first product so the live preview always carries a real
-  // product name and logo instead of placeholder text.
   useEffect(() => {
     if (!productId && products.data?.length) {
       setProductId(products.data[0]!.id);
     }
   }, [productId, products.data]);
 
+  const selectedProduct = products.data?.find((p: any) => p.id === productId);
+
+  // Sync default SKU and lot/mfg/expiry dates whenever the selected product changes
+  useEffect(() => {
+    if (!selectedProduct) return;
+    setSku(selectedProduct.sku ?? "");
+    setLotNumber(selectedProduct.lotNumber ?? "");
+    setMfgDate(selectedProduct.mfgDate ?? "");
+    setExpiryDate(selectedProduct.expiryDate ?? "");
+  }, [selectedProduct?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const qty = Math.max(0, quantity | 0);
   const debouncedQty = useDebouncedValue(qty, 500);
 
-  // Live price is always server-computed — never trust a client-side number.
-  // If functions aren't deployed yet, fall back to a local mirror of the
-  // server tables (clearly labeled) so the page stays usable; checkout still
-  // re-prices server-side.
   const quote = useQuery({
     queryKey: ["price-quote", companyId, debouncedQty],
     enabled: !!companyId && debouncedQty > 0,
@@ -480,14 +484,16 @@ function RequestBatchTab() {
     },
   });
 
-  const selectedProduct = products.data?.find((p: any) => p.id === productId);
   const q = quote.data;
-
-  // 20 free codes per company from registration — remainder auto-applies.
   const freeRemain = Math.max(0, 20 - (company?.freeCodesUsed ?? 0));
+  const invalidDateRange = Boolean(mfgDate && expiryDate && expiryDate < mfgDate);
 
   async function handleConfirm() {
     if (!companyId || !productId || !selectedProduct || qty <= 0 || !q || q.requiresQuote) return;
+    if (invalidDateRange) {
+      setError("Expiry date cannot precede the manufacture date.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -495,8 +501,11 @@ function RequestBatchTab() {
         productId,
         quantity: qty,
         tagFormat: "rectangle",
+        sku: sku.trim() || null,
+        lotNumber: lotNumber.trim() || null,
+        mfgDate: mfgDate || null,
+        expiryDate: expiryDate || null,
       });
-      // Hand off to Paystack's hosted checkout. We return on /batches?reference=.
       window.location.href = init.authorizationUrl;
     } catch (err) {
       const raw = err instanceof Error ? err.message : "Could not start checkout.";
@@ -516,25 +525,23 @@ function RequestBatchTab() {
   if (!products.data?.length) {
     return (
       <EmptyState
-        title="Create a product first"
-        description="You need at least one product before you can request verification codes."
+        title="Add a product to your catalogue first"
+        description="Register at least one SKU before issuing serialized authentication batches."
       />
     );
   }
 
-  const canPay = !!productId && qty > 0 && !!q && !q.requiresQuote && !busy;
+  const canPay = !!productId && qty > 0 && !!q && !q.requiresQuote && !invalidDateRange && !busy;
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
       {/* Form */}
       <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-            New batch
+            Batch specification
           </p>
-          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-            Paystack checkout
-          </span>
+          <span className="text-xs font-medium text-blue-700">Paystack hosted checkout</span>
         </div>
 
         <div className="space-y-1.5">
@@ -546,39 +553,49 @@ function RequestBatchTab() {
             <SelectContent className="font-sans">
               {products.data.map((p: any) => (
                 <SelectItem key={p.id} value={p.id}>
-                  {p.name}
+                  <span>{p.name}</span>
+                  {p.sku ? (
+                    <span className="ml-2 font-mono text-xs text-slate-400">· {p.sku}</span>
+                  ) : null}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-slate-400">
-            Which product will carry these codes? Each code verifies this product.
+          <p className="text-xs text-slate-500">
+            {selectedProduct?.sku ? (
+              <>
+                SKU{" "}
+                <span className="font-mono font-medium text-slate-700">{selectedProduct.sku}</span>
+                {" · "}
+              </>
+            ) : null}
+            Every unit receives a unique serialized cryptographic code.
           </p>
         </div>
 
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label htmlFor="rb-qty">Quantity *</Label>
-            {freeRemain > 0 ? (
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                🎁 {freeRemain} of 20 free codes left — applied automatically
-              </span>
-            ) : (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
-                Free codes used up — this batch is fully paid
-              </span>
-            )}
+            <Label htmlFor="rb-qty">Serialized unit count *</Label>
+            <span className="text-xs font-medium text-slate-500 tabular-nums">
+              {freeRemain > 0 ? (
+                <span className="text-emerald-700">
+                  {freeRemain} of 20 complimentary tags available — applied automatically
+                </span>
+              ) : (
+                "Volume tier pricing applies automatically"
+              )}
+            </span>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {[50, 100, 500, 1000, 5000].map((preset) => (
               <button
                 key={preset}
                 type="button"
                 onClick={() => setQuantity(preset)}
-                className={`rounded-lg border px-2 py-0.5 text-xs font-medium transition ${
+                className={`rounded-lg border px-2.5 py-1 text-xs font-medium tabular-nums transition ${
                   quantity === preset
                     ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                    : "border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
                 }`}
               >
                 {preset.toLocaleString()}
@@ -591,26 +608,86 @@ function RequestBatchTab() {
             min={1}
             value={quantity}
             onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
-            className="font-sans"
+            className="font-sans tabular-nums"
           />
-          <p className="text-xs text-slate-400">
-            How many units are you packaging? Every unit gets its own unique code. Min 1 code —
-            volume discounts apply automatically.
-          </p>
         </div>
 
-        {/* Single label format — 28×32mm verification sticker */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-900">Verification sticker · 28×32mm</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">
-            Every code ships print-ready on a plain white 28×32mm label with your product logo,
-            product name, QR code, and code — designed for holographic sticker stock.
-          </p>
+        {/* Batch provenance: SKU, Lot #, Manufacture date, Expiry date */}
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-700">
+              SKU, provenance &amp; shelf life
+            </p>
+            <span className="text-[11px] text-slate-400">
+              Indexed per unit &amp; shown on certificates
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="rb-sku" className="text-xs">
+                SKU
+              </Label>
+              <Input
+                id="rb-sku"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="e.g. BRS-0050"
+                className="bg-white font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="rb-lot" className="text-xs">
+                Lot number
+              </Label>
+              <Input
+                id="rb-lot"
+                value={lotNumber}
+                onChange={(e) => setLotNumber(e.target.value)}
+                placeholder="e.g. LOT-2026-04A"
+                className="bg-white font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="rb-mfg" className="text-xs">
+                Manufacture date
+              </Label>
+              <Input
+                id="rb-mfg"
+                type="date"
+                value={mfgDate}
+                onChange={(e) => setMfgDate(e.target.value)}
+                className="bg-white text-xs tabular-nums"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="rb-exp" className="text-xs">
+                Expiry date
+              </Label>
+              <Input
+                id="rb-exp"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="bg-white text-xs tabular-nums"
+              />
+            </div>
+          </div>
+          {invalidDateRange && (
+            <p className="text-xs font-medium text-red-600">
+              Expiry date must be on or after the manufacture date.
+            </p>
+          )}
+        </div>
+
+        {/* Label spec summary */}
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
+          <span className="font-semibold text-slate-800">28×32mm serialized sticker:</span> Every
+          unit ships print-ready with your product mark, unique QR code, and fallback serial.
         </div>
 
         {error && (
           <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-900">
-            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -619,20 +696,19 @@ function RequestBatchTab() {
           <div>
             <p className="text-sm text-slate-500">
               Total:{" "}
-              <strong className="text-slate-900">
+              <strong className="text-slate-900 tabular-nums">
                 {q ? formatMoney(q.price, q.currency) : "…"}
               </strong>{" "}
-              <span className="text-xs">for {qty.toLocaleString()} codes</span>
+              <span className="text-xs tabular-nums">for {qty.toLocaleString()} codes</span>
             </p>
-            <p className="mt-1 text-xs text-slate-400">
-              You'll be redirected to Paystack to pay securely. Codes generate automatically after
-              payment — nothing is created until you pay.
+            <p className="mt-0.5 text-xs text-slate-400">
+              Codes mint immediately after Paystack confirmation.
             </p>
           </div>
           <Button
             onClick={handleConfirm}
             disabled={!canPay}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="whitespace-nowrap bg-blue-600 hover:bg-blue-700"
           >
             {busy ? (
               <>
@@ -640,7 +716,7 @@ function RequestBatchTab() {
               </>
             ) : (
               <>
-                <FileCode className="size-4" /> Confirm and Pay with Paystack
+                <FileCode className="size-4" /> Confirm &amp; pay with Paystack
               </>
             )}
           </Button>
@@ -648,15 +724,15 @@ function RequestBatchTab() {
       </div>
 
       {/* Server pricing summary */}
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+      <div className="min-w-0 space-y-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
             {q?.source === "local" ? "Estimated price" : "Server price"}
           </p>
           {q && q.source === "local" && (
             <p className="mt-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900">
-              Live server price unreachable (functions not deployed) — estimate shown. The final
-              charge is always computed on the server at checkout.
+              Live server price unreachable — local estimate shown. Final charge is calculated
+              server-side at checkout.
             </p>
           )}
           {quote.isPending || !q ? (
@@ -675,19 +751,14 @@ function RequestBatchTab() {
           ) : (
             <>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-sans text-4xl font-bold tracking-tight">
+                <span className="max-w-full break-words font-sans text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
                   {formatMoney(q.price, q.currency)}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 tabular-nums">
                 {(q.price / Math.max(1, q.paid)).toFixed(2)} {q.currency} per paid code
-                {q.free > 0 && ` · ${q.free} free applied`} · Labels included free
+                {q.free > 0 && ` · ${q.free} free applied`} · Print labels included
               </p>
-              {q.free > 0 && (
-                <p className="mt-1 text-xs font-semibold text-emerald-700">
-                  Free codes in this batch: {q.free}
-                </p>
-              )}
             </>
           )}
         </div>
@@ -709,19 +780,12 @@ function RequestBatchTab() {
           );
         })()}
 
-        <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-          <p className="font-semibold text-slate-700">How it works</p>
-          <p>1. Confirm — we hold the batch, no codes yet.</p>
-          <p>2. Pay on Paystack's secure checkout.</p>
-          <p>3. Codes generate automatically after payment.</p>
-        </div>
-
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
-            Live preview
+            Live label preview
           </p>
           <p className="text-[11px] text-slate-500">
-            Exactly how the 28×32mm sticker will look when printed.
+            28×32mm serialized packaging label for {selectedProduct?.name || companyName}.
           </p>
           <div className="flex justify-center py-3">
             <ProductTagPreview
@@ -741,7 +805,6 @@ function RequestBatchTab() {
     </div>
   );
 }
-
 
 /* -------------------------------------------------------------------------- */
 /*                            BATCH HISTORY TAB                               */
@@ -775,6 +838,11 @@ function BatchHistoryTab() {
     queryFn: () => listProducts(companyId!),
   });
 
+  const skuByProductId = useMemo(
+    () => new Map((products.data ?? []).map((p) => [p.id, p.sku])),
+    [products.data],
+  );
+
   function logoForBatch(b: { productId?: string }): string | undefined {
     return (
       products.data?.find((p: any) => p.id === b.productId)?.imageUrls?.[0] ??
@@ -796,16 +864,44 @@ function BatchHistoryTab() {
     tagFormat?: "circle" | "rectangle";
   } | null>(null);
 
-  const [historyBatchForQr, setHistoryBatchForQr] = useState<{
-    batchId: string;
-    productInfo: BatchProductInfo;
-  } | null>(null);
+  const [recallTarget, setRecallTarget] = useState<Batch | null>(null);
+  const [recallReason, setRecallReason] = useState("");
+  const [recallBusy, setRecallBusy] = useState(false);
 
-  async function handleBatchTagsZip(
-    batchId: string,
-    batchNumber: string,
-    productName: string,
-  ) {
+  function openRecallDialog(b: Batch) {
+    setRecallTarget(b);
+    setRecallReason(b.recallReason ?? "");
+  }
+
+  async function handleRecallSubmit(recalled: boolean) {
+    if (!recallTarget || !companyId) return;
+    setRecallBusy(true);
+    try {
+      await setBatchRecall({
+        batchId: recallTarget.id,
+        companyId,
+        productId: recallTarget.productId,
+        recalled,
+        reason: recalled ? recallReason : null,
+        batch: recallTarget,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["batches", companyId] });
+      toast.success(
+        recalled
+          ? `Batch ${recallTarget.batchNumber ?? ""} marked as recalled.`
+          : `Recall lifted for ${recallTarget.batchNumber ?? "batch"}.`,
+      );
+      setRecallTarget(null);
+      setRecallReason("");
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Failed to update recall state");
+    } finally {
+      setRecallBusy(false);
+    }
+  }
+
+  async function handleBatchTagsZip(batchId: string, batchNumber: string, productName: string) {
     try {
       const loadId = toast.loading(`Preparing labels for ${batchNumber}…`);
       const codeStrings = await listBatchCodeStrings(batchId);
@@ -828,11 +924,7 @@ function BatchHistoryTab() {
     }
   }
 
-  async function handleBatchPrintSheet(
-    batchId: string,
-    batchNumber: string,
-    productName: string,
-  ) {
+  async function handleBatchPrintSheet(batchId: string, batchNumber: string, productName: string) {
     try {
       toast.loading("Generating print sheet…", { id: "print-sheet" });
       const codeStrings = await listBatchCodeStrings(batchId);
@@ -907,129 +999,156 @@ function BatchHistoryTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Batch</TableHead>
-                <TableHead>Product</TableHead>
+                <TableHead>Product &amp; provenance</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Charged</TableHead>
-                <TableHead className="text-right">Date</TableHead>
+                <TableHead className="text-right">Created</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {batches.data.map((b) => (
-                <TableRow key={b.id} className="hover:bg-slate-50/60">
-                  <TableCell className="font-mono text-xs font-semibold text-blue-700">
-                    {b.batchNumber ?? (
-                      <span className="text-slate-400">pending…</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-40 truncate">{b.productName ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
-                    {b.quantity.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(b.amountCharged ?? 0, b.currency)}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-right text-xs text-slate-400">
-                    {new Date(b.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={batchUiStatus(b.status)} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {b.status === "awaiting_payment" ? (
-                      b.paystackAuthorizationUrl ? (
+              {batches.data.map((b) => {
+                const sku = b.sku || skuByProductId.get(b.productId);
+                const expired = isExpiredDate(b.expiryDate);
+                return (
+                  <TableRow key={b.id} className="hover:bg-slate-50/60">
+                    <TableCell className="font-mono text-xs font-semibold text-blue-700">
+                      {b.batchNumber ?? <span className="text-slate-400">pending…</span>}
+                    </TableCell>
+                    <TableCell className="max-w-64">
+                      <p className="truncate font-medium text-slate-900">{b.productName ?? "—"}</p>
+                      {(sku || b.lotNumber || b.mfgDate || b.expiryDate) && (
+                        <p className="mt-0.5 truncate text-[11px] text-slate-500 tabular-nums">
+                          {[
+                            sku ? `SKU ${sku}` : null,
+                            b.lotNumber ? `Lot ${b.lotNumber}` : null,
+                            b.mfgDate ? `Mfg ${new Date(b.mfgDate).toLocaleDateString()}` : null,
+                            b.expiryDate
+                              ? `Exp ${new Date(b.expiryDate).toLocaleDateString()}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {b.quantity.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(b.amountCharged ?? 0, b.currency)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right text-xs text-slate-400 tabular-nums">
+                      {new Date(b.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {b.recalled ? (
+                          <StatusBadge status="escalated" />
+                        ) : (
+                          <StatusBadge status={batchUiStatus(b.status)} />
+                        )}
+                        {b.recalled && (
+                          <span className="text-[11px] font-semibold text-red-700">Recalled</span>
+                        )}
+                        {!b.recalled && expired && (
+                          <span className="text-[11px] font-medium text-red-600">Expired</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {b.status === "awaiting_payment" ? (
+                        b.paystackAuthorizationUrl ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 whitespace-nowrap border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
+                            asChild
+                          >
+                            <a href={b.paystackAuthorizationUrl} target="_blank" rel="noreferrer">
+                              Continue payment <ArrowRight className="size-3.5" />
+                            </a>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-slate-400">Awaiting payment…</span>
+                        )
+                      ) : b.status === "failed" ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
-                          asChild
+                          className="h-8 whitespace-nowrap border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
+                          disabled={resumingId === b.id}
+                          onClick={() => handleResume(b.id)}
                         >
-                          <a
-                            href={b.paystackAuthorizationUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Continue payment <ArrowRight className="size-3.5" />
-                          </a>
+                          {resumingId === b.id ? (
+                            <>
+                              <Loader2 className="mr-1 size-3.5 animate-spin" /> Resuming…
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="mr-1 size-3.5" /> Resume
+                            </>
+                          )}
                         </Button>
+                      ) : b.status === "generating" ? (
+                        <span className="text-xs text-slate-400 tabular-nums">
+                          Generating {Math.round((b.generationProgress ?? 0) * 100)}%…
+                        </span>
                       ) : (
-                        <span className="text-xs text-slate-400">Awaiting payment…</span>
-                      )
-                    ) : b.status === "failed" ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
-                        disabled={resumingId === b.id}
-                        onClick={() => handleResume(b.id)}
-                      >
-                        {resumingId === b.id ? (
-                          <>
-                            <Loader2 className="mr-1 size-3.5 animate-spin" /> Resuming…
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="mr-1 size-3.5" /> Resume
-                          </>
-                        )}
-                      </Button>
-                    ) : b.status === "generating" ? (
-                      <span className="text-xs text-slate-400">
-                        Generating {Math.round((b.generationProgress ?? 0) * 100)}%…
-                      </span>
-                    ) : (
-                    <div className="flex justify-end gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setHistoryBatchForQr({
-                            batchId: b.id,
-                            productInfo: {
-                              productName: b.productName || "Product",
-                              ...(b.batchNumber ? { batchNumber: b.batchNumber } : {}),
-                              productId: b.productId,
-                              quantity: b.quantity,
-                              brandName: companyName,
-                              tagFormat: b.tagFormat || "rectangle",
-                            },
-                          })
-                        }
-                        className="h-8 border-blue-200 text-xs text-blue-700 hover:bg-blue-50"
-                        title="Batch QR code"
-                      >
-                        <QrCode className="size-3.5" /> QR
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setSelectedBatchForTags({
-                            id: b.id,
-                            batchNumber: b.batchNumber ?? b.id,
-                            productName: b.productName || "Product",
-                            quantity: b.quantity,
-                            tagFormat: b.tagFormat || "rectangle",
-                          })
-                        }
-                        className="h-8 text-xs"
-                      >
-                        Labels
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => exportCsvForBatch(b.id, b.batchNumber ?? b.id, b.quantity)}
-                        className="h-8 text-xs"
-                      >
-                        <Download className="size-3.5" /> CSV
-                      </Button>
-                    </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setSelectedBatchForTags({
+                                id: b.id,
+                                batchNumber: b.batchNumber ?? b.id,
+                                productName: b.productName || "Product",
+                                quantity: b.quantity,
+                                tagFormat: b.tagFormat || "rectangle",
+                              })
+                            }
+                            className="h-8 whitespace-nowrap text-xs"
+                          >
+                            Labels
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              exportCsvForBatch(b.id, b.batchNumber ?? b.id, b.quantity)
+                            }
+                            className="h-8 whitespace-nowrap text-xs"
+                          >
+                            <Download className="size-3.5" /> CSV
+                          </Button>
+                          <Button
+                            variant={b.recalled ? "outline" : "ghost"}
+                            size="sm"
+                            onClick={() => openRecallDialog(b)}
+                            className={`h-8 whitespace-nowrap text-xs ${
+                              b.recalled
+                                ? "border-red-200 text-red-700 hover:bg-red-50"
+                                : "text-slate-500 hover:text-red-700"
+                            }`}
+                          >
+                            {b.recalled ? (
+                              <>
+                                <RotateCcw className="mr-1 size-3.5" /> Manage recall
+                              </>
+                            ) : (
+                              <>
+                                <ShieldAlert className="mr-1 size-3.5" /> Recall
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -1046,13 +1165,13 @@ function BatchHistoryTab() {
             </DialogHeader>
             <div className="space-y-3 py-2 text-sm">
               <p className="text-xs text-slate-500">
-                28×32mm verification stickers — download high-resolution labels (ZIP) or open a
-                printable sheet.
+                28×32mm serialized packaging stickers — download high-resolution labels (ZIP) or
+                open a printable sheet.
               </p>
               <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
                 <div>
-                  <p className="text-sm font-semibold">Verification labels</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-semibold">Serialized labels</p>
+                  <p className="text-xs text-slate-500 tabular-nums">
                     {selectedBatchForTags.quantity.toLocaleString()} codes · 28×32mm
                   </p>
                 </div>
@@ -1091,13 +1210,75 @@ function BatchHistoryTab() {
         </Dialog>
       )}
 
-      {historyBatchForQr && (
-        <BatchQrModal
-          open={!!historyBatchForQr}
-          onOpenChange={(open) => !open && setHistoryBatchForQr(null)}
-          batchId={historyBatchForQr.batchId}
-          productInfo={historyBatchForQr.productInfo}
-        />
+      {recallTarget && (
+        <Dialog
+          open={!!recallTarget}
+          onOpenChange={(open) => !open && !recallBusy && setRecallTarget(null)}
+        >
+          <DialogContent className="max-w-md font-sans">
+            <DialogHeader>
+              <DialogTitle>
+                {recallTarget.recalled
+                  ? `Manage recall — ${recallTarget.batchNumber ?? "Batch"}`
+                  : `Issue recall — ${recallTarget.batchNumber ?? "Batch"}`}
+              </DialogTitle>
+              <DialogDescription>
+                {recallTarget.recalled
+                  ? "Consumers scanning codes in this batch currently see an urgent recall notice. You can update the notice or restore the batch."
+                  : "Immediately flags every code in this batch so consumers scanning packaging see an urgent safety/recall warning instead of a genuine clearance."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="batch-recall-reason">Consumer advisory message</Label>
+                <Textarea
+                  id="batch-recall-reason"
+                  rows={3}
+                  placeholder="e.g. Voluntary quality recall for Lot #42 — stop use and return to point of purchase."
+                  value={recallReason}
+                  onChange={(e) => setRecallReason(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-between">
+              {recallTarget.recalled ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={recallBusy}
+                  onClick={() => handleRecallSubmit(false)}
+                >
+                  <RotateCcw className="mr-1.5 size-4" /> Lift recall
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={recallBusy}
+                  onClick={() => setRecallTarget(null)}
+                >
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={recallBusy}
+                onClick={() => handleRecallSubmit(true)}
+              >
+                {recallBusy ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-4 animate-spin" /> Saving…
+                  </>
+                ) : recallTarget.recalled ? (
+                  "Update recall notice"
+                ) : (
+                  "Confirm batch recall"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -1118,10 +1299,6 @@ function CodeBankTab() {
   const [search, setSearch] = useState("");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [previewCode, setPreviewCode] = useState<CodeWithExtras | null>(null);
-  const [selectedBatchForQr, setSelectedBatchForQr] = useState<{
-    batchId: string;
-    productInfo: BatchProductInfo;
-  } | null>(null);
 
   const products = useQuery({
     queryKey: ["products", companyId],
@@ -1149,49 +1326,59 @@ function CodeBankTab() {
     }
   }, [filterProduct, visibleBatches, filterBatch]);
 
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const skuQueryParam =
+    debouncedSearch.length >= 2 && !debouncedSearch.toUpperCase().startsWith("ASM")
+      ? debouncedSearch
+      : undefined;
+
   const codes = useQuery({
-    queryKey: ["codes-bank", companyId, filterProduct, filterBatch, flaggedOnly],
+    queryKey: ["codes-bank", companyId, filterProduct, filterBatch, flaggedOnly, skuQueryParam],
     enabled: !!companyId,
     ...QUERY_OPTS,
     queryFn: () =>
       listCodes(companyId!, {
         productId: filterProduct === "all" ? undefined : filterProduct,
         batchId: filterBatch === "all" ? undefined : filterBatch,
+        sku: skuQueryParam,
         flaggedOnly: flaggedOnly || undefined,
         limitN: 200,
       }),
   });
 
-  // Join names in render (not in the queryFn) so a late-arriving batches/products
-  // response still fills in the Product/Batch columns without a refetch.
   const codesWithExtras = useMemo<CodeWithExtras[]>(() => {
-    const productNames = new Map((products.data ?? []).map((p) => [p.id, p.name]));
-    const batchNumbers = new Map((batches.data ?? []).map((b) => [b.id, b.batchNumber]));
-    return (codes.data ?? []).map((c) => ({
-      ...c,
-      productName: productNames.get(c.productId) ?? "—",
-      batchNumber: batchNumbers.get(c.batchId) ?? "—",
-    }));
+    const productMap = new Map((products.data ?? []).map((p) => [p.id, p]));
+    const batchMap = new Map((batches.data ?? []).map((b) => [b.id, b]));
+    return (codes.data ?? []).map((c) => {
+      const prod = productMap.get(c.productId);
+      const batch = batchMap.get(c.batchId);
+      return {
+        ...c,
+        productName: prod?.name ?? "—",
+        productSku: c.sku || batch?.sku || prod?.sku || "",
+        batchNumber: batch?.batchNumber ?? "—",
+      };
+    });
   }, [codes.data, products.data, batches.data]);
 
   const searchClean = search
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
+  const searchLower = search.trim().toLowerCase();
   const visibleCodes = useMemo(() => {
-    if (!searchClean) return codesWithExtras;
-    return codesWithExtras.filter((c) =>
-      c.codeString
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .includes(searchClean),
+    if (!searchLower) return codesWithExtras;
+    return codesWithExtras.filter(
+      (c) =>
+        (searchClean.length > 0 &&
+          c.codeString
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "")
+            .includes(searchClean)) ||
+        c.productSku.toLowerCase().includes(searchLower) ||
+        c.productName.toLowerCase().includes(searchLower),
     );
-  }, [codesWithExtras, searchClean]);
-
-  const activeSelectedBatch = useMemo(() => {
-    if (filterBatch === "all") return null;
-    return (batches.data ?? []).find((b: any) => b.id === filterBatch) || null;
-  }, [filterBatch, batches.data]);
+  }, [codesWithExtras, searchClean, searchLower]);
 
   function logoForCode(c: CodeWithExtras): string | undefined {
     return (
@@ -1200,21 +1387,6 @@ function CodeBankTab() {
       undefined
     );
   }
-
-  const handleGenerateAndDisplayBatchQr = async (
-    batchId: string,
-    productInfo: BatchProductInfo,
-  ) => {
-    try {
-      toast.loading("Generating batch QR…", { id: "batch-qr-gen" });
-      await generateBatchQrCode(batchId, productInfo);
-      setSelectedBatchForQr({ batchId, productInfo });
-      toast.success("Batch QR ready!", { id: "batch-qr-gen" });
-    } catch (err) {
-      console.error("Batch QR generation failed", err);
-      toast.error("Failed to generate batch QR code", { id: "batch-qr-gen" });
-    }
-  };
 
   const handleBulkZip = async () => {
     if (!visibleCodes.length) return;
@@ -1263,19 +1435,16 @@ function CodeBankTab() {
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
+      {/* Header bar */}
       <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">All verification codes</h3>
+          <h3 className="text-sm font-bold text-slate-900">Serialized Code Bank</h3>
           <p className="text-xs text-slate-500">
-            Search, filter, and export any code. Showing up to 200 at a time. Tip: use search to
-            jump to a code, or filter by product and batch before printing.
+            Every unit carries an individual verification code · 28×32mm print labels · showing up
+            to 200 matching codes.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
-            28×32mm labels
-          </span>
           <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
             <button
               type="button"
@@ -1302,112 +1471,95 @@ function CodeBankTab() {
       </div>
 
       {/* Filters */}
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
-        <div className="space-y-1.5">
-          <Label htmlFor="cb-prod">Product</Label>
-          <Select value={filterProduct} onValueChange={setFilterProduct}>
-            <SelectTrigger id="cb-prod" className="font-sans">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="font-sans">
-              <SelectItem value="all">All products</SelectItem>
-              {products.data?.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="cb-batch">Batch</Label>
-          <Select
-            value={filterBatch}
-            onValueChange={setFilterBatch}
-            disabled={visibleBatches.length === 0}
-          >
-            <SelectTrigger id="cb-batch" className="font-sans">
-              <SelectValue placeholder="All batches" />
-            </SelectTrigger>
-            <SelectContent className="font-sans">
-              <SelectItem value="all">All batches</SelectItem>
-              {visibleBatches.map((b: any) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.batchNumber}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5 lg:col-span-2">
-          <Label htmlFor="cb-search">Search code</Label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              id="cb-search"
-              placeholder="ASM-XXXX-XXXXXX"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 font-mono text-xs"
-            />
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="min-w-0 space-y-1.5">
+            <Label htmlFor="cb-prod">Product</Label>
+            <Select value={filterProduct} onValueChange={setFilterProduct}>
+              <SelectTrigger id="cb-prod" className="w-full font-sans">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="all">All products</SelectItem>
+                {products.data?.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-0 space-y-1.5">
+            <Label htmlFor="cb-batch">Batch</Label>
+            <Select
+              value={filterBatch}
+              onValueChange={setFilterBatch}
+              disabled={visibleBatches.length === 0}
+            >
+              <SelectTrigger id="cb-batch" className="w-full font-sans">
+                <SelectValue placeholder="All batches" />
+              </SelectTrigger>
+              <SelectContent className="font-sans">
+                <SelectItem value="all">All batches</SelectItem>
+                {visibleBatches.map((b: any) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.batchNumber}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-0 space-y-1.5 sm:col-span-2">
+            <Label htmlFor="cb-search">Search code or SKU</Label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                id="cb-search"
+                placeholder="ASM-XXXX-XXXXXX or SKU"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-8 font-mono text-xs"
+              />
+            </div>
           </div>
         </div>
-        <div className="flex items-end gap-1.5">
-          <Button
-            variant={flaggedOnly ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFlaggedOnly((f) => !f)}
-            className={`flex-1 text-xs ${flaggedOnly ? "bg-red-600 hover:bg-red-700" : ""}`}
-          >
-            <Flag className="mr-1 size-3.5" />
-            {flaggedOnly ? "Flagged" : "All"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkPrint}
-            disabled={!visibleCodes.length}
-            className="flex-1 text-xs"
-          >
-            <Printer className="mr-1 size-3.5" /> Print
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkZip}
-            disabled={!visibleCodes.length}
-            className="flex-1 text-xs"
-          >
-            <Archive className="mr-1 size-3.5" /> ZIP
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+          <p className="text-xs text-slate-500 tabular-nums">
+            Showing{" "}
+            <strong className="text-slate-900">{visibleCodes.length.toLocaleString()}</strong>{" "}
+            {visibleCodes.length === 1 ? "code" : "codes"}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant={flaggedOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFlaggedOnly((f) => !f)}
+              className={`whitespace-nowrap shrink-0 text-xs ${flaggedOnly ? "bg-red-600 hover:bg-red-700" : ""}`}
+            >
+              <Flag className="mr-1.5 size-3.5" />
+              {flaggedOnly ? "Flagged only" : "All statuses"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkPrint}
+              disabled={!visibleCodes.length}
+              className="whitespace-nowrap shrink-0 text-xs"
+            >
+              <Printer className="mr-1.5 size-3.5" /> Print sheet
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkZip}
+              disabled={!visibleCodes.length}
+              className="whitespace-nowrap shrink-0 text-xs"
+            >
+              <Archive className="mr-1.5 size-3.5" /> Download ZIP
+            </Button>
+          </div>
         </div>
       </div>
-
-      {activeSelectedBatch && (
-        <BatchQrInlinePanel
-          batchId={activeSelectedBatch.id}
-          productInfo={{
-            productName: activeSelectedBatch.productName || "Product",
-            ...(activeSelectedBatch.batchNumber
-              ? { batchNumber: activeSelectedBatch.batchNumber }
-              : {}),
-            productId: activeSelectedBatch.productId,
-            quantity: activeSelectedBatch.quantity,
-            brandName: companyName,
-          }}
-          onOpenModal={() =>
-            handleGenerateAndDisplayBatchQr(activeSelectedBatch.id, {
-              productName: activeSelectedBatch.productName || "Product",
-              ...(activeSelectedBatch.batchNumber
-                ? { batchNumber: activeSelectedBatch.batchNumber }
-                : {}),
-              productId: activeSelectedBatch.productId,
-              quantity: activeSelectedBatch.quantity,
-              brandName: companyName,
-            })
-          }
-        />
-      )}
 
       {/* Codes list */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -1424,9 +1576,9 @@ function CodeBankTab() {
           <div className="overflow-x-auto">
             <div className="mb-3 flex items-center justify-between text-xs text-slate-500">
               <span>
-                <strong className="text-slate-900">{visibleCodes.length}</strong> codes
+                <strong className="text-slate-900 tabular-nums">{visibleCodes.length}</strong> codes
               </span>
-              <span>Click a QR to download it</span>
+              <span>Click a QR thumbnail to download</span>
             </div>
             <Table>
               <TableHeader>
@@ -1441,7 +1593,7 @@ function CodeBankTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleCodes.map((c: any) => (
+                {visibleCodes.map((c) => (
                   <TableRow key={c.id} className="hover:bg-slate-50/60">
                     <TableCell>
                       <CodeQrThumbnail codeString={c.codeString} />
@@ -1450,11 +1602,18 @@ function CodeBankTab() {
                       {c.codeString}
                       {c.flagged && <AlertTriangle className="ml-2 inline size-3.5 text-red-600" />}
                     </TableCell>
-                    <TableCell className="max-w-36 truncate text-xs">{c.productName ?? "—"}</TableCell>
+                    <TableCell className="max-w-44 truncate text-xs">
+                      <span>{c.productName ?? "—"}</span>
+                      {c.productSku ? (
+                        <span className="ml-1.5 font-mono text-[11px] text-slate-400">
+                          · {c.productSku}
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="font-mono text-[11px] text-slate-500">
                       {c.batchNumber ?? "—"}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-xs">
+                    <TableCell className="text-right text-xs tabular-nums">
                       {(c.scanCount ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell>
@@ -1529,15 +1688,6 @@ function CodeBankTab() {
           brandName={companyName}
           batchNumber={previewCode.batchNumber}
           {...(logoForCode(previewCode) ? { logoUrl: logoForCode(previewCode) as string } : {})}
-        />
-      )}
-
-      {selectedBatchForQr && (
-        <BatchQrModal
-          open={!!selectedBatchForQr}
-          onOpenChange={(open) => !open && setSelectedBatchForQr(null)}
-          batchId={selectedBatchForQr.batchId}
-          productInfo={selectedBatchForQr.productInfo}
         />
       )}
     </div>

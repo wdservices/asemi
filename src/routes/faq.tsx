@@ -9,8 +9,7 @@ export const Route = createFileRoute("/faq")({
       { title: "FAQ — Asemi" },
       {
         name: "description",
-        content:
-          "Frequently asked questions about the Asemi product authentication platform.",
+        content: "Frequently asked questions about the Asemi product authentication platform.",
       },
     ],
   }),
@@ -112,10 +111,7 @@ function FAQPage() {
 
         <div className="mt-12 text-center">
           <p className="text-sm text-[#6e6e7a] mb-3">Still have questions?</p>
-          <Link
-            to="/"
-            className="btn btn-fill"
-          >
+          <Link to="/" className="btn btn-fill">
             <span>Contact Us</span>
           </Link>
         </div>

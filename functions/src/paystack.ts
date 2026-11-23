@@ -116,9 +116,16 @@ export const initializebatchpayment = onCall(async (req) => {
     throw new HttpsError("not-found", "Product not found.");
   }
   const productName = String(psnap.data()?.name || "");
+  const batchSku = String(req.data?.sku ?? psnap.data()?.sku ?? "").trim();
+  const batchSkuLookup = batchSku.toUpperCase();
 
   // Server-side re-price — the client number is never trusted.
-  const quote = calculatePrice(qty, company.countryCode, company.totalCodesGenerated, company.freeCodesUsed);
+  const quote = calculatePrice(
+    qty,
+    company.countryCode,
+    company.totalCodesGenerated,
+    company.freeCodesUsed,
+  );
   if (quote.requiresQuote) {
     throw new HttpsError(
       "failed-precondition",
@@ -137,6 +144,7 @@ export const initializebatchpayment = onCall(async (req) => {
   }
 
   const batchRef = db.collection("batches").doc();
+  const batchStatusRef = db.collection("batchStatus").doc(batchRef.id);
   const invoiceRef = db.collection("companies").doc(csnap.id).collection("invoices").doc(reference);
 
   // Holding state: no codes, no totals touched. Abandoned checkouts are harmless.
@@ -145,6 +153,8 @@ export const initializebatchpayment = onCall(async (req) => {
       companyId: csnap.id,
       productId,
       productName,
+      sku: batchSku,
+      skuLookup: batchSkuLookup,
       batchNumber: null,
       quantity: qty,
       amountCharged: price,
@@ -158,12 +168,28 @@ export const initializebatchpayment = onCall(async (req) => {
       expiryDate: req.data?.expiryDate ?? null,
       coaDocName: req.data?.coaDocName ?? null,
       coaDocUrl: req.data?.coaDocUrl ?? null,
+      recalled: false,
+      recallReason: null,
+      recalledAt: null,
       paymentReference: reference,
       paymentVerified: false,
       paymentGateway: "paystack",
       paystackAuthorizationUrl: null,
       exportedAt: null,
       createdAt: FieldValue.serverTimestamp(),
+    });
+    tx.set(batchStatusRef, {
+      batchId: batchRef.id,
+      companyId: csnap.id,
+      productId,
+      sku: batchSku,
+      lotNumber: req.data?.lotNumber ?? null,
+      mfgDate: req.data?.mfgDate ?? null,
+      expiryDate: req.data?.expiryDate ?? null,
+      recalled: false,
+      recallReason: null,
+      recalledAt: null,
+      updatedAt: FieldValue.serverTimestamp(),
     });
     tx.set(invoiceRef, {
       kind: "purchase",
@@ -192,7 +218,13 @@ export const initializebatchpayment = onCall(async (req) => {
       currency,
       reference,
       callback_url: callbackUrl,
-      metadata: { companyId: csnap.id, batchId: batchRef.id, productId, productName, quantity: qty },
+      metadata: {
+        companyId: csnap.id,
+        batchId: batchRef.id,
+        productId,
+        productName,
+        quantity: qty,
+      },
     }),
   });
   if (!initRes.ok) {
@@ -230,7 +262,10 @@ export async function fulfillBatchPayment(
   reference: string,
   source: "webhook" | "verify",
 ): Promise<{ batchId: string; status: string; alreadyFulfilled: boolean }> {
-  const invQuery = db.collectionGroup("invoices").where(FieldPath.documentId(), "==", reference).limit(1);
+  const invQuery = db
+    .collectionGroup("invoices")
+    .where(FieldPath.documentId(), "==", reference)
+    .limit(1);
   const invSnap = await invQuery.get();
   if (invSnap.empty) {
     throw new HttpsError("not-found", "No invoice matches this payment reference.");

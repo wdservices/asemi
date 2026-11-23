@@ -130,10 +130,7 @@ function RootComponent() {
     // Only sync the session cache — never invalidate the whole router/caches
     // (that was causing seconds-long stalls on every navigation).
     const unsub = onAuthStateChanged(firebaseAuth, (u) => {
-      queryClient.setQueryData(
-        ["session"],
-        u ? { user: { id: u.uid, email: u.email } } : null,
-      );
+      queryClient.setQueryData(["session"], u ? { user: { id: u.uid, email: u.email } } : null);
       // Refresh route guards without refetching every dashboard query.
       router.invalidate();
     });

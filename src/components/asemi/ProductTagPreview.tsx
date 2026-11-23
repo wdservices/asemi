@@ -8,7 +8,16 @@ import {
   getVerificationUrl,
 } from "@/lib/qr";
 import { downloadSingleTagPdf } from "@/lib/tag-exporter";
-import { Download, Printer, Check, Copy, ExternalLink, Sparkles, FileText, Code2 } from "lucide-react";
+import {
+  Download,
+  Printer,
+  Check,
+  Copy,
+  ExternalLink,
+  Sparkles,
+  FileText,
+  Code2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 

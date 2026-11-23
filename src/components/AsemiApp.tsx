@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useIsAdmin, useSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth";
 import { MarketingSite } from "./asemi/MarketingSite";
 import { AuthModal } from "./asemi/AuthModal";
 
 export function AsemiApp() {
   const navigate = useNavigate();
   const { data: session } = useSession();
-  const { data: isAdmin } = useIsAdmin();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">("register");
 
@@ -17,7 +16,7 @@ export function AsemiApp() {
       setAuthModalOpen(true);
       return;
     }
-    navigate({ to: isAdmin ? "/admin" : "/dashboard" });
+    navigate({ to: "/dashboard" });
   };
 
   return (
@@ -55,9 +54,9 @@ export function AsemiApp() {
         mode={authModalMode}
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onSuccess={(role) => {
+        onSuccess={() => {
           setAuthModalOpen(false);
-          navigate({ to: role === "ADMIN" ? "/admin" : "/dashboard" });
+          navigate({ to: "/dashboard" });
         }}
       />
     </div>

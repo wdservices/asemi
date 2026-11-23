@@ -47,6 +47,9 @@ const REVIEWED_FILTERS: Array<{ key: ReviewedFilter; label: string }> = [
 function AdminReports() {
   const isAdmin = useIsAdmin();
 
+  if (isAdmin.isPending) {
+    return <div className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />;
+  }
   if (!isAdmin.data) {
     return <NotAuthorizedCard />;
   }

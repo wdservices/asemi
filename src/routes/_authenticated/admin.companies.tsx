@@ -60,6 +60,9 @@ const STATUS_FILTERS: Array<{ key: string; label: string }> = [
 function AdminCompanies() {
   const isAdmin = useIsAdmin();
 
+  if (isAdmin.isPending) {
+    return <div className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />;
+  }
   if (!isAdmin.data) {
     return <NotAuthorizedCard />;
   }
@@ -173,7 +176,12 @@ function CompaniesContent() {
             ? "Company rejected"
             : "More info requested",
       );
-      await queryClient.invalidateQueries({ queryKey: ["admin-company-overview"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-company-overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-approvals-queue"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-approvals-count"] }),
+        queryClient.invalidateQueries({ queryKey: ["platform-metrics"] }),
+      ]);
       setDialogState({ open: false, mode: null, company: null, note: "", busy: false });
     } catch (err) {
       console.error(err);

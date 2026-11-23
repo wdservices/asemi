@@ -12,10 +12,8 @@ function readEnv(key: string): string | undefined {
   }
 }
 
-export const CLOUDINARY_CLOUD_NAME =
-  readEnv("VITE_CLOUDINARY_CLOUD_NAME") || "dvlgvtqn";
-export const CLOUDINARY_UPLOAD_PRESET =
-  readEnv("VITE_CLOUDINARY_UPLOAD_PRESET") || "asemi_presets";
+export const CLOUDINARY_CLOUD_NAME = readEnv("VITE_CLOUDINARY_CLOUD_NAME") || "dvlgvtqn";
+export const CLOUDINARY_UPLOAD_PRESET = readEnv("VITE_CLOUDINARY_UPLOAD_PRESET") || "asemi_presets";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -49,10 +47,10 @@ export async function uploadImageToCloudinary(
   form.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
   form.append("folder", folder);
 
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-    { method: "POST", body: form },
-  );
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: "POST",
+    body: form,
+  });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {

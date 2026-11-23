@@ -221,8 +221,15 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
  * CorelDRAW, or industrial laser/die plotters.
  */
 export async function downloadBatchSvg(options: BatchExportOptions): Promise<void> {
-  const { batchNumber, productName, brandName = "Asemi", logoUrl, codes, style, onProgress } =
-    options;
+  const {
+    batchNumber,
+    productName,
+    brandName = "Asemi",
+    logoUrl,
+    codes,
+    style,
+    onProgress,
+  } = options;
 
   if (!codes.length) {
     throw new Error("No codes provided for SVG export");
@@ -343,8 +350,15 @@ PRINTING INSTRUCTIONS:
  * Downloads a ZIP file containing rendered high-resolution PNG tags for the given codes.
  */
 export async function downloadTagsZip(options: BatchExportOptions): Promise<void> {
-  const { batchNumber, productName, brandName = "Asemi", logoUrl, codes, style, onProgress } =
-    options;
+  const {
+    batchNumber,
+    productName,
+    brandName = "Asemi",
+    logoUrl,
+    codes,
+    style,
+    onProgress,
+  } = options;
   const zip = new JSZip();
   const folder = zip.folder(`asemi-${batchNumber}-${style}-tags`);
 
@@ -417,7 +431,11 @@ export async function downloadSingleTagPdf(options: {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(113, 113, 122);
-  doc.text(`Design: ${style === "circle" ? "Circular Tag (30mm Ø)" : "Rectangular Label (28×32mm)"}`, 8, 14);
+  doc.text(
+    `Design: ${style === "circle" ? "Circular Tag (30mm Ø)" : "Rectangular Label (28×32mm)"}`,
+    8,
+    14,
+  );
 
   // Render high-res tag image
   const dataUrl = await renderTagToCanvas({

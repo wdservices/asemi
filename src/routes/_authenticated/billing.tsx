@@ -50,10 +50,7 @@ export function calculateBracketEstimate(
   return {
     ...r,
     cost: r.price,
-    perUnit:
-      vol > 0
-        ? (r.price / vol).toFixed(dp)
-        : (0).toFixed(dp),
+    perUnit: vol > 0 ? (r.price / vol).toFixed(dp) : (0).toFixed(dp),
     brackets: table.tiers.map((rate, i) => ({
       label: TIER_RANGES[i] ?? `Tier ${i + 1}`,
       rate: `${table.symbol}${rate.toFixed(dp)} / code`,
@@ -93,7 +90,12 @@ function BillingPage() {
       company?.totalCodesGenerated ?? 0,
       company?.freeCodesUsed ?? 0,
     );
-  }, [calculatorVolume, registeredCountryCode, company?.totalCodesGenerated, company?.freeCodesUsed]);
+  }, [
+    calculatorVolume,
+    registeredCountryCode,
+    company?.totalCodesGenerated,
+    company?.freeCodesUsed,
+  ]);
 
   const exampleEstimate = useMemo(() => {
     return calculateBracketEstimate(
@@ -190,10 +192,10 @@ function BillingPage() {
         </CardHeader>
 
         <CardContent className="p-6 md:p-8 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-center">
             {/* Slider and Volume Presets */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="flex items-center justify-between">
+            <div className="min-w-0 lg:col-span-7 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-mono uppercase font-bold text-muted-foreground">
                     Estimate Codes Volume
@@ -203,7 +205,7 @@ function BillingPage() {
                   </p>
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-mono text-3xl font-bold tracking-tight text-foreground">
+                  <span className="font-mono text-2xl sm:text-3xl font-bold tracking-tight text-foreground tabular-nums">
                     {calculatorVolume.toLocaleString()}
                   </span>
                   <span className="text-xs font-mono text-muted-foreground">codes</span>
@@ -222,7 +224,7 @@ function BillingPage() {
                 className="w-full h-2.5 bg-muted rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-zinc-100"
               />
 
-              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+              <div className="flex justify-between text-[11px] font-mono text-muted-foreground tabular-nums">
                 <span>500</span>
                 <span>50,000</span>
                 <span>100,000</span>
@@ -237,7 +239,7 @@ function BillingPage() {
                     key={v}
                     type="button"
                     onClick={() => setCalculatorVolume(v)}
-                    className={`px-2.5 py-1 text-xs font-mono rounded border transition-colors ${
+                    className={`px-2.5 py-1 text-xs font-mono rounded border transition-colors tabular-nums ${
                       calculatorVolume === v
                         ? "bg-primary text-primary-foreground border-primary font-bold"
                         : "hover:bg-accent text-foreground"
@@ -249,19 +251,19 @@ function BillingPage() {
               </div>
             </div>
 
-            {/* Total Investment Display Box (matches landing page calculator) */}
-            <div className="lg:col-span-5 rounded-2xl border-2 border-[#caa33a]/40 bg-gradient-to-br from-amber-500/5 via-background to-amber-500/10 p-6 text-center shadow-sm">
+            {/* Total Investment Display Box */}
+            <div className="min-w-0 overflow-hidden lg:col-span-5 rounded-2xl border-2 border-[#caa33a]/40 bg-gradient-to-br from-amber-500/5 via-background to-amber-500/10 p-5 sm:p-6 text-center shadow-sm">
               <div className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-semibold">
                 Total Estimated Investment
               </div>
-              <div className="text-4xl sm:text-5xl font-bold text-foreground mt-2 font-mono tracking-tight">
+              <div className="mt-2 max-w-full break-words font-mono text-[clamp(1.5rem,2.3vw,2.25rem)] leading-tight font-bold tracking-tight text-foreground tabular-nums">
                 {estimate.symbol}
                 {estimate.cost.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </div>
-              <div className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold mt-2">
+              <div className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold mt-2 tabular-nums">
                 Average {estimate.symbol}
                 {estimate.perUnit} / unit
               </div>
@@ -270,11 +272,14 @@ function BillingPage() {
               </div>
 
               <div className="mt-5 pt-4 border-t flex flex-col gap-2">
-                <Button asChild className="w-full bg-zinc-950 hover:bg-black text-white gap-2">
+                <Button
+                  asChild
+                  className="w-full bg-zinc-950 hover:bg-black text-white gap-2 whitespace-nowrap"
+                >
                   <Link to="/batches">
-                    <Sparkles className="size-4 text-[#caa33a]" /> Generate{" "}
+                    <Sparkles className="size-4 shrink-0 text-[#caa33a]" /> Generate{" "}
                     {calculatorVolume.toLocaleString()} Codes
-                    <ArrowRight className="size-4" />
+                    <ArrowRight className="size-4 shrink-0" />
                   </Link>
                 </Button>
               </div>
@@ -391,7 +396,7 @@ function BillingPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="overflow-hidden rounded-xl border">
+          <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground font-mono">
                 <tr>
@@ -478,7 +483,7 @@ function BillingPage() {
               description="Invoices will be automatically issued here as code batches are generated."
             />
           ) : (
-            <div className="overflow-hidden rounded-xl border">
+            <div className="overflow-x-auto rounded-xl border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground font-mono">
                   <tr>

@@ -494,7 +494,7 @@ function AnalyticsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-xl border">
+                <div className="overflow-x-auto rounded-xl border">
                   <Table>
                     <TableHeader>
                       <TableRow>

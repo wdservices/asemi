@@ -2,6 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     function signedIn() {
       return request.auth != null;
     }
@@ -9,37 +18,54 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn()
         && (
-          (request.auth.token.email != null && request.auth.token.email.lower() == 'spellz49@gmail.com')
+          (request.auth.token.email != null
+            && request.auth.token.email.lower() == 'spellz49@gmail.com'
+            && request.auth.token.email_verified == true)
           || exists(/databases/$(database)/documents/roles/$(request.auth.uid))
         );
     }
 
     function ownsCompany(companyId) {
       return signedIn()
+        && isValidId(companyId)
         && exists(/databases/$(database)/documents/companies/$(companyId))
         && get(/databases/$(database)/documents/companies/$(companyId)).data.ownerId == request.auth.uid;
     }
 
+    function isValidRecallString(val) {
+      return val == null || (val is string && val.size() <= 500);
+    }
+
+    function isValidOptionalDate(val) {
+      return val == null || (val is string && val.size() <= 40);
+    }
+
+    function isValidShortStr(val) {
+      return val == null || (val is string && val.size() <= 120);
+    }
+
     // ---- roles: users can read their own doc; only functions write ----
     match /roles/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if signedIn() && isValidId(uid) && (request.auth.uid == uid || isAdmin());
       allow write: if false;
     }
 
     // ---- companies ----
     match /companies/{companyId} {
-      allow read: if ownsCompany(companyId) || isAdmin();
+      allow get: if isValidId(companyId) && (ownsCompany(companyId) || isAdmin());
+      allow list: if isAdmin() || (signedIn() && resource.data.ownerId == request.auth.uid);
       allow create: if signedIn()
+        && isValidId(companyId)
         && request.resource.data.ownerId == request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.status == 'pending'
+        && request.resource.data.name is string && request.resource.data.name.size() <= 200
+        && request.resource.data.email is string && request.resource.data.email.size() <= 200;
       allow update: if isAdmin() || (
-        ownsCompany(companyId)
+        isValidId(companyId)
+        && ownsCompany(companyId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-          ['name', 'email', 'phone', 'address', 'category', 'logoUrl', 'documentUrl']
+          ['name', 'email', 'phone', 'address', 'category', 'registrationNumber', 'logoUrl', 'documentUrl', 'updatedAt']
         )
-        // Protected columns (mirror of the old SQL trigger): status,
-        // countryCode, freeCodesUsed, totalCodesGenerated, batchSeq,
-        // adminNote, aiConfidence, aiFlags, approvedAt, ownerId
       );
       allow delete: if false;
 
@@ -58,33 +84,160 @@ service cloud.firestore {
 
     // ---- products: full owner CRUD, admin read ----
     match /products/{productId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow get: if isValidId(productId) && (isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid));
+      allow list: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
       allow create: if signedIn()
-        && request.resource.data.companyId == request.auth.uid;
-      allow update: if signedIn() && resource.data.companyId == request.auth.uid;
-      allow delete: if signedIn() && resource.data.companyId == request.auth.uid;
+        && isValidId(productId)
+        && request.resource.data.companyId == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 200
+        && request.resource.data.category is string && request.resource.data.category.size() <= 100
+        && (!('sku' in request.resource.data) || (request.resource.data.sku is string && request.resource.data.sku.size() <= 80))
+        && (!('skuLookup' in request.resource.data) || (request.resource.data.skuLookup is string && request.resource.data.skuLookup.size() <= 80))
+        && (!('lotNumber' in request.resource.data) || isValidShortStr(request.resource.data.lotNumber))
+        && (!('mfgDate' in request.resource.data) || isValidOptionalDate(request.resource.data.mfgDate))
+        && (!('expiryDate' in request.resource.data) || isValidOptionalDate(request.resource.data.expiryDate));
+      allow update: if isValidId(productId)
+        && (isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid))
+        && request.resource.data.companyId == resource.data.companyId
+        && (!('sku' in request.resource.data) || (request.resource.data.sku is string && request.resource.data.sku.size() <= 80))
+        && (!('skuLookup' in request.resource.data) || (request.resource.data.skuLookup is string && request.resource.data.skuLookup.size() <= 80))
+        && (!('lotNumber' in request.resource.data) || isValidShortStr(request.resource.data.lotNumber))
+        && (!('mfgDate' in request.resource.data) || isValidOptionalDate(request.resource.data.mfgDate))
+        && (!('expiryDate' in request.resource.data) || isValidOptionalDate(request.resource.data.expiryDate))
+        && (!('recalled' in request.resource.data) || request.resource.data.recalled is bool)
+        && (!('recallReason' in request.resource.data) || isValidRecallString(request.resource.data.recallReason))
+        && (!('recalledAt' in request.resource.data) || isValidOptionalDate(request.resource.data.recalledAt));
+      allow delete: if isValidId(productId) && signedIn() && resource.data.companyId == request.auth.uid;
     }
 
-    // ---- batches: owner and admin can create and read ----
+    // ---- batches: owner and admin read; owner recall updates only; server controls payment/status ----
     match /batches/{batchId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.companyId == request.auth.uid;
-      allow update: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow get: if isValidId(batchId) && (isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid));
+      allow list: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+      allow create: if signedIn()
+        && isValidId(batchId)
+        && request.resource.data.companyId == request.auth.uid;
+      allow update: if isValidId(batchId) && (
+        isAdmin() || (
+          signedIn()
+          && resource.data.companyId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['recalled', 'recallReason', 'recalledAt']
+          )
+          && request.resource.data.recalled is bool
+          && isValidRecallString(request.resource.data.recallReason)
+          && isValidOptionalDate(request.resource.data.recalledAt)
+        )
+      );
       allow delete: if isAdmin();
     }
 
-    // ---- codes: public read for product verification; owner & admin write ----
+    // ---- public batch status (recall & expiry provenance only — zero PII/payment data) ----
+    match /batchStatus/{batchId} {
+      allow get: if isValidId(batchId);
+      allow list: if false;
+      allow create: if signedIn()
+        && isValidId(batchId)
+        && request.resource.data.companyId == request.auth.uid
+        && request.resource.data.batchId == batchId
+        && isValidShortStr(request.resource.data.productId)
+        && (!('sku' in request.resource.data) || isValidShortStr(request.resource.data.sku))
+        && isValidShortStr(request.resource.data.lotNumber)
+        && isValidOptionalDate(request.resource.data.mfgDate)
+        && isValidOptionalDate(request.resource.data.expiryDate)
+        && request.resource.data.recalled is bool
+        && isValidRecallString(request.resource.data.recallReason)
+        && isValidOptionalDate(request.resource.data.recalledAt)
+        && request.resource.data.keys().hasOnly([
+          'batchId', 'companyId', 'productId', 'sku', 'lotNumber', 'mfgDate', 'expiryDate',
+          'recalled', 'recallReason', 'recalledAt', 'updatedAt'
+        ]);
+      allow update: if isValidId(batchId) && (
+        isAdmin() || (
+          signedIn()
+          && resource.data.companyId == request.auth.uid
+          && request.resource.data.companyId == resource.data.companyId
+          && request.resource.data.batchId == batchId
+          && isValidShortStr(request.resource.data.productId)
+          && (!('sku' in request.resource.data) || isValidShortStr(request.resource.data.sku))
+          && isValidShortStr(request.resource.data.lotNumber)
+          && isValidOptionalDate(request.resource.data.mfgDate)
+          && isValidOptionalDate(request.resource.data.expiryDate)
+          && request.resource.data.recalled is bool
+          && isValidRecallString(request.resource.data.recallReason)
+          && isValidOptionalDate(request.resource.data.recalledAt)
+          && request.resource.data.keys().hasOnly([
+            'batchId', 'companyId', 'productId', 'sku', 'lotNumber', 'mfgDate', 'expiryDate',
+            'recalled', 'recallReason', 'recalledAt', 'updatedAt'
+          ])
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ---- public product status (SKU, default dates & recall provenance only — zero PII) ----
+    match /productStatus/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if false;
+      allow create: if signedIn()
+        && isValidId(productId)
+        && request.resource.data.companyId == request.auth.uid
+        && request.resource.data.productId == productId
+        && isValidShortStr(request.resource.data.sku)
+        && isValidShortStr(request.resource.data.lotNumber)
+        && isValidOptionalDate(request.resource.data.mfgDate)
+        && isValidOptionalDate(request.resource.data.expiryDate)
+        && request.resource.data.recalled is bool
+        && isValidRecallString(request.resource.data.recallReason)
+        && isValidOptionalDate(request.resource.data.recalledAt)
+        && request.resource.data.keys().hasOnly([
+          'productId', 'companyId', 'sku', 'lotNumber', 'mfgDate', 'expiryDate',
+          'recalled', 'recallReason', 'recalledAt', 'updatedAt'
+        ]);
+      allow update: if isValidId(productId) && (
+        isAdmin() || (
+          signedIn()
+          && resource.data.companyId == request.auth.uid
+          && request.resource.data.companyId == resource.data.companyId
+          && request.resource.data.productId == productId
+          && isValidShortStr(request.resource.data.sku)
+          && isValidShortStr(request.resource.data.lotNumber)
+          && isValidOptionalDate(request.resource.data.mfgDate)
+          && isValidOptionalDate(request.resource.data.expiryDate)
+          && request.resource.data.recalled is bool
+          && isValidRecallString(request.resource.data.recallReason)
+          && isValidOptionalDate(request.resource.data.recalledAt)
+          && request.resource.data.keys().hasOnly([
+            'productId', 'companyId', 'sku', 'lotNumber', 'mfgDate', 'expiryDate',
+            'recalled', 'recallReason', 'recalledAt', 'updatedAt'
+          ])
+        )
+      );
+      allow delete: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid);
+    }
+
+    // ---- codes: public get/list for product verification; owner & admin write; scan counter update ----
     match /codes/{codeId} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.companyId == request.auth.uid;
-      allow update: if isAdmin() || (signedIn() && resource.data.companyId == request.auth.uid) || true;
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.companyId == request.auth.uid)
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scanCount', 'lastScannedAt'])
+          && request.resource.data.scanCount is number
+        );
       allow delete: if isAdmin();
 
       match /scans/{scanId} {
         allow read: if isAdmin()
           || (signedIn() && get(/databases/$(database)/documents/codes/$(codeId)).data.companyId == request.auth.uid);
-        allow create: if true;
-        allow write: if false;
+        allow create: if request.resource.data.keys().hasOnly([
+            'codeId', 'codeString', 'companyId', 'productId', 'batchId',
+            'browserToken', 'city', 'country', 'deviceFingerprint', 'flagged', 'scannedAt'
+          ])
+          && request.resource.data.codeId == codeId
+          && request.resource.data.codeString is string && request.resource.data.codeString.size() <= 64;
+        allow update, delete: if false;
       }
     }
 
@@ -102,8 +255,8 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly(
           ['codeId', 'companyId', 'codeString', 'contact', 'message', 'reviewed', 'createdAt']
         )
-        && request.resource.data.codeString is string
-        && request.resource.data.message is string
+        && request.resource.data.codeString is string && request.resource.data.codeString.size() <= 64
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000
         && (!('reviewed' in request.resource.data) || request.resource.data.reviewed == false);
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reviewed']);

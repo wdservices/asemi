@@ -69,6 +69,7 @@ export interface Product {
   companyId: string;
   name: string;
   sku: string;
+  skuLookup?: string;
   category: string;
   description: string;
   imageUrls: string[];
@@ -82,6 +83,9 @@ export interface Product {
   regulatoryDocUrl: string | null;
   certificateOfAnalysisName: string | null;
   certificateOfAnalysisUrl: string | null;
+  recalled?: boolean;
+  recallReason?: string | null;
+  recalledAt?: string | null;
   createdAt: string;
 }
 
@@ -90,6 +94,8 @@ export interface Batch {
   companyId: string;
   productId: string;
   productName: string;
+  sku?: string;
+  skuLookup?: string;
   batchNumber: string | null;
   quantity: number;
   amountCharged: number;
@@ -107,6 +113,9 @@ export interface Batch {
   expiryDate: string | null;
   coaDocName: string | null;
   coaDocUrl: string | null;
+  recalled?: boolean;
+  recallReason?: string | null;
+  recalledAt?: string | null;
   exportedAt: string | null;
   createdAt: string;
 }
@@ -116,6 +125,8 @@ export interface Code {
   batchId: string;
   productId: string;
   companyId: string;
+  sku?: string;
+  skuLookup?: string;
   codeString: string;
   scanCount: number;
   flagged: boolean;
@@ -274,10 +285,12 @@ export interface ProductInput {
 }
 
 export async function createProduct(companyId: string, input: ProductInput): Promise<Product> {
+  const trimmedSku = input.sku?.trim() || "";
   const ref = await addDoc(collection(requireDb(), "products"), {
     companyId,
     name: input.name.trim(),
-    sku: input.sku?.trim() || "",
+    sku: trimmedSku,
+    skuLookup: trimmedSku.toUpperCase(),
     category: input.category,
     description: input.description?.trim() || "",
     imageUrls: input.imageUrls ?? [],
@@ -291,8 +304,23 @@ export async function createProduct(companyId: string, input: ProductInput): Pro
     regulatoryDocUrl: input.regulatoryDocUrl ?? null,
     certificateOfAnalysisName: input.certificateOfAnalysisName ?? null,
     certificateOfAnalysisUrl: input.certificateOfAnalysisUrl ?? null,
+    recalled: false,
+    recallReason: null,
+    recalledAt: null,
     createdAt: serverTimestamp(),
   });
+  await setDoc(doc(requireDb(), "productStatus", ref.id), {
+    productId: ref.id,
+    companyId,
+    sku: trimmedSku,
+    lotNumber: input.lotNumber ?? null,
+    mfgDate: input.mfgDate ?? null,
+    expiryDate: input.expiryDate ?? null,
+    recalled: false,
+    recallReason: null,
+    recalledAt: null,
+    updatedAt: serverTimestamp(),
+  }).catch(() => {});
   const snap = await getDoc(ref);
   return ser<Product>(snap.id, snap.data()!);
 }
@@ -301,11 +329,95 @@ export async function updateProduct(
   productId: string,
   input: Partial<ProductInput>,
 ): Promise<void> {
-  await updateDoc(doc(requireDb(), "products", productId), { ...input });
+  const patch: Record<string, any> = { ...input };
+  if (input.sku !== undefined) {
+    const trimmedSku = input.sku.trim();
+    patch["sku"] = trimmedSku;
+    patch["skuLookup"] = trimmedSku.toUpperCase();
+  }
+  await updateDoc(doc(requireDb(), "products", productId), patch);
+  const snap = await getDoc(doc(requireDb(), "products", productId)).catch(() => null);
+  if (snap?.exists()) {
+    const d = snap.data();
+    await setDoc(doc(requireDb(), "productStatus", productId), {
+      productId,
+      companyId: String(d["companyId"] || ""),
+      sku: String(d["sku"] || ""),
+      lotNumber: d["lotNumber"] ?? null,
+      mfgDate: d["mfgDate"] ?? null,
+      expiryDate: d["expiryDate"] ?? null,
+      recalled: Boolean(d["recalled"]),
+      recallReason: d["recallReason"] ?? null,
+      recalledAt: d["recalledAt"] ?? null,
+      updatedAt: serverTimestamp(),
+    }).catch(() => {});
+  }
 }
 
 export async function deleteProduct(productId: string): Promise<void> {
   await deleteDoc(doc(requireDb(), "products", productId));
+  await deleteDoc(doc(requireDb(), "productStatus", productId)).catch(() => {});
+}
+
+export async function setProductRecall(input: {
+  productId: string;
+  companyId: string;
+  recalled: boolean;
+  reason?: string | null;
+  product?: Partial<Product>;
+}): Promise<void> {
+  const recallReason = input.recalled
+    ? input.reason?.trim() || "Safety or quality advisory issued by brand."
+    : null;
+  const recalledAt = input.recalled ? new Date().toISOString() : null;
+  await updateDoc(doc(requireDb(), "products", input.productId), {
+    recalled: input.recalled,
+    recallReason,
+    recalledAt,
+  });
+  await setDoc(doc(requireDb(), "productStatus", input.productId), {
+    productId: input.productId,
+    companyId: input.companyId,
+    sku: input.product?.sku ?? "",
+    lotNumber: input.product?.lotNumber ?? null,
+    mfgDate: input.product?.mfgDate ?? null,
+    expiryDate: input.product?.expiryDate ?? null,
+    recalled: input.recalled,
+    recallReason,
+    recalledAt,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function setBatchRecall(input: {
+  batchId: string;
+  companyId: string;
+  productId: string;
+  recalled: boolean;
+  reason?: string | null;
+  batch?: Partial<Batch>;
+}): Promise<void> {
+  const recallReason = input.recalled
+    ? input.reason?.trim() || "Batch recall issued by brand."
+    : null;
+  const recalledAt = input.recalled ? new Date().toISOString() : null;
+  await updateDoc(doc(requireDb(), "batches", input.batchId), {
+    recalled: input.recalled,
+    recallReason,
+    recalledAt,
+  });
+  await setDoc(doc(requireDb(), "batchStatus", input.batchId), {
+    batchId: input.batchId,
+    companyId: input.companyId,
+    productId: input.productId,
+    lotNumber: input.batch?.lotNumber ?? null,
+    mfgDate: input.batch?.mfgDate ?? null,
+    expiryDate: input.batch?.expiryDate ?? null,
+    recalled: input.recalled,
+    recallReason,
+    recalledAt,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -331,17 +443,40 @@ export async function getBatch(batchId: string): Promise<Batch | null> {
 export interface CodeFilters {
   productId?: string | undefined;
   batchId?: string | undefined;
+  sku?: string | undefined;
   flaggedOnly?: boolean | undefined;
   limitN?: number | undefined;
 }
 
 export async function listCodes(companyId: string, filters: CodeFilters = {}): Promise<Code[]> {
-  // NOTE: equality filters only, no orderBy — sorted + sliced client-side so
-  // no composite index is required.
+  // NOTE: equality filters + optional indexed skuLookup range, sorted client-side.
   const clauses: any[] = [where("companyId", "==", companyId)];
   if (filters.productId) clauses.push(where("productId", "==", filters.productId));
   if (filters.batchId) clauses.push(where("batchId", "==", filters.batchId));
   if (filters.flaggedOnly) clauses.push(where("flagged", "==", true));
+  const skuUpper = filters.sku?.trim().toUpperCase();
+  if (skuUpper && !filters.productId && !filters.batchId) {
+    try {
+      const snap = await getDocs(
+        query(
+          collection(requireDb(), "codes"),
+          ...clauses,
+          where("skuLookup", ">=", skuUpper),
+          where("skuLookup", "<=", `${skuUpper}\uf8ff`),
+          orderBy("skuLookup"),
+          limit(filters.limitN ?? 500),
+        ),
+      );
+      if (!snap.empty) {
+        return snap.docs
+          .map((d) => ser<Code>(d.id, d.data()))
+          .sort(byCreatedDesc)
+          .slice(0, filters.limitN ?? 500);
+      }
+    } catch {
+      // Fall back to standard company-scoped query below if index isn't active yet.
+    }
+  }
   const snap = await getDocs(
     query(collection(requireDb(), "codes"), ...clauses, limit(filters.limitN ?? 500)),
   );
@@ -387,7 +522,11 @@ export async function listCompanyScans(
   const since = new Date(sinceIso).toISOString();
   try {
     const snap = await getDocs(
-      query(collectionGroup(requireDb(), "scans"), where("companyId", "==", companyId), limit(maxN)),
+      query(
+        collectionGroup(requireDb(), "scans"),
+        where("companyId", "==", companyId),
+        limit(maxN),
+      ),
     );
     return snap.docs
       .map((d) => ser<Scan>(d.id, d.data()))
@@ -651,11 +790,15 @@ export async function nameMaps(ids: {
 }): Promise<{
   companies: Map<string, string>;
   products: Map<string, string>;
+  productSkus: Map<string, string>;
   batches: Map<string, string>;
+  batchSkus: Map<string, string>;
 }> {
   const companies = new Map<string, string>();
   const products = new Map<string, string>();
+  const productSkus = new Map<string, string>();
   const batches = new Map<string, string>();
+  const batchSkus = new Map<string, string>();
   await Promise.all([
     ...[...new Set(ids.companyIds)].map(async (id) => {
       const s = await getDoc(doc(requireDb(), "companies", id));
@@ -663,14 +806,223 @@ export async function nameMaps(ids: {
     }),
     ...[...new Set(ids.productIds)].map(async (id) => {
       const s = await getDoc(doc(requireDb(), "products", id));
-      if (s.exists()) products.set(id, String(s.data()["name"] || "—"));
+      if (s.exists()) {
+        products.set(id, String(s.data()["name"] || "—"));
+        if (s.data()["sku"]) productSkus.set(id, String(s.data()["sku"]));
+      }
     }),
     ...[...new Set(ids.batchIds)].map(async (id) => {
       const s = await getDoc(doc(requireDb(), "batches", id));
-      if (s.exists()) batches.set(id, String(s.data()["batchNumber"] || id));
+      if (s.exists()) {
+        batches.set(id, String(s.data()["batchNumber"] || id));
+        if (s.data()["sku"]) batchSkus.set(id, String(s.data()["sku"]));
+      }
     }),
   ]);
-  return { companies, products, batches };
+  return { companies, products, productSkus, batches, batchSkus };
+}
+
+export interface AdminUnitRow extends Code {
+  companyName: string;
+  productName: string;
+  resolvedSku: string;
+  batchNumber: string;
+  lotNumber: string | null;
+  expiryDate: string | null;
+}
+
+export async function adminSearchUnits(input?: {
+  queryText?: string;
+  flaggedOnly?: boolean;
+  limitN?: number;
+}): Promise<AdminUnitRow[]> {
+  const db = requireDb();
+  const limitN = input?.limitN ?? 150;
+  const rawQuery = (input?.queryText ?? "").trim();
+  const upperQuery = rawQuery.toUpperCase();
+  const strippedQuery = upperQuery.replace(/[^A-Z0-9]/g, "");
+
+  const byId = new Map<string, Code>();
+
+  if (!rawQuery) {
+    const snap = input?.flaggedOnly
+      ? await getDocs(query(collection(db, "codes"), where("flagged", "==", true), limit(limitN)))
+      : await getDocs(
+          query(collection(db, "codes"), orderBy("createdAt", "desc"), limit(limitN)),
+        ).catch(() => getDocs(query(collection(db, "codes"), limit(limitN))));
+    for (const d of snap.docs) byId.set(d.id, ser<Code>(d.id, d.data()));
+  } else {
+    const tasks: Promise<void>[] = [];
+
+    // 1. Indexed SKU lookup on unit codes directly
+    tasks.push(
+      getDocs(
+        query(
+          collection(db, "codes"),
+          where("skuLookup", ">=", upperQuery),
+          where("skuLookup", "<=", `${upperQuery}\uf8ff`),
+          orderBy("skuLookup"),
+          limit(limitN),
+        ),
+      )
+        .then((snap) => {
+          for (const d of snap.docs) byId.set(d.id, ser<Code>(d.id, d.data()));
+        })
+        .catch(() => {}),
+    );
+
+    // 2. Indexed exact SKU equality fallback (in case skuLookup wasn't written yet)
+    tasks.push(
+      getDocs(query(collection(db, "codes"), where("sku", "==", rawQuery), limit(limitN)))
+        .then((snap) => {
+          for (const d of snap.docs) byId.set(d.id, ser<Code>(d.id, d.data()));
+        })
+        .catch(() => {}),
+    );
+
+    // 3. Indexed unit code prefix lookup (e.g. ASM-XXXX-...)
+    if (strippedQuery.length >= 3) {
+      tasks.push(
+        getDocs(
+          query(
+            collection(db, "codes"),
+            where("codeLookup", ">=", strippedQuery),
+            where("codeLookup", "<=", `${strippedQuery}\uf8ff`),
+            orderBy("codeLookup"),
+            limit(limitN),
+          ),
+        )
+          .then((snap) => {
+            for (const d of snap.docs) byId.set(d.id, ser<Code>(d.id, d.data()));
+          })
+          .catch(() => {}),
+      );
+    }
+
+    // 4. Match products & batches by indexed SKU so legacy unit codes lacking denormalized sku still surface
+    tasks.push(
+      (async () => {
+        const [prodByLookup, prodByExact, batchByLookup] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, "products"),
+              where("skuLookup", ">=", upperQuery),
+              where("skuLookup", "<=", `${upperQuery}\uf8ff`),
+              orderBy("skuLookup"),
+              limit(25),
+            ),
+          ).catch(() => null),
+          getDocs(query(collection(db, "products"), where("sku", "==", rawQuery), limit(25))).catch(
+            () => null,
+          ),
+          getDocs(
+            query(
+              collection(db, "batches"),
+              where("skuLookup", ">=", upperQuery),
+              where("skuLookup", "<=", `${upperQuery}\uf8ff`),
+              orderBy("skuLookup"),
+              limit(25),
+            ),
+          ).catch(() => null),
+        ]);
+
+        const matchedProductIds = new Set<string>();
+        for (const s of [prodByLookup, prodByExact]) {
+          if (!s) continue;
+          for (const d of s.docs) matchedProductIds.add(d.id);
+        }
+        const matchedBatchIds = new Set<string>();
+        if (batchByLookup) {
+          for (const d of batchByLookup.docs) matchedBatchIds.add(d.id);
+        }
+
+        const pidList = [...matchedProductIds];
+        for (let i = 0; i < pidList.length; i += 10) {
+          const chunk = pidList.slice(i, i + 10);
+          const cs = await getDocs(
+            query(collection(db, "codes"), where("productId", "in", chunk), limit(limitN)),
+          ).catch(() => null);
+          if (cs) for (const d of cs.docs) byId.set(d.id, ser<Code>(d.id, d.data()));
+        }
+
+        const bidList = [...matchedBatchIds];
+        for (let i = 0; i < bidList.length; i += 10) {
+          const chunk = bidList.slice(i, i + 10);
+          const cs = await getDocs(
+            query(collection(db, "codes"), where("batchId", "in", chunk), limit(limitN)),
+          ).catch(() => null);
+          if (cs) for (const d of cs.docs) byId.set(d.id, ser<Code>(d.id, d.data()));
+        }
+      })(),
+    );
+
+    await Promise.all(tasks);
+  }
+
+  let items = [...byId.values()];
+  if (input?.flaggedOnly) {
+    items = items.filter((c) => c.flagged);
+  }
+  items = items.sort(byCreatedDesc).slice(0, limitN);
+
+  const companyIds = [...new Set(items.map((c) => c.companyId).filter(Boolean))];
+  const productIds = [...new Set(items.map((c) => c.productId).filter(Boolean))];
+  const batchIds = [...new Set(items.map((c) => c.batchId).filter(Boolean))];
+
+  const companyMap = new Map<string, string>();
+  const productMap = new Map<
+    string,
+    { name: string; sku: string; lotNumber: string | null; expiryDate: string | null }
+  >();
+  const batchMap = new Map<
+    string,
+    { batchNumber: string; sku: string; lotNumber: string | null; expiryDate: string | null }
+  >();
+
+  await Promise.all([
+    ...companyIds.map(async (id) => {
+      const s = await getDoc(doc(db, "companies", id)).catch(() => null);
+      if (s?.exists()) companyMap.set(id, String(s.data()["name"] || "—"));
+    }),
+    ...productIds.map(async (id) => {
+      const s = await getDoc(doc(db, "products", id)).catch(() => null);
+      if (s?.exists()) {
+        const d = s.data();
+        productMap.set(id, {
+          name: String(d["name"] || "—"),
+          sku: String(d["sku"] || ""),
+          lotNumber: d["lotNumber"] ? String(d["lotNumber"]) : null,
+          expiryDate: d["expiryDate"] ? String(d["expiryDate"]) : null,
+        });
+      }
+    }),
+    ...batchIds.map(async (id) => {
+      const s = await getDoc(doc(db, "batches", id)).catch(() => null);
+      if (s?.exists()) {
+        const d = s.data();
+        batchMap.set(id, {
+          batchNumber: String(d["batchNumber"] || id),
+          sku: String(d["sku"] || ""),
+          lotNumber: d["lotNumber"] ? String(d["lotNumber"]) : null,
+          expiryDate: d["expiryDate"] ? String(d["expiryDate"]) : null,
+        });
+      }
+    }),
+  ]);
+
+  return items.map((c) => {
+    const prod = productMap.get(c.productId);
+    const batch = batchMap.get(c.batchId);
+    return {
+      ...c,
+      companyName: companyMap.get(c.companyId) ?? "—",
+      productName: prod?.name ?? "—",
+      resolvedSku: c.sku || batch?.sku || prod?.sku || "",
+      batchNumber: batch?.batchNumber ?? "—",
+      lotNumber: batch?.lotNumber ?? prod?.lotNumber ?? null,
+      expiryDate: batch?.expiryDate ?? prod?.expiryDate ?? null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -709,6 +1061,7 @@ export const fnInitializeBatchPayment = (input: {
   productId: string;
   quantity: number;
   tagFormat?: "circle" | "rectangle";
+  sku?: string | null;
   lotNumber?: string | null;
   mfgDate?: string | null;
   expiryDate?: string | null;
@@ -735,8 +1088,12 @@ export interface VerifyResult {
   status: "genuine" | "genuine_repeated" | "invalid";
   code?: string;
   scan_count?: number;
+  recalled?: boolean;
+  recallReason?: string | null;
+  recalledAt?: string | null;
   product?: {
     name: string;
+    sku?: string;
     category: string;
     description: string;
     image: string | null;
@@ -753,7 +1110,13 @@ export interface VerifyResult {
     coaDocUrl: string | null;
   };
   company?: { name: string; logo: string | null };
-  batch?: { number: string; produced_at: string | null; lotNumber: string | null };
+  batch?: {
+    number: string;
+    produced_at: string | null;
+    lotNumber: string | null;
+    mfgDate?: string | null;
+    expiryDate?: string | null;
+  };
 }
 
 export const fnVerifyCode = (input: {
@@ -767,8 +1130,8 @@ export const fnVerifyCode = (input: {
 /**
  * Client-side verification fallback used when the `verifycode` Cloud Function
  * is not deployed (or unreachable). Codes are publicly readable, and each code
- * doc carries a snapshot of the product/company/batch display data so this can
- * run for anonymous scanners without exposing the products/companies collections.
+ * doc carries a snapshot of the product/company/batch display data while
+ * `productStatus` / `batchStatus` expose live recall, SKU, and date state.
  */
 export async function verifyCodeLocally(input: {
   code: string;
@@ -815,48 +1178,104 @@ export async function verifyCodeLocally(input: {
     // ignore — verification result is still returned below
   }
 
-  // Prefer live docs when the viewer is allowed to read them (brand owner);
-  // fall back to the snapshot written on the code doc (public scanners).
-  const [productSnap, companySnap, batchSnap] = await Promise.all([
-    data["productId"]
-      ? getDoc(doc(db, "products", String(data["productId"]))).catch(() => null)
-      : Promise.resolve(null),
-    data["companyId"]
-      ? getDoc(doc(db, "companies", String(data["companyId"]))).catch(() => null)
-      : Promise.resolve(null),
-    data["batchId"]
-      ? getDoc(doc(db, "batches", String(data["batchId"]))).catch(() => null)
-      : Promise.resolve(null),
-  ]);
+  // Read live public status docs (accessible anonymously) + owner docs when permitted.
+  const [productSnap, companySnap, batchSnap, productStatusSnap, batchStatusSnap] =
+    await Promise.all([
+      data["productId"]
+        ? getDoc(doc(db, "products", String(data["productId"]))).catch(() => null)
+        : Promise.resolve(null),
+      data["companyId"]
+        ? getDoc(doc(db, "companies", String(data["companyId"]))).catch(() => null)
+        : Promise.resolve(null),
+      data["batchId"]
+        ? getDoc(doc(db, "batches", String(data["batchId"]))).catch(() => null)
+        : Promise.resolve(null),
+      data["productId"]
+        ? getDoc(doc(db, "productStatus", String(data["productId"]))).catch(() => null)
+        : Promise.resolve(null),
+      data["batchId"]
+        ? getDoc(doc(db, "batchStatus", String(data["batchId"]))).catch(() => null)
+        : Promise.resolve(null),
+    ]);
   const product = productSnap?.exists() ? productSnap.data() : {};
   const company = companySnap?.exists() ? companySnap.data() : {};
   const batch = batchSnap?.exists() ? batchSnap.data() : {};
+  const pStatus = productStatusSnap?.exists() ? productStatusSnap.data() : {};
+  const bStatus = batchStatusSnap?.exists() ? batchStatusSnap.data() : {};
+
   const images: string[] = Array.isArray(product["imageUrls"])
     ? (product["imageUrls"] as string[])
     : data["productImage"]
       ? [String(data["productImage"])]
       : [];
 
+  const batchRecalled = Boolean(batch["recalled"] ?? bStatus["recalled"]);
+  const productRecalled = Boolean(product["recalled"] ?? pStatus["recalled"]);
+  const isRecalled = batchRecalled || productRecalled;
+  const recallReason =
+    (batchRecalled ? (batch["recallReason"] ?? bStatus["recallReason"]) : null) ??
+    (productRecalled ? (product["recallReason"] ?? pStatus["recallReason"]) : null) ??
+    null;
+  const recalledAt =
+    (batchRecalled ? (batch["recalledAt"] ?? bStatus["recalledAt"]) : null) ??
+    (productRecalled ? (product["recalledAt"] ?? pStatus["recalledAt"]) : null) ??
+    null;
+
+  const resolvedLot =
+    batch["lotNumber"] ??
+    bStatus["lotNumber"] ??
+    product["lotNumber"] ??
+    pStatus["lotNumber"] ??
+    data["lotNumber"] ??
+    null;
+  const resolvedMfg =
+    batch["mfgDate"] ??
+    bStatus["mfgDate"] ??
+    product["mfgDate"] ??
+    pStatus["mfgDate"] ??
+    data["mfgDate"] ??
+    null;
+  const resolvedExpiry =
+    batch["expiryDate"] ??
+    bStatus["expiryDate"] ??
+    product["expiryDate"] ??
+    pStatus["expiryDate"] ??
+    data["expiryDate"] ??
+    null;
+  const resolvedSku = String(
+    batch["sku"] ||
+      bStatus["sku"] ||
+      data["sku"] ||
+      product["sku"] ||
+      pStatus["sku"] ||
+      data["productSku"] ||
+      "",
+  );
+
   return {
     status: scanCount >= 3 ? "genuine_repeated" : "genuine",
     code: String(data["codeString"] || raw),
     scan_count: scanCount,
+    recalled: isRecalled,
+    recallReason: recallReason ? String(recallReason) : null,
+    recalledAt: recalledAt ? String(recalledAt) : null,
     product: {
       name: product["name"] || data["productName"] || "Unlisted product",
+      sku: resolvedSku,
       category: product["category"] || data["productCategory"] || "",
       description: product["description"] || data["productDescription"] || "",
       image: images[0] || null,
       images,
-      lotNumber: product["lotNumber"] ?? data["lotNumber"] ?? batch["lotNumber"] ?? null,
-      mfgDate: product["mfgDate"] ?? data["mfgDate"] ?? batch["mfgDate"] ?? null,
-      expiryDate: product["expiryDate"] ?? data["expiryDate"] ?? batch["expiryDate"] ?? null,
+      lotNumber: resolvedLot,
+      mfgDate: resolvedMfg,
+      expiryDate: resolvedExpiry,
       regulatoryNumber: product["regulatoryNumber"] ?? data["regulatoryNumber"] ?? null,
       regulatoryDocName: product["regulatoryDocName"] ?? null,
       regulatoryDocUrl: product["regulatoryDocUrl"] ?? null,
       certificateOfAnalysisName: product["certificateOfAnalysisName"] ?? null,
       certificateOfAnalysisUrl: product["certificateOfAnalysisUrl"] ?? null,
-      coaDocName: product["coaDocName"] ?? data["coaDocName"] ?? batch["coaDocName"] ?? null,
-      coaDocUrl: product["coaDocUrl"] ?? data["coaDocUrl"] ?? batch["coaDocUrl"] ?? null,
+      coaDocName: batch["coaDocName"] ?? product["coaDocName"] ?? data["coaDocName"] ?? null,
+      coaDocUrl: batch["coaDocUrl"] ?? product["coaDocUrl"] ?? data["coaDocUrl"] ?? null,
     },
     company: {
       name: company["name"] || data["companyName"] || "Unverified manufacturer",
@@ -870,7 +1289,9 @@ export async function verifyCodeLocally(input: {
           : data["producedAt"] instanceof Timestamp
             ? data["producedAt"].toDate().toISOString()
             : (data["producedAt"] ?? null),
-      lotNumber: batch["lotNumber"] ?? data["lotNumber"] ?? product["lotNumber"] ?? null,
+      lotNumber: resolvedLot,
+      mfgDate: resolvedMfg,
+      expiryDate: resolvedExpiry,
     },
   };
 }

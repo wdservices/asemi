@@ -217,26 +217,40 @@ export const verifycode = onCall(async (req) => {
   const batch = batchSnap && batchSnap.exists ? batchSnap.data()! : {};
   const images: string[] = Array.isArray(product.imageUrls) ? product.imageUrls : [];
 
+  const isRecalled = Boolean(batch.recalled || product.recalled);
+  const recallReason =
+    (batch.recalled ? batch.recallReason : null) ??
+    (product.recalled ? product.recallReason : null) ??
+    null;
+  const recalledAt =
+    (batch.recalled ? batch.recalledAt : null) ??
+    (product.recalled ? product.recalledAt : null) ??
+    null;
+
   return {
     status,
     code: code.codeString,
     scan_count: scanCount,
+    recalled: isRecalled,
+    recallReason,
+    recalledAt,
     product: {
       name: product.name || "Unlisted product",
+      sku: String(batch.sku || code.sku || product.sku || ""),
       category: product.category || "",
       description: product.description || "",
       image: images[0] || null,
       images,
-      lotNumber: product.lotNumber ?? batch.lotNumber ?? null,
-      mfgDate: product.mfgDate ?? batch.mfgDate ?? null,
-      expiryDate: product.expiryDate ?? batch.expiryDate ?? null,
+      lotNumber: batch.lotNumber ?? product.lotNumber ?? null,
+      mfgDate: batch.mfgDate ?? product.mfgDate ?? null,
+      expiryDate: batch.expiryDate ?? product.expiryDate ?? null,
       regulatoryNumber: product.regulatoryNumber ?? null,
       regulatoryDocName: product.regulatoryDocName ?? null,
       regulatoryDocUrl: product.regulatoryDocUrl ?? null,
       certificateOfAnalysisName: product.certificateOfAnalysisName ?? null,
       certificateOfAnalysisUrl: product.certificateOfAnalysisUrl ?? null,
-      coaDocName: product.coaDocName ?? batch.coaDocName ?? null,
-      coaDocUrl: product.coaDocUrl ?? batch.coaDocUrl ?? null,
+      coaDocName: batch.coaDocName ?? product.coaDocName ?? null,
+      coaDocUrl: batch.coaDocUrl ?? product.coaDocUrl ?? null,
     },
     company: { name: company.name || "Unverified manufacturer", logo: company.logoUrl || null },
     batch: {
@@ -244,6 +258,8 @@ export const verifycode = onCall(async (req) => {
       produced_at:
         batch.createdAt instanceof Timestamp ? batch.createdAt.toDate().toISOString() : null,
       lotNumber: batch.lotNumber ?? product.lotNumber ?? null,
+      mfgDate: batch.mfgDate ?? product.mfgDate ?? null,
+      expiryDate: batch.expiryDate ?? product.expiryDate ?? null,
     },
   };
 });
@@ -561,4 +577,3 @@ export const oncompanydocuploaded = onObjectFinalized(
       });
   },
 );
-

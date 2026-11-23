@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useIsAdmin, useSession } from "@/lib/auth";
@@ -56,12 +56,17 @@ type PlatformMetrics = {
 
 function AdminApprovals() {
   const isAdmin = useIsAdmin();
+  const location = useLocation();
+  const isChildRoute = location.pathname.startsWith("/admin/") && location.pathname !== "/admin/";
 
+  if (isAdmin.isPending) {
+    return <div className="h-64 animate-pulse rounded-2xl bg-white shadow-sm" />;
+  }
   if (!isAdmin.data) {
     return <NotAuthorizedCard />;
   }
 
-  return <ApprovalsContent />;
+  return isChildRoute ? <Outlet /> : <ApprovalsContent />;
 }
 
 function NotAuthorizedCard() {
@@ -146,8 +151,12 @@ function ApprovalsContent() {
             ? "Company rejected"
             : "More info requested",
       );
-      await queryClient.invalidateQueries({ queryKey: ["admin-approvals-queue"] });
-      await queryClient.invalidateQueries({ queryKey: ["platform-metrics"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-approvals-queue"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-approvals-count"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-company-overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["platform-metrics"] }),
+      ]);
       setDialogState({ open: false, mode: null, company: null, note: "", busy: false });
     } catch (err) {
       console.error(err);
@@ -155,6 +164,31 @@ function ApprovalsContent() {
     } finally {
       setDialogState((s) => ({ ...s, busy: false }));
     }
+  }
+
+  function exportCsv() {
+    if (!rows.length) return;
+    const headers = ["Name", "Category", "Registration", "Email", "Status", "Submitted"];
+    const lines = [headers.join(",")];
+    for (const c of rows) {
+      lines.push(
+        [
+          `"${c.name.replace(/"/g, '""')}"`,
+          `"${(c.category ?? "").replace(/"/g, '""')}"`,
+          c.registrationNumber,
+          `"${c.email.replace(/"/g, '""')}"`,
+          c.status,
+          c.createdAt,
+        ].join(","),
+      );
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `asemi-approvals-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -212,7 +246,7 @@ function ApprovalsContent() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="sm" disabled={!rows.length}>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rows.length}>
             <Download className="mr-2 size-4" /> Export CSV
           </Button>
         </div>
