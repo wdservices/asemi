@@ -1,6 +1,8 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProductTagPreview } from "@/components/asemi/ProductTagPreview";
+import { LabelFinishSelector } from "@/components/asemi/LabelFinishSelector";
+import { DEFAULT_LABEL_STYLE, type LabelStyleConfig } from "@/lib/label-themes";
 import { Badge } from "@/components/ui/badge";
 import { QrCode } from "lucide-react";
 
@@ -12,6 +14,8 @@ export interface TagPreviewModalProps {
   brandName?: string;
   batchNumber?: string;
   logoUrl?: string;
+  labelStyle?: LabelStyleConfig | undefined;
+  onLabelStyleChange?: ((style: LabelStyleConfig) => void) | undefined;
 }
 
 export function TagPreviewModal({
@@ -22,7 +26,24 @@ export function TagPreviewModal({
   brandName = "Asemi",
   batchNumber,
   logoUrl,
+  labelStyle,
+  onLabelStyleChange,
 }: TagPreviewModalProps) {
+  const [internalStyle, setInternalStyle] = useState<LabelStyleConfig>(
+    labelStyle ?? DEFAULT_LABEL_STYLE,
+  );
+
+  useEffect(() => {
+    if (labelStyle) setInternalStyle(labelStyle);
+  }, [labelStyle]);
+
+  const activeStyle = labelStyle ?? internalStyle;
+
+  function handleStyleChange(next: LabelStyleConfig) {
+    setInternalStyle(next);
+    onLabelStyleChange?.(next);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md sm:max-w-lg p-6 font-sans">
@@ -36,9 +57,11 @@ export function TagPreviewModal({
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            How this code's sticker looks — print-ready at 28×32mm on holographic stock.
+            Customize label finish and print-ready colors at 28×32mm.
           </p>
         </DialogHeader>
+
+        <LabelFinishSelector compact value={activeStyle} onChange={handleStyleChange} />
 
         {/* Visual Sticker Preview */}
         <div className="flex justify-center py-2">
@@ -48,6 +71,7 @@ export function TagPreviewModal({
             {...(brandName ? { brandName } : {})}
             {...(batchNumber ? { batchNumber } : {})}
             {...(logoUrl ? { logoUrl } : {})}
+            labelStyle={activeStyle}
             size="lg"
             showActions={true}
           />

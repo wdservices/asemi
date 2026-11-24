@@ -72,6 +72,15 @@ import { toast } from "sonner";
 import { useState, useEffect, useMemo } from "react";
 import { ProductTagPreview } from "@/components/asemi/ProductTagPreview";
 import { TagPreviewModal } from "@/components/asemi/TagPreviewModal";
+import { LabelFinishSelector } from "@/components/asemi/LabelFinishSelector";
+import {
+  DEFAULT_LABEL_STYLE,
+  LABEL_COLOR_PRESETS,
+  loadSavedLabelStyle,
+  resolveLabelPalette,
+  saveLabelStyle,
+  type LabelStyleConfig,
+} from "@/lib/label-themes";
 
 export const Route = createFileRoute("/_authenticated/batches")({
   head: () => ({ meta: [{ title: "Batches & Codes — Asemi" }] }),
@@ -117,6 +126,21 @@ function BatchesPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const reference = search.reference;
+  const { data: company } = useMyCompany() as { data: Company | null | undefined };
+  const companyId = company?.id;
+
+  const [labelStyle, setLabelStyle] = useState<LabelStyleConfig>(() =>
+    loadSavedLabelStyle(companyId),
+  );
+
+  useEffect(() => {
+    setLabelStyle(loadSavedLabelStyle(companyId));
+  }, [companyId]);
+
+  function handleLabelStyleChange(next: LabelStyleConfig) {
+    setLabelStyle(next);
+    saveLabelStyle(next, companyId);
+  }
 
   return (
     <div className="space-y-6 font-sans">
@@ -128,6 +152,7 @@ function BatchesPage() {
       {reference ? (
         <PaymentReturnHandler
           reference={reference}
+          labelStyle={labelStyle}
           onClear={() => navigate({ to: "/batches", search: {}, replace: true })}
           onViewCodes={() => {
             navigate({ to: "/batches", search: {}, replace: true });
@@ -157,13 +182,13 @@ function BatchesPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="request" className="pt-6">
-            <RequestBatchTab />
+            <RequestBatchTab labelStyle={labelStyle} onLabelStyleChange={handleLabelStyleChange} />
           </TabsContent>
           <TabsContent value="history" className="pt-6">
-            <BatchHistoryTab />
+            <BatchHistoryTab labelStyle={labelStyle} onLabelStyleChange={handleLabelStyleChange} />
           </TabsContent>
           <TabsContent value="bank" className="pt-6">
-            <CodeBankTab />
+            <CodeBankTab labelStyle={labelStyle} onLabelStyleChange={handleLabelStyleChange} />
           </TabsContent>
         </Tabs>
       )}
@@ -177,10 +202,12 @@ function BatchesPage() {
 
 function PaymentReturnHandler({
   reference,
+  labelStyle,
   onClear,
   onViewCodes,
 }: {
   reference: string;
+  labelStyle: LabelStyleConfig;
   onClear: () => void;
   onViewCodes: () => void;
 }) {
@@ -383,6 +410,7 @@ function PaymentReturnHandler({
                   productName: b.productName || "Product",
                   brandName: companyName,
                   ...(productLogo ? { logoUrl: productLogo } : {}),
+                  labelStyle,
                   codes: codeList,
                   style: b.tagFormat || "rectangle",
                 })
@@ -398,6 +426,7 @@ function PaymentReturnHandler({
                   productName: b.productName || "Product",
                   brandName: companyName,
                   ...(productLogo ? { logoUrl: productLogo } : {}),
+                  labelStyle,
                   codes: codeList,
                   style: b.tagFormat || "rectangle",
                 })
@@ -426,7 +455,13 @@ function PaymentReturnHandler({
 /*                              REQUEST BATCH TAB                             */
 /* -------------------------------------------------------------------------- */
 
-function RequestBatchTab() {
+function RequestBatchTab({
+  labelStyle,
+  onLabelStyleChange,
+}: {
+  labelStyle: LabelStyleConfig;
+  onLabelStyleChange: (next: LabelStyleConfig) => void;
+}) {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
   const companyName = company?.name || "Asemi Brand";
@@ -541,9 +576,20 @@ function RequestBatchTab() {
   }
 
   const canPay = !!productId && qty > 0 && !!q && !q.requiresQuote && !invalidDateRange && !busy;
+  const activePreset = LABEL_COLOR_PRESETS.find((p) => p.id === labelStyle.presetId);
+  const activeFinishName =
+    labelStyle.presetId === "custom"
+      ? `Custom ${labelStyle.customHex.toUpperCase()}`
+      : activePreset?.name || "Classic White";
+  const activeSwatch =
+    labelStyle.presetId === "custom"
+      ? labelStyle.customHex
+      : activePreset?.metallicGradient
+        ? `linear-gradient(135deg, ${activePreset.metallicGradient[0]}, ${activePreset.metallicGradient[3]})`
+        : activePreset?.swatchHex || "#ffffff";
 
   return (
-    <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(350px,0.95fr)]">
       {/* Form */}
       <div className="min-w-0 space-y-5 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
@@ -688,10 +734,22 @@ function RequestBatchTab() {
           )}
         </div>
 
-        {/* Label spec summary */}
-        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-500">
-          <span className="font-semibold text-zinc-800">28×32mm serialized sticker:</span> Every
-          unit ships print-ready with your product mark, unique QR code, and fallback serial.
+        {/* Label branding & spec summary */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 px-4 py-3 text-xs text-zinc-600">
+          <div>
+            <span className="font-semibold text-zinc-900">28×32mm serialized sticker:</span> Every
+            unit ships print-ready with your product mark, unique QR code, and fallback serial.
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-800">
+            <span
+              aria-hidden="true"
+              className="size-2.5 shrink-0 rounded-full border border-zinc-300"
+              style={{ background: activeSwatch }}
+            />
+            <span>
+              {activeFinishName} · {labelStyle.applyTo === "qr" ? "QR code" : "Background"}
+            </span>
+          </div>
         </div>
 
         {error && (
@@ -796,7 +854,8 @@ function RequestBatchTab() {
           <p className="text-[11px] text-zinc-500">
             28×32mm serialized packaging label for {selectedProduct?.name || companyName}.
           </p>
-          <div className="flex justify-center py-3">
+          <LabelFinishSelector value={labelStyle} onChange={onLabelStyleChange} className="mt-3" />
+          <div className="flex justify-center pt-4 pb-2">
             <ProductTagPreview
               codeString="ASM-SAMPLE-CODE"
               productName={selectedProduct?.name || companyName}
@@ -805,6 +864,7 @@ function RequestBatchTab() {
               {...((selectedProduct?.imageUrls?.[0] ?? company?.logoUrl)
                 ? { logoUrl: (selectedProduct?.imageUrls?.[0] ?? company?.logoUrl) as string }
                 : {})}
+              labelStyle={labelStyle}
               showActions={false}
               size="sm"
             />
@@ -826,7 +886,13 @@ function batchUiStatus(status: string): string {
   return status;
 }
 
-function BatchHistoryTab() {
+function BatchHistoryTab({
+  labelStyle,
+  onLabelStyleChange,
+}: {
+  labelStyle: LabelStyleConfig;
+  onLabelStyleChange: (next: LabelStyleConfig) => void;
+}) {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
   const companyName = company?.name || "Asemi Brand";
@@ -920,6 +986,7 @@ function BatchHistoryTab() {
         productName,
         brandName: companyName,
         ...(logoUrl ? { logoUrl } : {}),
+        labelStyle,
         codes: codeStrings,
         style: "rectangle",
         onProgress: (cur, tot) => {
@@ -943,6 +1010,7 @@ function BatchHistoryTab() {
         productName,
         brandName: companyName,
         ...(logoUrl ? { logoUrl } : {}),
+        labelStyle,
         codes: codeStrings,
         style: "rectangle",
       });
@@ -1174,9 +1242,10 @@ function BatchHistoryTab() {
             </DialogHeader>
             <div className="space-y-3 py-2 text-sm">
               <p className="text-xs text-zinc-500">
-                28×32mm serialized packaging stickers — download high-resolution labels (ZIP) or
-                open a printable sheet.
+                28×32mm serialized packaging stickers — choose a label finish, download
+                high-resolution labels (ZIP), or open a printable sheet.
               </p>
+              <LabelFinishSelector compact value={labelStyle} onChange={onLabelStyleChange} />
               <div className="flex items-center justify-between rounded-xl border border-zinc-200 p-3">
                 <div>
                   <p className="text-sm font-semibold">Serialized labels</p>
@@ -1297,7 +1366,13 @@ function BatchHistoryTab() {
 /*                               CODE BANK TAB                                */
 /* -------------------------------------------------------------------------- */
 
-function CodeBankTab() {
+function CodeBankTab({
+  labelStyle,
+  onLabelStyleChange,
+}: {
+  labelStyle: LabelStyleConfig;
+  onLabelStyleChange: (next: LabelStyleConfig) => void;
+}) {
   const { data: company } = useMyCompany() as { data: Company | null | undefined };
   const companyId = company?.id;
   const companyName = company?.name || "Asemi Security";
@@ -1408,6 +1483,7 @@ function CodeBankTab() {
         productName: first.productName || "Product",
         brandName: companyName,
         ...(logoUrl ? { logoUrl } : {}),
+        labelStyle,
         codes: visibleCodes.slice(0, 100).map((c) => c.codeString),
         style: "rectangle",
         onProgress: (cur, tot) => {
@@ -1432,6 +1508,7 @@ function CodeBankTab() {
         productName: first.productName || "Product",
         brandName: companyName,
         ...(logoUrl ? { logoUrl } : {}),
+        labelStyle,
         codes: visibleCodes.slice(0, 100).map((c) => c.codeString),
         style: "rectangle",
       });
@@ -1605,7 +1682,7 @@ function CodeBankTab() {
                 {visibleCodes.map((c) => (
                   <TableRow key={c.id} className="hover:bg-zinc-50/60">
                     <TableCell>
-                      <CodeQrThumbnail codeString={c.codeString} />
+                      <CodeQrThumbnail codeString={c.codeString} labelStyle={labelStyle} />
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold">
                       {c.codeString}
@@ -1645,9 +1722,17 @@ function CodeBankTab() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-xs text-zinc-500">
-              Displaying <strong className="text-zinc-900">{visibleCodes.length}</strong> labels
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-zinc-500">
+                Displaying <strong className="text-zinc-900">{visibleCodes.length}</strong> labels
+              </p>
+              <LabelFinishSelector
+                compact
+                value={labelStyle}
+                onChange={onLabelStyleChange}
+                className="sm:max-w-lg"
+              />
+            </div>
             <div className="grid place-items-center gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {visibleCodes.slice(0, 48).map((c) => (
                 <div
@@ -1666,6 +1751,7 @@ function CodeBankTab() {
                     brandName={companyName}
                     batchNumber={c.batchNumber}
                     {...(logoForCode(c) ? { logoUrl: logoForCode(c) as string } : {})}
+                    labelStyle={labelStyle}
                     size="sm"
                     showActions={true}
                   />
@@ -1697,6 +1783,8 @@ function CodeBankTab() {
           brandName={companyName}
           batchNumber={previewCode.batchNumber}
           {...(logoForCode(previewCode) ? { logoUrl: logoForCode(previewCode) as string } : {})}
+          labelStyle={labelStyle}
+          onLabelStyleChange={onLabelStyleChange}
         />
       )}
     </div>
@@ -1707,8 +1795,15 @@ function CodeBankTab() {
 /*                               INLINE QR COMP                               */
 /* -------------------------------------------------------------------------- */
 
-function CodeQrThumbnail({ codeString }: { codeString: string }) {
+function CodeQrThumbnail({
+  codeString,
+  labelStyle = DEFAULT_LABEL_STYLE,
+}: {
+  codeString: string;
+  labelStyle?: LabelStyleConfig | undefined;
+}) {
   const [dataUrl, setDataUrl] = useState<string>("");
+  const palette = resolveLabelPalette(labelStyle);
 
   useEffect(() => {
     let active = true;
@@ -1716,14 +1811,14 @@ function CodeQrThumbnail({ codeString }: { codeString: string }) {
       typeof window !== "undefined"
         ? `${window.location.origin}/v/${codeString}`
         : `https://asemi.io/v/${codeString}`,
-      { width: 64, margin: 0 },
+      { width: 64, margin: 0, darkColor: palette.qrDark, lightColor: palette.qrLight },
     ).then((url) => {
       if (active) setDataUrl(url);
     });
     return () => {
       active = false;
     };
-  }, [codeString]);
+  }, [codeString, palette.qrDark, palette.qrLight]);
 
   if (!dataUrl) {
     return <div className="size-8 animate-pulse rounded bg-zinc-100" />;
@@ -1734,6 +1829,7 @@ function CodeQrThumbnail({ codeString }: { codeString: string }) {
       type="button"
       onClick={() => downloadDataUrl(dataUrl, `qr-${codeString}.png`)}
       className="size-8 overflow-hidden rounded-lg border border-zinc-200 p-0.5 transition hover:ring-2 hover:ring-zinc-400"
+      style={{ backgroundColor: palette.qrPlaqueBg }}
       title="Click to download QR code"
     >
       <img src={dataUrl} alt="QR" className="size-full object-contain" />

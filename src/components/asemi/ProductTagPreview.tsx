@@ -8,16 +8,8 @@ import {
   getVerificationUrl,
 } from "@/lib/qr";
 import { downloadSingleTagPdf } from "@/lib/tag-exporter";
-import {
-  Download,
-  Printer,
-  Check,
-  Copy,
-  ExternalLink,
-  Sparkles,
-  FileText,
-  Code2,
-} from "lucide-react";
+import { resolveLabelPalette, type LabelStyleConfig } from "@/lib/label-themes";
+import { Download, Check, Copy, ExternalLink, Sparkles, FileText, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -27,12 +19,13 @@ export interface ProductTagProps {
   brandName?: string;
   batchNumber?: string;
   logoUrl?: string;
+  labelStyle?: LabelStyleConfig | undefined;
   showActions?: boolean;
   className?: string;
   size?: "sm" | "md" | "lg";
 }
 
-function BrandInitials({ name }: { name: string }) {
+function BrandInitials({ name, accentColor }: { name: string; accentColor: string }) {
   const initials = name
     .split(/\s+/)
     .map((w) => w[0])
@@ -40,7 +33,10 @@ function BrandInitials({ name }: { name: string }) {
     .slice(0, 2)
     .toUpperCase();
   return (
-    <div className="h-10 px-3 rounded-xl bg-emerald-800 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+    <div
+      className="flex h-10 items-center justify-center rounded-xl px-3 text-sm font-bold text-white shadow-sm"
+      style={{ backgroundColor: accentColor }}
+    >
       {initials || "AS"}
     </div>
   );
@@ -52,6 +48,7 @@ export function ProductTagPreview({
   brandName = "Asemi Security",
   batchNumber,
   logoUrl,
+  labelStyle,
   showActions = true,
   className = "",
   size = "md",
@@ -60,12 +57,18 @@ export function ProductTagPreview({
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const palette = resolveLabelPalette(labelStyle);
   const verifyUrl = getVerificationUrl(codeString);
 
   useEffect(() => {
     let active = true;
     // Render at 2x display size so the QR stays razor-sharp for cameras.
-    generateQrDataUrl(verifyUrl, { width: 480, margin: 1 })
+    generateQrDataUrl(verifyUrl, {
+      width: 480,
+      margin: 1,
+      darkColor: palette.qrDark,
+      lightColor: palette.qrLight,
+    })
       .then((url) => {
         if (active) setQrUrl(url);
       })
@@ -73,7 +76,7 @@ export function ProductTagPreview({
     return () => {
       active = false;
     };
-  }, [verifyUrl]);
+  }, [verifyUrl, palette.qrDark, palette.qrLight]);
 
   const handleDownloadTag = async () => {
     try {
@@ -84,6 +87,7 @@ export function ProductTagPreview({
         ...(brandName ? { brandName } : {}),
         ...(batchNumber ? { batchNumber } : {}),
         ...(logoUrl ? { logoUrl } : {}),
+        ...(labelStyle ? { labelStyle } : {}),
         style: "rectangle",
         scale: 3, // High-res 300 DPI equivalent
       });
@@ -120,6 +124,7 @@ export function ProductTagPreview({
         ...(brandName ? { brandName } : {}),
         ...(batchNumber ? { batchNumber } : {}),
         ...(logoUrl ? { logoUrl } : {}),
+        ...(labelStyle ? { labelStyle } : {}),
         style: "rectangle",
       });
       toast.success(`Downloaded print-ready PDF proof for ${codeString}`);
@@ -140,6 +145,7 @@ export function ProductTagPreview({
         ...(brandName ? { brandName } : {}),
         ...(batchNumber ? { batchNumber } : {}),
         ...(logoUrl ? { logoUrl } : {}),
+        ...(labelStyle ? { labelStyle } : {}),
         style: "rectangle",
       });
       downloadSingleTagSvg(svg, `asemi-tag-${codeString}-rectangle.svg`);
@@ -155,14 +161,27 @@ export function ProductTagPreview({
   // Dimensions based on size
   const scaleClass = size === "sm" ? "w-[200px]" : size === "lg" ? "w-[320px]" : "w-[260px]";
 
+  const cardBackground =
+    palette.cardGradientStops && palette.cardGradientStops.length >= 2
+      ? `linear-gradient(135deg, ${palette.cardGradientStops.join(", ")})`
+      : palette.cardBg;
+
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>
-      {/* Plain printable verification label — no holographic patterns so it
-          prints cleanly on real holographic sticker stock. Pops with a soft
-          drop shadow behind it. */}
       <div
-        className={`relative ${scaleClass} select-none overflow-hidden rounded-2xl border border-slate-300 bg-white font-sans shadow-[0_20px_45px_rgba(15,23,42,0.28)] transition-transform hover:scale-[1.01]`}
+        className={`relative ${scaleClass} select-none overflow-hidden rounded-2xl border-2 font-sans shadow-[0_20px_45px_rgba(15,23,42,0.24)] transition-all duration-200 hover:scale-[1.01]`}
+        style={{
+          background: cardBackground,
+          borderColor: palette.cardBorder,
+        }}
       >
+        {palette.isMetallic && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.22)_0px,rgba(255,255,255,0.22)_1px,transparent_1px,transparent_5px)] opacity-70"
+          />
+        )}
+
         {/* Tag Content */}
         <div className="relative z-10 flex flex-col items-center px-4 py-3.5 text-center">
           {/* Product logo header */}
@@ -171,22 +190,31 @@ export function ProductTagPreview({
               <img
                 src={logoUrl}
                 alt="Product logo"
-                className="h-10 max-w-[140px] rounded-lg bg-white object-contain px-1 shadow-sm ring-1 ring-slate-200"
+                className="h-10 max-w-[140px] rounded-lg bg-white/95 object-contain px-1.5 py-0.5 shadow-sm ring-1 ring-black/10"
               />
             ) : (
-              <BrandInitials name={brandName} />
+              <BrandInitials name={brandName} accentColor={palette.accentColor} />
             )}
           </div>
 
           {/* Product name */}
           {productName && (
-            <p className="mb-2 max-w-[92%] truncate text-[13px] font-bold tracking-tight text-zinc-950">
+            <p
+              className="mb-2 max-w-[92%] truncate text-[13px] font-bold tracking-tight"
+              style={{ color: palette.textPrimary }}
+            >
               {productName}
             </p>
           )}
 
-          {/* QR Code Plaque — smaller, rendered 2x for camera-sharp edges */}
-          <div className="relative rounded-xl border-2 border-slate-300 bg-white p-2 shadow-md">
+          {/* QR Code Plaque — rendered 2x for camera-sharp edges */}
+          <div
+            className="relative rounded-xl border-2 p-2 shadow-md transition-colors duration-200"
+            style={{
+              backgroundColor: palette.qrPlaqueBg,
+              borderColor: palette.qrPlaqueBorder,
+            }}
+          >
             {qrUrl ? (
               <img
                 src={qrUrl}
@@ -200,15 +228,27 @@ export function ProductTagPreview({
             )}
           </div>
 
-          {/* Verification code — printed openly as plain text (not tappable: print can't be tapped) */}
-          <div className="mt-2 w-full rounded-md border border-slate-300 bg-slate-50 px-2 py-1.5 shadow-sm">
-            <p className="text-[11px] font-extrabold tracking-tight text-zinc-950">
+          {/* Verification code — printed openly as plain text */}
+          <div
+            className="mt-2 w-full rounded-md border px-2 py-1.5 shadow-sm transition-colors duration-200"
+            style={{
+              backgroundColor: palette.footerBg,
+              borderColor: palette.footerBorder,
+            }}
+          >
+            <p
+              className="text-[11px] font-extrabold tracking-tight"
+              style={{ color: palette.footerText }}
+            >
               Beware of counterfeits
             </p>
-            <p className="mt-0.5 font-mono text-xs font-black tracking-wider text-zinc-950">
+            <p
+              className="mt-0.5 font-mono text-xs font-black tracking-wider"
+              style={{ color: palette.footerText }}
+            >
               {codeString}
             </p>
-            <p className="mt-0.5 text-[8px] font-medium text-zinc-600">
+            <p className="mt-0.5 text-[8px] font-medium" style={{ color: palette.footerSubtext }}>
               Scan QR or visit verification portal
             </p>
           </div>

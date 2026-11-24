@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { jsPDF } from "jspdf";
 import { renderTagToCanvas, generateTagSvg, downloadDataUrl } from "@/lib/qr";
+import type { LabelStyleConfig } from "@/lib/label-themes";
 
 export interface BatchExportOptions {
   batchNumber: string;
@@ -9,6 +10,7 @@ export interface BatchExportOptions {
   logoUrl?: string;
   codes: string[];
   style: "rectangle" | "circle";
+  labelStyle?: LabelStyleConfig | undefined;
   pageSize?: "a4" | "letter";
   onProgress?: (current: number, total: number) => void;
 }
@@ -26,6 +28,7 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
     logoUrl,
     codes,
     style,
+    labelStyle,
     pageSize = "a4",
     onProgress,
   } = options;
@@ -194,6 +197,7 @@ export async function downloadBatchPdf(options: BatchExportOptions): Promise<voi
         productName,
         brandName,
         ...(logoUrl ? { logoUrl } : {}),
+        ...(labelStyle ? { labelStyle } : {}),
         batchNumber,
         style,
         scale: 3, // 300+ DPI crispness
@@ -228,6 +232,7 @@ export async function downloadBatchSvg(options: BatchExportOptions): Promise<voi
     logoUrl,
     codes,
     style,
+    labelStyle,
     onProgress,
   } = options;
 
@@ -247,6 +252,8 @@ export async function downloadBatchSvg(options: BatchExportOptions): Promise<voi
       codeString: code,
       productName,
       brandName,
+      ...(logoUrl ? { logoUrl } : {}),
+      ...(labelStyle ? { labelStyle } : {}),
       batchNumber,
       style,
     });
@@ -277,6 +284,8 @@ export async function downloadBatchSvg(options: BatchExportOptions): Promise<voi
       codeString: code,
       productName,
       brandName,
+      ...(logoUrl ? { logoUrl } : {}),
+      ...(labelStyle ? { labelStyle } : {}),
       batchNumber,
       style,
     });
@@ -357,12 +366,12 @@ export async function downloadTagsZip(options: BatchExportOptions): Promise<void
     logoUrl,
     codes,
     style,
+    labelStyle,
     onProgress,
   } = options;
   const zip = new JSZip();
   const folder = zip.folder(`asemi-${batchNumber}-${style}-tags`);
 
-  const total = codes.length;
   // Limit max images in memory per batch if large (export up to 200 high-res tags per zip)
   const exportCodes = codes.slice(0, 200);
 
@@ -372,6 +381,8 @@ export async function downloadTagsZip(options: BatchExportOptions): Promise<void
       codeString: code,
       productName,
       brandName,
+      ...(logoUrl ? { logoUrl } : {}),
+      ...(labelStyle ? { labelStyle } : {}),
       batchNumber,
       style,
       scale: 3, // 300+ DPI
@@ -398,6 +409,7 @@ export async function downloadSingleTagPdf(options: {
   batchNumber?: string;
   logoUrl?: string;
   style: "rectangle" | "circle";
+  labelStyle?: LabelStyleConfig | undefined;
 }): Promise<void> {
   const {
     codeString,
@@ -406,6 +418,7 @@ export async function downloadSingleTagPdf(options: {
     batchNumber = "SINGLE",
     logoUrl,
     style,
+    labelStyle,
   } = options;
 
   const doc = new jsPDF({
@@ -443,6 +456,7 @@ export async function downloadSingleTagPdf(options: {
     productName,
     brandName,
     ...(logoUrl ? { logoUrl } : {}),
+    ...(labelStyle ? { labelStyle } : {}),
     batchNumber,
     style,
     scale: 3,
@@ -487,8 +501,17 @@ export async function printTagSheet(options: {
   logoUrl?: string;
   codes: string[];
   style: "rectangle" | "circle";
+  labelStyle?: LabelStyleConfig | undefined;
 }): Promise<void> {
-  const { batchNumber, productName, brandName = "Asemi", logoUrl, codes, style } = options;
+  const {
+    batchNumber,
+    productName,
+    brandName = "Asemi",
+    logoUrl,
+    codes,
+    style,
+    labelStyle,
+  } = options;
   const printCodes = codes.slice(0, 48); // 1-2 standard sticker sheet pages
 
   // Render all tags to data URLs
@@ -499,6 +522,7 @@ export async function printTagSheet(options: {
       productName,
       brandName,
       ...(logoUrl ? { logoUrl } : {}),
+      ...(labelStyle ? { labelStyle } : {}),
       batchNumber,
       style,
       scale: 2,
