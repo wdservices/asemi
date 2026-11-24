@@ -23,6 +23,8 @@ import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as VCodeRouteImport } from './routes/v.$code'
 import { Route as AuthenticatedAdminCompaniesRouteImport } from './routes/_authenticated/admin.companies'
 import { Route as AuthenticatedAdminFraudRouteImport } from './routes/_authenticated/admin.fraud'
@@ -98,6 +100,16 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VCodeRoute = VCodeRouteImport.update({
   id: '/v/$code',
   path: '/v/$code',
@@ -140,7 +152,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/v/$code': typeof VCodeRoute
+  '/blog/': typeof BlogIndexRoute
   '/admin/companies': typeof AuthenticatedAdminCompaniesRoute
   '/admin/fraud': typeof AuthenticatedAdminFraudRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
@@ -160,7 +174,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/v/$code': typeof VCodeRoute
+  '/blog': typeof BlogIndexRoute
   '/admin/companies': typeof AuthenticatedAdminCompaniesRoute
   '/admin/fraud': typeof AuthenticatedAdminFraudRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
@@ -182,7 +198,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/v/$code': typeof VCodeRoute
+  '/blog/': typeof BlogIndexRoute
   '/_authenticated/admin/companies': typeof AuthenticatedAdminCompaniesRoute
   '/_authenticated/admin/fraud': typeof AuthenticatedAdminFraudRoute
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
@@ -204,7 +222,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/profile'
+    | '/blog/$slug'
     | '/v/$code'
+    | '/blog/'
     | '/admin/companies'
     | '/admin/fraud'
     | '/admin/reports'
@@ -224,7 +244,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/profile'
+    | '/blog/$slug'
     | '/v/$code'
+    | '/blog'
     | '/admin/companies'
     | '/admin/fraud'
     | '/admin/reports'
@@ -245,7 +267,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/products'
     | '/_authenticated/profile'
+    | '/blog/$slug'
     | '/v/$code'
+    | '/blog/'
     | '/_authenticated/admin/companies'
     | '/_authenticated/admin/fraud'
     | '/_authenticated/admin/reports'
@@ -260,7 +284,9 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   TermsRoute: typeof TermsRoute
   VerifyRoute: typeof VerifyRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   VCodeRoute: typeof VCodeRoute
+  BlogIndexRoute: typeof BlogIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -363,6 +389,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/v/$code': {
       id: '/v/$code'
       path: '/v/$code'
@@ -449,7 +489,9 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   TermsRoute: TermsRoute,
   VerifyRoute: VerifyRoute,
+  BlogSlugRoute: BlogSlugRoute,
   VCodeRoute: VCodeRoute,
+  BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
