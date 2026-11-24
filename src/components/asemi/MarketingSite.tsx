@@ -50,6 +50,9 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
             <a href="#how" className="hover:text-[#1a1a1e] transition-colors">
               Protocol
             </a>
+            <Link to="/blog" className="hover:text-[#1a1a1e] transition-colors">
+              Blog
+            </Link>
             <Link to="/faq" className="hover:text-[#1a1a1e] transition-colors">
               FAQ
             </Link>
@@ -286,6 +289,9 @@ export const MarketingSite: React.FC<MarketingSiteProps> = ({
           </div>
 
           <div className="flex flex-wrap gap-4">
+            <Link to="/blog" className="hover:text-[#1a1a1e] underline">
+              Blog
+            </Link>
             <Link to="/faq" className="hover:text-[#1a1a1e] underline">
               FAQ
             </Link>

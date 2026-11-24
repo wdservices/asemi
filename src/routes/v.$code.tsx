@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -8,6 +9,8 @@ import {
   ExternalLink,
   ShieldAlert,
   CalendarClock,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,7 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Logo } from "@/components/brand";
 import { normalizeCode } from "@/lib/auth";
-import { fnVerifyCode, submitReport, verifyCodeLocally, type VerifyResult } from "@/lib/db";
+import { submitReport, verifyProductCode } from "@/lib/db";
+import { verifyResultQueryKey } from "@/lib/verify-cache";
 
 export const Route = createFileRoute("/v/$code")({
   head: ({ params }) => ({
@@ -37,20 +41,10 @@ type Result = {
   recalled?: boolean;
   recallReason?: string | null;
   recalledAt?: string | null;
-  product?: VerifyResult["product"] | undefined;
-  company?: VerifyResult["company"] | undefined;
-  batch?: VerifyResult["batch"] | undefined;
+  product?: Awaited<ReturnType<typeof verifyProductCode>>["product"] | undefined;
+  company?: Awaited<ReturnType<typeof verifyProductCode>>["company"] | undefined;
+  batch?: Awaited<ReturnType<typeof verifyProductCode>>["batch"] | undefined;
 };
-
-function browserToken() {
-  const k = "sentinel_token";
-  let t = typeof window !== "undefined" ? localStorage.getItem(k) : null;
-  if (!t && typeof window !== "undefined") {
-    t = crypto.randomUUID();
-    localStorage.setItem(k, t);
-  }
-  return t || "tok_anonymous";
-}
 
 function isExpiredDate(dateStr?: string | null): boolean {
   if (!dateStr) return false;
@@ -63,58 +57,35 @@ function isExpiredDate(dateStr?: string | null): boolean {
 
 function VerifyResultPage() {
   const { code } = Route.useParams();
-  const [result, setResult] = useState<Result | null>(null);
-  const [error, setError] = useState(false);
+  const displayCode = normalizeCode(code);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const fp =
-          typeof window !== "undefined"
-            ? `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
-            : "browser_fp";
-        let res: VerifyResult;
-        try {
-          res = await fnVerifyCode({
-            code,
-            browserToken: browserToken(),
-            deviceFingerprint: fp,
-          });
-        } catch (fnErr) {
-          console.warn("Cloud verify unavailable — using Firestore fallback:", fnErr);
-          res = await verifyCodeLocally({
-            code,
-            browserToken: browserToken(),
-            deviceFingerprint: fp,
-          });
-        }
-        if (cancelled) return;
+  const verifyQuery = useQuery({
+    queryKey: verifyResultQueryKey(code),
+    queryFn: () => verifyProductCode(code),
+    staleTime: 8_000,
+    gcTime: 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
 
-        if (res.status === "invalid") {
-          setResult({ status: "invalid", code });
-        } else {
-          setResult({
-            status: res.status === "genuine_repeated" ? "soft_escalation" : "genuine",
-            code: res.code || code,
-            scan_count: res.scan_count,
-            recalled: Boolean(res.recalled),
-            recallReason: res.recallReason ?? null,
-            recalledAt: res.recalledAt ?? null,
-            product: res.product,
-            company: res.company,
-            batch: res.batch,
-          });
+  const res = verifyQuery.data;
+  const result: Result | null = res
+    ? res.status === "invalid"
+      ? { status: "invalid", code }
+      : {
+          status: res.status === "genuine_repeated" ? "soft_escalation" : "genuine",
+          code: res.code || code,
+          scan_count: res.scan_count,
+          recalled: Boolean(res.recalled),
+          recallReason: res.recallReason ?? null,
+          recalledAt: res.recalledAt ?? null,
+          product: res.product,
+          company: res.company,
+          batch: res.batch,
         }
-      } catch (err) {
-        console.error("Verification error:", err);
-        if (!cancelled) setError(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [code]);
+    : null;
+  const error = verifyQuery.isError && !result;
 
   const mfgDate = result?.batch?.mfgDate ?? result?.product?.mfgDate ?? null;
   const expiryDate = result?.batch?.expiryDate ?? result?.product?.expiryDate ?? null;
@@ -135,27 +106,32 @@ function VerifyResultPage() {
         </div>
 
         <div className="mt-6">
-          {!result && !error && <Skeleton />}
+          {!result && !error && <VerificationLoadingCard code={displayCode} />}
           {error && (
             <StatusStampCard
               tone="invalid"
               title="Couldn't verify"
               subtitle="Check your connection and try again."
+              code={displayCode}
             />
           )}
           {result?.status === "invalid" && (
-            <StatusStampCard
-              tone="invalid"
-              title="Not recognised"
-              subtitle="This serial code is not registered in Asemi. The item may be counterfeit or altered."
-              code={normalizeCode(code)}
-            />
+            <div className="animate-[rise_160ms_ease-out_both]">
+              <StatusStampCard
+                tone="invalid"
+                badge="Unregistered serial code"
+                title="Not recognised"
+                subtitle="This serial code is not registered in Asemi. The item may be counterfeit or altered."
+                code={displayCode}
+              />
+            </div>
           )}
           {result && result.status !== "invalid" && (
-            <>
+            <div className="animate-[rise_160ms_ease-out_both]">
               {result.recalled ? (
                 <StatusStampCard
                   tone="recalled"
+                  badge="Serial code registered · Recall active"
                   title="Product / Batch Recalled"
                   subtitle={
                     result.recallReason ||
@@ -171,13 +147,16 @@ function VerifyResultPage() {
               ) : (
                 <StatusStampCard
                   tone={result.status === "genuine" ? "genuine" : "caution"}
+                  badge="Original product verified"
                   title={
-                    result.status === "genuine" ? "Authentic product" : "Checked multiple times"
+                    result.status === "genuine"
+                      ? "Authentic product"
+                      : `Genuine product · Scanned ${result.scan_count ?? 1} ${(result.scan_count ?? 1) === 1 ? "time" : "times"}`
                   }
                   subtitle={
                     result.status === "genuine"
-                      ? `Registered and authenticated by ${result.company?.name || "the manufacturer"}.`
-                      : `This serial code has been checked ${result.scan_count} times across different sessions. Inspect packaging carefully.`
+                      ? `This serial code is original and registered by ${result.company?.name || "the manufacturer"}. Verified ${result.scan_count ?? 1} ${(result.scan_count ?? 1) === 1 ? "time" : "times"}.`
+                      : `This serial code is original and registered to ${result.company?.name || "the manufacturer"}. It has been checked ${result.scan_count ?? 1} times across different sessions — inspect packaging seals carefully before opening.`
                   }
                   code={result.code as string}
                 />
@@ -199,17 +178,30 @@ function VerifyResultPage() {
               {/* Provenance Certificate */}
               <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 {result.product?.image && (
-                  <img
-                    src={result.product.image}
-                    alt={result.product.name}
-                    className="aspect-[16/10] w-full object-cover"
-                  />
+                  <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                    <img
+                      src={result.product.image}
+                      alt={result.product.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 )}
                 <div className="p-5">
                   <div className="border-b border-slate-100 pb-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                      Provenance Certificate
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        Provenance Certificate
+                      </p>
+                      {result.recalled ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200">
+                          Recall active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                          <CheckCircle2 className="size-3" /> Verified original
+                        </span>
+                      )}
+                    </div>
                     <h2 className="mt-1 font-sans text-xl font-bold tracking-tight text-slate-900">
                       {result.product?.name}
                     </h2>
@@ -319,7 +311,7 @@ function VerifyResultPage() {
                   </a>
                 </Button>
               </div>
-            </>
+            </div>
           )}
 
           {(result || error) && (
@@ -347,12 +339,14 @@ function VerifyResultPage() {
 
 function StatusStampCard({
   tone,
+  badge,
   title,
   subtitle,
   code,
   meta,
 }: {
   tone: "genuine" | "caution" | "invalid" | "recalled";
+  badge?: string | undefined;
   title: string;
   subtitle: string;
   code?: string;
@@ -372,6 +366,12 @@ function StatusStampCard({
       : tone === "caution"
         ? "bg-amber-500 text-slate-950"
         : "bg-red-600 text-white";
+  const badgeCls =
+    tone === "genuine"
+      ? "bg-white/15 text-white ring-1 ring-white/25"
+      : tone === "caution"
+        ? "bg-slate-950 text-emerald-300"
+        : "bg-white/15 text-white ring-1 ring-white/25";
   const verifyHref =
     typeof window !== "undefined" && code
       ? `${window.location.origin}/v/${encodeURIComponent(code.replace(/\s/g, ""))}`
@@ -379,7 +379,21 @@ function StatusStampCard({
 
   return (
     <div className={`rounded-3xl p-7 shadow-sm ${bg}`} role="status" aria-live="polite">
-      <Icon className="size-12" strokeWidth={1.75} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Icon className="size-12 shrink-0" strokeWidth={1.75} />
+        {badge && (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${badgeCls}`}
+          >
+            {(tone === "genuine" || tone === "caution") && (
+              <CheckCircle2
+                className={`size-3.5 shrink-0 ${tone === "caution" ? "text-emerald-400" : ""}`}
+              />
+            )}
+            <span>{badge}</span>
+          </span>
+        )}
+      </div>
       <h1 className="mt-4 font-sans text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
         {title}
       </h1>
@@ -406,8 +420,45 @@ function StatusStampCard({
   );
 }
 
-function Skeleton() {
-  return <div className="h-56 animate-pulse rounded-3xl bg-slate-200" aria-busy="true" />;
+function VerificationLoadingCard({ code }: { code: string }) {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-live="polite">
+      <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600">
+            <Loader2 className="size-6 animate-spin" />
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            <ShieldCheck className="size-3.5 text-blue-600" />
+            Checking registry
+          </span>
+        </div>
+        <h1 className="mt-4 font-sans text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          Verifying product…
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+          Confirming authenticity and provenance record for this unit.
+        </p>
+        <p className="mt-4 font-mono text-sm font-semibold tracking-wider text-slate-800 tabular-nums">
+          {code}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          Provenance Certificate
+        </p>
+        <div className="mt-3 space-y-2.5">
+          <div className="h-5 w-2/3 animate-pulse rounded bg-slate-100" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+          <div className="mt-4 grid grid-cols-2 gap-3 pt-2">
+            <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ReportForm({

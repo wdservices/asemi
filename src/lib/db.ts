@@ -1127,6 +1127,46 @@ export const fnVerifyCode = (input: {
   deviceFingerprint?: string | null;
 }) => callFn<VerifyResult>("verifycode", input);
 
+let cloudVerifyUnavailable = false;
+
+export function getVerificationBrowserToken(): string {
+  const k = "sentinel_token";
+  let t = typeof window !== "undefined" ? localStorage.getItem(k) : null;
+  if (!t && typeof window !== "undefined") {
+    t = crypto.randomUUID();
+    localStorage.setItem(k, t);
+  }
+  return t || "tok_anonymous";
+}
+
+export function getVerificationDeviceFingerprint(): string {
+  return typeof window !== "undefined"
+    ? `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+    : "browser_fp";
+}
+
+/**
+ * Primary consumer verification entrypoint. Calls the `verifycode` Cloud Function
+ * when available and falls back immediately to direct Firestore lookup if the
+ * callable isn't deployed or reachable.
+ */
+export async function verifyProductCode(code: string): Promise<VerifyResult> {
+  const browserToken = getVerificationBrowserToken();
+  const deviceFingerprint = getVerificationDeviceFingerprint();
+  if (!cloudVerifyUnavailable) {
+    try {
+      return await fnVerifyCode({ code, browserToken, deviceFingerprint });
+    } catch (fnErr) {
+      const errCode = (fnErr as { code?: string })?.code ?? "";
+      if (errCode === "functions/not-found" || errCode === "functions/unimplemented") {
+        cloudVerifyUnavailable = true;
+      }
+      console.warn("Cloud verify unavailable — using Firestore fallback:", fnErr);
+    }
+  }
+  return verifyCodeLocally({ code, browserToken, deviceFingerprint });
+}
+
 /**
  * Client-side verification fallback used when the `verifycode` Cloud Function
  * is not deployed (or unreachable). Codes are publicly readable, and each code
@@ -1157,10 +1197,10 @@ export async function verifyCodeLocally(input: {
   const data = codeDoc.data() as Record<string, any>;
   const scanCount = Number(data["scanCount"] || 0) + 1;
 
-  // Record the scan + bump the counter. Best-effort: a rules/quota failure must
-  // not stop the consumer from seeing a valid result.
-  try {
-    await addDoc(collection(db, "codes", codeDoc.id, "scans"), {
+  // Record the scan + bump counter in parallel with reading live provenance docs
+  // so consumer verification results are never delayed by sequential writes.
+  const recordScanPromise = Promise.all([
+    addDoc(collection(db, "codes", codeDoc.id, "scans"), {
       codeId: codeDoc.id,
       codeString: String(data["codeString"] || ""),
       companyId: String(data["companyId"] || ""),
@@ -1172,11 +1212,11 @@ export async function verifyCodeLocally(input: {
       deviceFingerprint: input.deviceFingerprint ?? null,
       flagged: false,
       scannedAt: serverTimestamp(),
-    });
-    await updateDoc(codeDoc.ref, { scanCount, lastScannedAt: serverTimestamp() });
-  } catch {
-    // ignore — verification result is still returned below
-  }
+    }),
+    updateDoc(codeDoc.ref, { scanCount, lastScannedAt: serverTimestamp() }),
+  ]).catch(() => {
+    // ignore — a rules/quota failure must not stop the consumer from seeing a valid result
+  });
 
   // Read live public status docs (accessible anonymously) + owner docs when permitted.
   const [productSnap, companySnap, batchSnap, productStatusSnap, batchStatusSnap] =
@@ -1196,6 +1236,7 @@ export async function verifyCodeLocally(input: {
       data["batchId"]
         ? getDoc(doc(db, "batchStatus", String(data["batchId"]))).catch(() => null)
         : Promise.resolve(null),
+      recordScanPromise,
     ]);
   const product = productSnap?.exists() ? productSnap.data() : {};
   const company = companySnap?.exists() ? companySnap.data() : {};

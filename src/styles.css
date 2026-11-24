@@ -334,3 +334,32 @@ button:active:not(:disabled),
 #grain {
   display: none !important;
 }
+
+/* Prevent prerendered "/" landing HTML from flashing on static SPA rewrites (/v/..., /verify, etc.) */
+html[data-spa-route="1"] .asemi-app-root {
+  display: none !important;
+}
+
+html[data-spa-route="1"] body {
+  background-color: #f8fafc;
+}
+
+html[data-spa-verify="1"] body::before {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 3px solid #cbd5e1;
+  border-top-color: #2563eb;
+  border-radius: 9999px;
+  animation: asemi-preboot-spin 0.7s linear infinite;
+}
+
+@keyframes asemi-preboot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

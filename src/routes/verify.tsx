@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import jsQR from "jsqr";
 import {
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/brand";
 import { normalizeCode } from "@/lib/auth";
+import { prefetchAndVerifyCode } from "@/lib/verify-cache";
 
 export const Route = createFileRoute("/verify")({
   head: () => ({
@@ -100,6 +102,7 @@ function VerifyEntry() {
   const [hasTorch, setHasTorch] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [decodingImage, setDecodingImage] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -107,7 +110,10 @@ function VerifyEntry() {
   const timerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const sessionIdRef = useRef(0);
+  const verifyingRef = useRef(false);
   const navigate = useNavigate();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const ready = isReadyCode(code);
 
@@ -133,13 +139,38 @@ function VerifyEntry() {
   }, []);
 
   useEffect(() => {
+    router.preloadRoute({ to: "/v/$code", params: { code: "ASM-0000-000000" } }).catch(() => {});
     return () => {
       stopCamera();
     };
-  }, [stopCamera]);
+  }, [router, stopCamera]);
+
+  const verifyAndNavigate = useCallback(
+    async (parsedCode: string) => {
+      if (verifyingRef.current) return;
+      verifyingRef.current = true;
+      setScanHint(null);
+      setDetectedCode(parsedCode);
+      setVerifying(true);
+      stopCamera();
+
+      try {
+        await Promise.all([
+          router.preloadRoute({ to: "/v/$code", params: { code: parsedCode } }).catch(() => {}),
+          prefetchAndVerifyCode(queryClient, parsedCode).catch(() => null),
+        ]);
+      } finally {
+        verifyingRef.current = false;
+        setVerifying(false);
+        navigate({ to: "/v/$code", params: { code: parsedCode } });
+      }
+    },
+    [navigate, queryClient, router, stopCamera],
+  );
 
   const handleDetected = useCallback(
     (payload: string) => {
+      if (verifyingRef.current) return true;
       const parsed = extractCodeFromQrPayload(payload);
       if (!parsed) {
         setScanHint(
@@ -147,13 +178,10 @@ function VerifyEntry() {
         );
         return false;
       }
-      setScanHint(null);
-      setDetectedCode(parsed);
-      stopCamera();
-      navigate({ to: "/v/$code", params: { code: parsed } });
+      void verifyAndNavigate(parsed);
       return true;
     },
-    [navigate, stopCamera],
+    [verifyAndNavigate],
   );
 
   // Attach active MediaStream once <video> renders and run continuous QR detection loop
@@ -505,10 +533,13 @@ function VerifyEntry() {
             )}
 
             {detectedCode && (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-800">
-                Detected <span className="font-mono font-semibold">{detectedCode}</span> — loading
-                certificate…
-              </p>
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-center text-xs font-medium text-emerald-900">
+                <Loader2 className="size-3.5 shrink-0 animate-spin text-emerald-700" />
+                <span>
+                  Detected <span className="font-mono font-semibold">{detectedCode}</span> —{" "}
+                  {verifying ? "verifying product authenticity…" : "opening certificate…"}
+                </span>
+              </div>
             )}
 
             {scanHint && (
@@ -536,7 +567,7 @@ function VerifyEntry() {
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
-              if (ready) navigate({ to: "/v/$code", params: { code } });
+              if (ready && !verifying) void verifyAndNavigate(code);
             }}
           >
             <Input
@@ -552,9 +583,17 @@ function VerifyEntry() {
               type="submit"
               variant="outline"
               className="h-11 w-full border-slate-300 font-semibold text-slate-900 whitespace-nowrap hover:bg-slate-50"
-              disabled={!ready}
+              disabled={!ready || verifying}
             >
-              <Search className="mr-1.5 size-4" /> Check serial code
+              {verifying ? (
+                <>
+                  <Loader2 className="mr-1.5 size-4 animate-spin" /> Checking authenticity…
+                </>
+              ) : (
+                <>
+                  <Search className="mr-1.5 size-4" /> Check serial code
+                </>
+              )}
             </Button>
           </form>
         </div>

@@ -90,7 +90,9 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="font-sans text-[22px] font-semibold tracking-tight text-zinc-950">{title}</h1>
+        <h1 className="font-sans text-[22px] font-semibold tracking-tight text-zinc-950">
+          {title}
+        </h1>
         {description && <p className="mt-1 max-w-xl text-sm text-zinc-500">{description}</p>}
       </div>
       {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}

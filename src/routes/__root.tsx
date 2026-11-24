@@ -111,6 +111,11 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=location.pathname;if(p&&p!=="/"&&p!=="/index.html"){var r=document.documentElement;r.setAttribute("data-spa-route","1");if(p.indexOf("/v/")===0)r.setAttribute("data-spa-verify","1");}}catch(e){}})();`,
+          }}
+        />
         <HeadContent />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
@@ -126,6 +131,8 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    document.documentElement.removeAttribute("data-spa-route");
+    document.documentElement.removeAttribute("data-spa-verify");
     if (!firebaseAuth) return;
     // Only sync the session cache — never invalidate the whole router/caches
     // (that was causing seconds-long stalls on every navigation).
